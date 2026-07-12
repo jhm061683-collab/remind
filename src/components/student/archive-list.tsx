@@ -80,7 +80,9 @@ export function ArchiveList({ userId }: Props) {
   const { subjects, getSubjectName } = useSubjects();
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
   const [problemQuery, setProblemQuery] = useState("");
-  const [selectedWrongReason, setSelectedWrongReason] = useState("");
+  const [selectedWrongReasons, setSelectedWrongReasons] = useState<string[]>(
+    [],
+  );
   const [selectedWrongKeywords, setSelectedWrongKeywords] = useState<string[]>(
     [],
   );
@@ -132,27 +134,35 @@ export function ArchiveList({ userId }: Props) {
       .map(([label, count]) => ({ label, count }));
   }, [questions]);
 
-  /** 선택한 틀린 이유에 달린 오답 키워드 (없으면 빈 배열 → UI 숨김) */
-  const wrongKeywordOptions = useMemo(() => {
-    if (!selectedWrongReason) return [];
-    const counts = new Map<string, number>();
-    for (const q of questions) {
-      if (q.wrongReason?.trim() !== selectedWrongReason) continue;
-      for (const keyword of getQuestionWrongKeywords(q)) {
-        counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
-      }
-    }
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
-      .map(([label, count]) => ({ label, count }));
-  }, [questions, selectedWrongReason]);
+  /** 선택한 틀린 이유별 오답 키워드 (키워드 없는 이유는 제외) */
+  const wrongKeywordGroups = useMemo(() => {
+    if (selectedWrongReasons.length === 0) return [];
+
+    return selectedWrongReasons
+      .map((reason) => {
+        const counts = new Map<string, number>();
+        for (const q of questions) {
+          if (q.wrongReason?.trim() !== reason) continue;
+          for (const keyword of getQuestionWrongKeywords(q)) {
+            counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
+          }
+        }
+        const options = [...counts.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+          .map(([label, count]) => ({ label, count }));
+        return { reason, options };
+      })
+      .filter((group) => group.options.length > 0);
+  }, [questions, selectedWrongReasons]);
 
   useEffect(() => {
-    if (!selectedWrongReason) {
+    if (selectedWrongReasons.length === 0) {
       setSelectedWrongKeywords((prev) => (prev.length === 0 ? prev : []));
       return;
     }
-    const allowed = new Set(wrongKeywordOptions.map((o) => o.label));
+    const allowed = new Set(
+      wrongKeywordGroups.flatMap((group) => group.options.map((o) => o.label)),
+    );
     setSelectedWrongKeywords((prev) => {
       const next = prev.filter((k) => allowed.has(k));
       if (
@@ -163,7 +173,7 @@ export function ArchiveList({ userId }: Props) {
       }
       return next;
     });
-  }, [selectedWrongReason, wrongKeywordOptions]);
+  }, [selectedWrongReasons, wrongKeywordGroups]);
 
   const filtered = useMemo(() => {
     return questions.filter((q) => {
@@ -188,8 +198,9 @@ export function ArchiveList({ userId }: Props) {
         return false;
       }
 
-      if (selectedWrongReason) {
-        if (q.wrongReason?.trim() !== selectedWrongReason) return false;
+      if (selectedWrongReasons.length > 0) {
+        const reason = q.wrongReason?.trim() ?? "";
+        if (!selectedWrongReasons.includes(reason)) return false;
       }
 
       if (selectedWrongKeywords.length > 0) {
@@ -205,7 +216,7 @@ export function ArchiveList({ userId }: Props) {
   }, [
     questions,
     problemQuery,
-    selectedWrongReason,
+    selectedWrongReasons,
     selectedWrongKeywords,
     subjectFilter,
     statusFilter,
@@ -219,20 +230,16 @@ export function ArchiveList({ userId }: Props) {
     Boolean(dateFrom) ||
     Boolean(dateTo) ||
     Boolean(problemQuery.trim()) ||
-    Boolean(selectedWrongReason) ||
+    selectedWrongReasons.length > 0 ||
     selectedWrongKeywords.length > 0;
 
   function clearDetailFilters() {
     setProblemQuery("");
-    setSelectedWrongReason("");
+    setSelectedWrongReasons([]);
     setSelectedWrongKeywords([]);
     setSubjectFilter("all");
     setDateFrom("");
     setDateTo("");
-  }
-
-  function selectWrongReason(reason: string) {
-    setSelectedWrongReason((prev) => (prev === reason ? "" : reason));
   }
 
   const bulkDeleteDescription = useMemo(() => {
@@ -320,8 +327,8 @@ export function ArchiveList({ userId }: Props) {
         <div>
           <p className="remind-section-title">검색 · 상세 필터</p>
           <p className="mt-1 text-xs text-slate-500">
-            틀린 이유를 고르면, 그 이유에 달린 오답 키워드만 이어서 고를 수
-            있어요.
+            틀린 이유는 여러 개 고를 수 있고, 고른 이유마다 아래 오답 키워드가
+            나와요.
           </p>
         </div>
 
@@ -337,7 +344,7 @@ export function ArchiveList({ userId }: Props) {
         </label>
 
         <div className="space-y-2">
-          <p className="remind-field-label">틀린 이유</p>
+          <p className="remind-field-label">틀린 이유 (여러 개 선택 가능)</p>
           {wrongReasonOptions.length === 0 ? (
             <p className="text-xs text-slate-400">
               아직 틀린 이유를 적은 문제가 없어요.
@@ -345,12 +352,16 @@ export function ArchiveList({ userId }: Props) {
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {wrongReasonOptions.map((option) => {
-                const active = selectedWrongReason === option.label;
+                const active = selectedWrongReasons.includes(option.label);
                 return (
                   <button
                     key={option.label}
                     type="button"
-                    onClick={() => selectWrongReason(option.label)}
+                    onClick={() =>
+                      setSelectedWrongReasons((prev) =>
+                        toggleInList(prev, option.label),
+                      )
+                    }
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
                       active
                         ? "border-rose-300 bg-rose-50 text-rose-800"
@@ -368,40 +379,47 @@ export function ArchiveList({ userId }: Props) {
           )}
         </div>
 
-        {selectedWrongReason && wrongKeywordOptions.length > 0 ? (
-          <div className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3">
-            <p className="remind-field-label">
-              오답 키워드
-              <span className="ml-1 font-normal text-slate-500">
-                · {selectedWrongReason}
-              </span>
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {wrongKeywordOptions.map((option) => {
-                const active = selectedWrongKeywords.includes(option.label);
-                return (
-                  <button
-                    key={option.label}
-                    type="button"
-                    onClick={() =>
-                      setSelectedWrongKeywords((prev) =>
-                        toggleInList(prev, option.label),
-                      )
-                    }
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                      active
-                        ? "border-blue-300 bg-blue-50 text-blue-800"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    #{option.label}
-                    <span className="ml-1 text-[10px] opacity-60">
-                      {option.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        {wrongKeywordGroups.length > 0 ? (
+          <div className="space-y-3">
+            {wrongKeywordGroups.map((group) => (
+              <div
+                key={group.reason}
+                className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3"
+              >
+                <p className="remind-field-label">
+                  오답 키워드
+                  <span className="ml-1 font-normal text-slate-500">
+                    · {group.reason}
+                  </span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.options.map((option) => {
+                    const active = selectedWrongKeywords.includes(option.label);
+                    return (
+                      <button
+                        key={`${group.reason}-${option.label}`}
+                        type="button"
+                        onClick={() =>
+                          setSelectedWrongKeywords((prev) =>
+                            toggleInList(prev, option.label),
+                          )
+                        }
+                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                          active
+                            ? "border-blue-300 bg-blue-50 text-blue-800"
+                            : "border-slate-200 bg-white text-slate-700"
+                        }`}
+                      >
+                        #{option.label}
+                        <span className="ml-1 text-[10px] opacity-60">
+                          {option.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         ) : null}
 
