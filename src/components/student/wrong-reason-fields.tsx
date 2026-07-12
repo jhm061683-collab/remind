@@ -122,7 +122,7 @@ export function WrongReasonFields({
           selected={wrongKeywords}
           onChange={onWrongKeywordsChange}
           label="오답 키워드"
-          hint="왜 틀렸는지 요인 키워드. ★즐겨찾기, ×삭제 가능. 보관함 검색에 포함됩니다."
+          hint="왜 틀렸는지 요인 키워드. ★즐겨찾기, ×삭제 가능. 보관함에서 「틀린 이유 키워드」로 검색됩니다."
           placeholder="예: 이차함수, 빈칸추론"
         />
       ) : null}

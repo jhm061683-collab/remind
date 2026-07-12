@@ -46,16 +46,30 @@ function isArchivedQuestion(question: StoredQuestion): boolean {
   return Boolean(question.archived) || question.phase === "completed";
 }
 
-function buildSearchHaystack(
+/** 문제 관련: 문제 키워드 · 출처 · 과목명 */
+function buildProblemKeywordHaystack(
   question: StoredQuestion,
   resolveSubjectName: (id: string) => string,
 ): string {
   return [
     resolveSubjectName(question.subjectId),
     ...(question.keywords ?? []),
-    ...(question.wrongKeywords ?? []),
-    question.answerText ?? "",
     question.source ?? "",
+  ].join(" ");
+}
+
+/** 틀린 이유 관련: 오답 키워드 · 틀린 이유 · 세부 · 메모 */
+function buildWrongKeywordHaystack(question: StoredQuestion): string {
+  const wrongKeywords =
+    question.wrongKeywords?.length
+      ? question.wrongKeywords
+      : (question.wrongReasonDetail ?? "")
+          .split(/[,，#\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+  return [
+    ...wrongKeywords,
     question.wrongReason ?? "",
     question.wrongReasonDetail ?? "",
     question.reflectionMemo ?? "",
@@ -67,7 +81,8 @@ export function ArchiveList({ userId }: Props) {
   const searchParams = useSearchParams();
   const { subjects, getSubjectName } = useSubjects();
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
-  const [query, setQuery] = useState("");
+  const [problemQuery, setProblemQuery] = useState("");
+  const [wrongQuery, setWrongQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
     parseStatusFilter(searchParams.get("status")),
@@ -117,18 +132,38 @@ export function ArchiveList({ userId }: Props) {
       if (dateFrom && createdKey < dateFrom) return false;
       if (dateTo && createdKey > dateTo) return false;
 
-      return matchesSearchQuery(buildSearchHaystack(q, getSubjectName), query);
+      if (
+        !matchesSearchQuery(
+          buildProblemKeywordHaystack(q, getSubjectName),
+          problemQuery,
+        )
+      ) {
+        return false;
+      }
+
+      return matchesSearchQuery(buildWrongKeywordHaystack(q), wrongQuery);
     });
-  }, [questions, query, subjectFilter, statusFilter, dateFrom, dateTo, getSubjectName]);
+  }, [
+    questions,
+    problemQuery,
+    wrongQuery,
+    subjectFilter,
+    statusFilter,
+    dateFrom,
+    dateTo,
+    getSubjectName,
+  ]);
 
   const hasDetailFilters =
     subjectFilter !== "all" ||
     Boolean(dateFrom) ||
     Boolean(dateTo) ||
-    Boolean(query.trim());
+    Boolean(problemQuery.trim()) ||
+    Boolean(wrongQuery.trim());
 
   function clearDetailFilters() {
-    setQuery("");
+    setProblemQuery("");
+    setWrongQuery("");
     setSubjectFilter("all");
     setDateFrom("");
     setDateTo("");
@@ -219,20 +254,32 @@ export function ArchiveList({ userId }: Props) {
         <div>
           <p className="remind-section-title">검색 · 상세 필터</p>
           <p className="mt-1 text-xs text-slate-500">
-            키워드·과목·날짜로 더 좁혀 볼 수 있어요.
+            문제 키워드와 틀린 이유 키워드를 나눠서 검색할 수 있어요.
           </p>
         </div>
 
-        <label className="block">
-          <span className="remind-field-label">키워드</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="예: 문제#이차함수, 오답#빈칸추론"
-            className="remind-input mt-1"
-          />
-        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="remind-field-label">문제 키워드</span>
+            <input
+              type="search"
+              value={problemQuery}
+              onChange={(event) => setProblemQuery(event.target.value)}
+              placeholder="예: 이차함수, 모평22번"
+              className="remind-input mt-1"
+            />
+          </label>
+          <label className="block">
+            <span className="remind-field-label">틀린 이유 키워드</span>
+            <input
+              type="search"
+              value={wrongQuery}
+              onChange={(event) => setWrongQuery(event.target.value)}
+              placeholder="예: 계산실수, 개념부족"
+              className="remind-input mt-1"
+            />
+          </label>
+        </div>
 
         <label className="block">
           <span className="remind-field-label">과목</span>
