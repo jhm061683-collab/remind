@@ -48,6 +48,7 @@ export async function submitSuggestionAction(
     user_id: session.id,
     academy_id: profile?.academy_id ?? null,
     body,
+    is_read: false,
   });
 
   if (error) {
@@ -88,7 +89,7 @@ export async function listSuggestionsForAdminAction(): Promise<{
     const service = createServiceClient();
     let query = service
       .from("suggestions")
-      .select("id, user_id, academy_id, body, created_at")
+      .select("id, user_id, academy_id, body, created_at, is_read")
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -136,11 +137,54 @@ export async function listSuggestionsForAdminAction(): Promise<{
       academyId: (row.academy_id as string | null) ?? undefined,
       body: row.body as string,
       createdAt: row.created_at as string,
+      isRead: Boolean(row.is_read),
     }));
 
     return { items };
   } catch (err) {
     console.error("[listSuggestionsForAdminAction]", err);
     return { error: "목록을 불러오지 못했어요." };
+  }
+}
+
+export async function setSuggestionReadAction(
+  suggestionId: string,
+  isRead: boolean,
+): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session || !canViewSuggestions(session.role)) {
+    return { error: "권한이 없습니다." };
+  }
+
+  if (!isSupabaseEnabled()) {
+    return { error: "Supabase가 설정되지 않았습니다." };
+  }
+
+  try {
+    const service = createServiceClient();
+    const { error } = await service
+      .from("suggestions")
+      .update({ is_read: isRead })
+      .eq("id", suggestionId);
+
+    if (error) {
+      console.error("[setSuggestionReadAction]", error);
+      if (
+        error.message?.includes("is_read") ||
+        error.code === "PGRST204"
+      ) {
+        return {
+          error:
+            "is_read 컬럼이 없어요. Supabase에서 setup.sql을 다시 실행하거나 README의 건의사항 패치를 실행해 주세요.",
+        };
+      }
+      return { error: "상태를 바꾸지 못했어요." };
+    }
+
+    revalidatePath("/admin/suggestions");
+    return {};
+  } catch (err) {
+    console.error("[setSuggestionReadAction]", err);
+    return { error: "상태를 바꾸지 못했어요." };
   }
 }

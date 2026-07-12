@@ -62,6 +62,13 @@ create policy "suggestions_select_admin"
 
 실행 후 앱에서 건의 보내기를 다시 시도하세요.
 
+### 읽음/안 읽음 컬럼만 추가할 때
+
+```sql
+alter table public.suggestions
+  add column if not exists is_read boolean not null default false;
+```
+
 ---
 
 ## `migrations/` 폴더는?

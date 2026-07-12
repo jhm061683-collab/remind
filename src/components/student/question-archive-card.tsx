@@ -6,8 +6,8 @@ import {
   updateReflectionAction,
 } from "@/lib/actions/questions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { QuestionImage } from "@/components/student/question-image";
 import { QuestionImages } from "@/components/student/question-images";
+import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
@@ -324,7 +324,7 @@ export function QuestionArchiveCard({
                 <div className="mt-3 space-y-3">
                   {question.answerImageDataUrl ? (
                     <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white">
-                      <QuestionImage
+                      <ZoomableQuestionImage
                         src={question.answerImageDataUrl}
                         alt="해설"
                         width={800}

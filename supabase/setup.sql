@@ -203,8 +203,12 @@ create table if not exists public.suggestions (
   user_id uuid not null references auth.users (id) on delete cascade,
   academy_id uuid references public.academies (id) on delete set null,
   body text not null,
+  is_read boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.suggestions
+  add column if not exists is_read boolean not null default false;
 
 create index if not exists suggestions_created_at_idx
   on public.suggestions (created_at desc);

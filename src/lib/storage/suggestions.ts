@@ -41,6 +41,7 @@ export function addSuggestionLocal(input: {
     academyId: input.academyId,
     body: input.body.trim(),
     createdAt: new Date().toISOString(),
+    isRead: false,
   };
   const next = [item, ...readAll()].slice(0, 200);
   writeAll(next);

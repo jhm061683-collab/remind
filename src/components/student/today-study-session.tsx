@@ -1,8 +1,8 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { QuestionImage } from "@/components/student/question-image";
 import { QuestionImages } from "@/components/student/question-images";
+import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -300,7 +300,7 @@ export function TodayStudySession({ userId }: Props) {
                 <div className="space-y-2">
                   {current.answerImageDataUrl ? (
                     <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
-                      <QuestionImage
+                      <ZoomableQuestionImage
                         src={current.answerImageDataUrl}
                         alt="해설 사진"
                         width={800}
