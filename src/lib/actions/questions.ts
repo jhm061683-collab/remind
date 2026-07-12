@@ -128,7 +128,9 @@ export async function deleteQuestionsBulkAction(
 export async function updateReflectionAction(input: {
   questionId: string;
   source?: string;
+  keywords?: string[];
   wrongReason?: string;
+  wrongKeywords?: string[];
   wrongReasonDetail?: string;
   reflectionMemo?: string;
 }): Promise<UpdateReflectionState> {

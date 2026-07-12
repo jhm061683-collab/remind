@@ -17,12 +17,13 @@ import {
 } from "@/lib/data/questions";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { isLocalStorageAvailable } from "@/lib/storage/safe-storage";
+import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import {
   fileOrPreviewToDataUrl,
 } from "@/lib/utils/compress-image";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
-import { parseKeywords } from "@/lib/utils/keywords";
+import { recordKeywordUsage } from "@/lib/data/keyword-library";
 
 type Props = {
   userId: string;
@@ -41,10 +42,10 @@ function resetFormFields(setters: {
   setAnswerFile: (v: File | null) => void;
   setAnswerPreview: (v: string | null) => void;
   setAnswerText: (v: string) => void;
-  setKeywordInput: (v: string) => void;
+  setKeywords: (v: string[]) => void;
   setSource: (v: string) => void;
   setWrongReason: (v: string) => void;
-  setWrongReasonDetail: (v: string) => void;
+  setWrongKeywords: (v: string[]) => void;
   setReflectionMemo: (v: string) => void;
 }) {
   setters.setQuestionPages([]);
@@ -52,10 +53,10 @@ function resetFormFields(setters: {
   setters.setAnswerFile(null);
   setters.setAnswerPreview(null);
   setters.setAnswerText("");
-  setters.setKeywordInput("");
+  setters.setKeywords([]);
   setters.setSource("");
   setters.setWrongReason("");
-  setters.setWrongReasonDetail("");
+  setters.setWrongKeywords([]);
   setters.setReflectionMemo("");
 }
 
@@ -68,10 +69,10 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [answerPreview, setAnswerPreview] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState("");
-  const [keywordInput, setKeywordInput] = useState("");
+  const [keywords, setKeywords] = useState<string[]>([]);
   const [source, setSource] = useState("");
   const [wrongReason, setWrongReason] = useState("");
-  const [wrongReasonDetail, setWrongReasonDetail] = useState("");
+  const [wrongKeywords, setWrongKeywords] = useState<string[]>([]);
   const [reflectionMemo, setReflectionMemo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,10 +153,12 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         extraImageDataUrls,
         answerText: answerText.trim() || undefined,
         answerImageDataUrl,
-        keywords: parseKeywords(keywordInput),
+        keywords,
         source: source.trim() || undefined,
         wrongReason: wrongReason || undefined,
-        wrongReasonDetail: wrongReasonDetail.trim() || undefined,
+        wrongKeywords,
+        wrongReasonDetail:
+          wrongKeywords.length > 0 ? wrongKeywords.join(", ") : undefined,
         reflectionMemo: reflectionMemo.trim() || undefined,
       };
 
@@ -170,6 +173,13 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           ...payload,
           userId,
         });
+      }
+
+      if (keywords.length > 0) {
+        void recordKeywordUsage(userId, "problem", keywords);
+      }
+      if (wrongKeywords.length > 0) {
+        void recordKeywordUsage(userId, "wrong", wrongKeywords);
       }
 
       setRegisteredCount((c) => c + 1);
@@ -195,10 +205,10 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       setAnswerFile,
       setAnswerPreview,
       setAnswerText,
-      setKeywordInput,
+      setKeywords,
       setSource,
       setWrongReason,
-      setWrongReasonDetail,
+      setWrongKeywords,
       setReflectionMemo,
     });
   }
@@ -273,16 +283,15 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         onChange={setQuestionPages}
       />
 
-      <div>
-        <label className="mb-1 block text-sm font-medium">키워드 (검색용)</label>
-        <input
-          type="text"
-          value={keywordInput}
-          onChange={(e) => setKeywordInput(e.target.value)}
-          placeholder="예: 이차함수, 3번"
-          className="remind-input text-base"
-        />
-      </div>
+      <KeywordPicker
+        userId={userId}
+        kind="problem"
+        selected={keywords}
+        onChange={setKeywords}
+        label="문제 키워드"
+        hint="단원·유형·문제번호 등. ★즐겨찾기는 위에, ×로 목록에서 삭제."
+        placeholder="예: 이차함수, 모평22번"
+      />
 
       <div className="rm-analysis-panel space-y-3">
         <p className="text-sm font-bold">오답 분석</p>
@@ -299,9 +308,9 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         <WrongReasonFields
           userId={userId}
           wrongReason={wrongReason}
-          wrongReasonDetail={wrongReasonDetail}
+          wrongKeywords={wrongKeywords}
           onWrongReasonChange={setWrongReason}
-          onWrongReasonDetailChange={setWrongReasonDetail}
+          onWrongKeywordsChange={setWrongKeywords}
         />
         <label className="block">
           <span className="rm-field-hint">오답 분석 메모</span>

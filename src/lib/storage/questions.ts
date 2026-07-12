@@ -17,7 +17,9 @@ export type StoredQuestion = {
   source?: string;
   /** 틀린 이유 분류 (검색용 키워드와 별도) */
   wrongReason?: string;
-  /** 틀린 이유 세부내용 — 보관함 검색 키워드로도 사용 */
+  /** 오답 요인 키워드 (문제 키워드와 분리) */
+  wrongKeywords?: string[];
+  /** @deprecated wrongKeywords 사용. 하위 호환 검색용 */
   wrongReasonDetail?: string;
   /** 나만의 오답 분석 — 모르는 개념, 왜 틀렸는지 */
   reflectionMemo?: string;
@@ -183,6 +185,14 @@ function normalizeQuestion(question: StoredQuestion): StoredQuestion {
     extraImageDataUrls: question.extraImageDataUrls ?? [],
     source: question.source ?? undefined,
     wrongReason: question.wrongReason ?? undefined,
+    wrongKeywords: question.wrongKeywords?.length
+      ? question.wrongKeywords
+      : question.wrongReasonDetail
+        ? question.wrongReasonDetail
+            .split(/[,，#\s]+/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
     wrongReasonDetail: question.wrongReasonDetail ?? undefined,
     reflectionMemo: question.reflectionMemo ?? undefined,
   };

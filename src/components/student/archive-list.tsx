@@ -53,6 +53,7 @@ function buildSearchHaystack(
   return [
     resolveSubjectName(question.subjectId),
     ...(question.keywords ?? []),
+    ...(question.wrongKeywords ?? []),
     question.answerText ?? "",
     question.source ?? "",
     question.wrongReason ?? "",
@@ -228,7 +229,7 @@ export function ArchiveList({ userId }: Props) {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="예: 발문 오독, 이차함수, 빈칸추론"
+            placeholder="예: 문제#이차함수, 오답#빈칸추론"
             className="remind-input mt-1"
           />
         </label>

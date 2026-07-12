@@ -19,6 +19,7 @@ type QuestionRow = {
   keywords: string[] | null;
   source: string | null;
   wrong_reason: string | null;
+  wrong_keywords: string[] | null;
   wrong_reason_detail: string | null;
   reflection_memo: string | null;
   phase: ReviewPhase;
@@ -41,6 +42,15 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     keywords: row.keywords ?? [],
     source: row.source ?? undefined,
     wrongReason: row.wrong_reason ?? undefined,
+    wrongKeywords:
+      row.wrong_keywords && row.wrong_keywords.length > 0
+        ? row.wrong_keywords
+        : row.wrong_reason_detail
+          ? row.wrong_reason_detail
+              .split(/[,，#\s]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
     wrongReasonDetail: row.wrong_reason_detail ?? undefined,
     reflectionMemo: row.reflection_memo ?? undefined,
     phase: row.phase,
@@ -61,6 +71,7 @@ export type SaveQuestionInput = {
   keywords: string[];
   source?: string;
   wrongReason?: string;
+  wrongKeywords?: string[];
   wrongReasonDetail?: string;
   reflectionMemo?: string;
 };
@@ -68,7 +79,9 @@ export type SaveQuestionInput = {
 export type UpdateReflectionInput = {
   questionId: string;
   source?: string;
+  keywords?: string[];
   wrongReason?: string;
+  wrongKeywords?: string[];
   wrongReasonDetail?: string;
   reflectionMemo?: string;
 };
@@ -119,7 +132,10 @@ export async function saveQuestionOnServer(
       keywords: input.keywords,
       source: input.source ?? null,
       wrong_reason: input.wrongReason ?? null,
-      wrong_reason_detail: input.wrongReasonDetail ?? null,
+      wrong_keywords: input.wrongKeywords ?? [],
+      wrong_reason_detail:
+        input.wrongReasonDetail ??
+        (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null),
       reflection_memo: input.reflectionMemo ?? null,
       phase: "short",
       streak_count: 0,
@@ -150,8 +166,12 @@ export async function updateReflectionOnServer(
     .from("questions")
     .update({
       source: input.source ?? null,
+      keywords: input.keywords ?? [],
       wrong_reason: input.wrongReason ?? null,
-      wrong_reason_detail: input.wrongReasonDetail ?? null,
+      wrong_keywords: input.wrongKeywords ?? [],
+      wrong_reason_detail:
+        input.wrongReasonDetail ??
+        (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null),
       reflection_memo: input.reflectionMemo ?? null,
     })
     .eq("id", input.questionId)

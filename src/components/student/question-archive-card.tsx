@@ -8,7 +8,9 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImage } from "@/components/student/question-image";
 import { QuestionImages } from "@/components/student/question-images";
+import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
+import { recordKeywordUsage } from "@/lib/data/keyword-library";
 import { deleteQuestion, updateQuestion, type StoredQuestion } from "@/lib/data/questions";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
@@ -35,9 +37,17 @@ export function QuestionArchiveCard({
   const [showAnswer, setShowAnswer] = useState(false);
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState(question.source ?? "");
+  const [keywords, setKeywords] = useState<string[]>(question.keywords ?? []);
   const [wrongReason, setWrongReason] = useState(question.wrongReason ?? "");
-  const [wrongReasonDetail, setWrongReasonDetail] = useState(
-    question.wrongReasonDetail ?? "",
+  const [wrongKeywords, setWrongKeywords] = useState<string[]>(
+    question.wrongKeywords?.length
+      ? question.wrongKeywords
+      : question.wrongReasonDetail
+        ? question.wrongReasonDetail
+            .split(/[,，#\s]+/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
   );
   const [reflectionMemo, setReflectionMemo] = useState(
     question.reflectionMemo ?? "",
@@ -51,6 +61,7 @@ export function QuestionArchiveCard({
   const hasReflection = Boolean(
     question.reflectionMemo ||
       question.wrongReason ||
+      (question.wrongKeywords && question.wrongKeywords.length > 0) ||
       question.wrongReasonDetail ||
       question.source,
   );
@@ -61,8 +72,11 @@ export function QuestionArchiveCard({
     try {
       const patch = {
         source: source.trim() || undefined,
+        keywords,
         wrongReason: wrongReason || undefined,
-        wrongReasonDetail: wrongReasonDetail.trim() || undefined,
+        wrongKeywords,
+        wrongReasonDetail:
+          wrongKeywords.length > 0 ? wrongKeywords.join(", ") : undefined,
         reflectionMemo: reflectionMemo.trim() || undefined,
       };
 
@@ -79,6 +93,10 @@ export function QuestionArchiveCard({
       } else {
         const updated = await updateQuestion(userId, question.id, patch);
         if (updated) onUpdate(updated);
+      }
+      if (keywords.length > 0) void recordKeywordUsage(userId, "problem", keywords);
+      if (wrongKeywords.length > 0) {
+        void recordKeywordUsage(userId, "wrong", wrongKeywords);
       }
       setEditing(false);
       setMessage("저장했어요.");
@@ -153,10 +171,25 @@ export function QuestionArchiveCard({
           {question.wrongReason ? (
             <span className="mt-2 inline-block rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
               {question.wrongReason}
-              {question.wrongReasonDetail
-                ? ` · ${question.wrongReasonDetail}`
-                : ""}
             </span>
+          ) : null}
+          {(question.wrongKeywords?.length ?? 0) > 0 || question.wrongReasonDetail ? (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(question.wrongKeywords?.length
+                ? question.wrongKeywords
+                : (question.wrongReasonDetail ?? "")
+                    .split(/[,，#\s]+/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+              ).map((tag) => (
+                <span
+                  key={`w-${tag}`}
+                  className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                >
+                  오답 #{tag}
+                </span>
+              ))}
+            </div>
           ) : null}
           <p className="mt-1 text-slate-500">
             등록: {formatDate(question.createdAt)}
@@ -165,7 +198,7 @@ export function QuestionArchiveCard({
             <div className="mt-2 flex flex-wrap gap-1">
               {question.keywords.map((tag) => (
                 <span key={tag} className="remind-tag">
-                  #{tag}
+                  문제 #{tag}
                 </span>
               ))}
             </div>
@@ -226,12 +259,21 @@ export function QuestionArchiveCard({
                     className="remind-input mt-1 text-sm"
                   />
                 </label>
+                <KeywordPicker
+                  userId={userId}
+                  kind="problem"
+                  selected={keywords}
+                  onChange={setKeywords}
+                  label="문제 키워드"
+                  hint="★즐겨찾기 · ×삭제"
+                  placeholder="예: 이차함수"
+                />
                 <WrongReasonFields
                   userId={userId}
                   wrongReason={wrongReason}
-                  wrongReasonDetail={wrongReasonDetail}
+                  wrongKeywords={wrongKeywords}
                   onWrongReasonChange={setWrongReason}
-                  onWrongReasonDetailChange={setWrongReasonDetail}
+                  onWrongKeywordsChange={setWrongKeywords}
                   selectClassName="remind-input mt-1 text-sm"
                   inputClassName="remind-input mt-1 text-sm"
                 />

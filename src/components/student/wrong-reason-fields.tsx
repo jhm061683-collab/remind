@@ -6,13 +6,14 @@ import {
   getCustomWrongReasons,
 } from "@/lib/data/custom-wrong-reasons";
 import { mergeWrongReasonOptions } from "@/lib/constants/wrong-reasons";
+import { KeywordPicker } from "@/components/student/keyword-picker";
 
 type Props = {
   userId: string;
   wrongReason: string;
-  wrongReasonDetail: string;
+  wrongKeywords: string[];
   onWrongReasonChange: (value: string) => void;
-  onWrongReasonDetailChange: (value: string) => void;
+  onWrongKeywordsChange: (value: string[]) => void;
   selectClassName?: string;
   inputClassName?: string;
 };
@@ -20,9 +21,9 @@ type Props = {
 export function WrongReasonFields({
   userId,
   wrongReason,
-  wrongReasonDetail,
+  wrongKeywords,
   onWrongReasonChange,
-  onWrongReasonDetailChange,
+  onWrongKeywordsChange,
   selectClassName = "remind-input mt-1 text-base",
   inputClassName = "remind-input mt-1 text-base",
 }: Props) {
@@ -115,19 +116,15 @@ export function WrongReasonFields({
       )}
 
       {wrongReason ? (
-        <label className="block">
-          <span className="rm-field-hint">세부 내용 · 검색 키워드 (선택)</span>
-          <input
-            type="text"
-            value={wrongReasonDetail}
-            onChange={(e) => onWrongReasonDetailChange(e.target.value)}
-            placeholder="예: 이차함수 꼭짓점, 빈칸 앞뒤 연결, 조선 후기 신분제"
-            className={inputClassName}
-          />
-          <span className="mt-1 block text-[11px] text-slate-500">
-            여기에 적은 내용은 보관함 검색에 포함됩니다.
-          </span>
-        </label>
+        <KeywordPicker
+          userId={userId}
+          kind="wrong"
+          selected={wrongKeywords}
+          onChange={onWrongKeywordsChange}
+          label="오답 키워드"
+          hint="왜 틀렸는지 요인 키워드. ★즐겨찾기, ×삭제 가능. 보관함 검색에 포함됩니다."
+          placeholder="예: 이차함수, 빈칸추론"
+        />
       ) : null}
     </div>
   );
