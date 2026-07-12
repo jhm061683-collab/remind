@@ -58,22 +58,20 @@ function buildProblemKeywordHaystack(
   ].join(" ");
 }
 
-/** 틀린 이유 관련: 오답 키워드 · 틀린 이유 · 세부 · 메모 */
-function buildWrongKeywordHaystack(question: StoredQuestion): string {
-  const wrongKeywords =
-    question.wrongKeywords?.length
-      ? question.wrongKeywords
-      : (question.wrongReasonDetail ?? "")
-          .split(/[,，#\s]+/)
-          .map((s) => s.trim())
-          .filter(Boolean);
+function getQuestionWrongKeywords(question: StoredQuestion): string[] {
+  if (question.wrongKeywords?.length) {
+    return question.wrongKeywords.map((k) => k.trim()).filter(Boolean);
+  }
+  return (question.wrongReasonDetail ?? "")
+    .split(/[,，#\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
-  return [
-    ...wrongKeywords,
-    question.wrongReason ?? "",
-    question.wrongReasonDetail ?? "",
-    question.reflectionMemo ?? "",
-  ].join(" ");
+function toggleInList(list: string[], value: string): string[] {
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value];
 }
 
 export function ArchiveList({ userId }: Props) {
@@ -82,7 +80,10 @@ export function ArchiveList({ userId }: Props) {
   const { subjects, getSubjectName } = useSubjects();
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
   const [problemQuery, setProblemQuery] = useState("");
-  const [wrongQuery, setWrongQuery] = useState("");
+  const [selectedWrongReason, setSelectedWrongReason] = useState("");
+  const [selectedWrongKeywords, setSelectedWrongKeywords] = useState<string[]>(
+    [],
+  );
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
     parseStatusFilter(searchParams.get("status")),
@@ -118,6 +119,52 @@ export function ArchiveList({ userId }: Props) {
     router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
   }
 
+  /** 등록된 문제에 실제로 있는 틀린 이유 목록 */
+  const wrongReasonOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const q of questions) {
+      const reason = q.wrongReason?.trim();
+      if (!reason) continue;
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+      .map(([label, count]) => ({ label, count }));
+  }, [questions]);
+
+  /** 선택한 틀린 이유에 달린 오답 키워드 (없으면 빈 배열 → UI 숨김) */
+  const wrongKeywordOptions = useMemo(() => {
+    if (!selectedWrongReason) return [];
+    const counts = new Map<string, number>();
+    for (const q of questions) {
+      if (q.wrongReason?.trim() !== selectedWrongReason) continue;
+      for (const keyword of getQuestionWrongKeywords(q)) {
+        counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
+      .map(([label, count]) => ({ label, count }));
+  }, [questions, selectedWrongReason]);
+
+  useEffect(() => {
+    if (!selectedWrongReason) {
+      setSelectedWrongKeywords((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    const allowed = new Set(wrongKeywordOptions.map((o) => o.label));
+    setSelectedWrongKeywords((prev) => {
+      const next = prev.filter((k) => allowed.has(k));
+      if (
+        next.length === prev.length &&
+        next.every((value, index) => value === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [selectedWrongReason, wrongKeywordOptions]);
+
   const filtered = useMemo(() => {
     return questions.filter((q) => {
       if (subjectFilter !== "all" && q.subjectId !== subjectFilter) {
@@ -141,12 +188,25 @@ export function ArchiveList({ userId }: Props) {
         return false;
       }
 
-      return matchesSearchQuery(buildWrongKeywordHaystack(q), wrongQuery);
+      if (selectedWrongReason) {
+        if (q.wrongReason?.trim() !== selectedWrongReason) return false;
+      }
+
+      if (selectedWrongKeywords.length > 0) {
+        const keywords = getQuestionWrongKeywords(q).map((k) => k.toLowerCase());
+        const hit = selectedWrongKeywords.some((selected) =>
+          keywords.includes(selected.toLowerCase()),
+        );
+        if (!hit) return false;
+      }
+
+      return true;
     });
   }, [
     questions,
     problemQuery,
-    wrongQuery,
+    selectedWrongReason,
+    selectedWrongKeywords,
     subjectFilter,
     statusFilter,
     dateFrom,
@@ -159,14 +219,20 @@ export function ArchiveList({ userId }: Props) {
     Boolean(dateFrom) ||
     Boolean(dateTo) ||
     Boolean(problemQuery.trim()) ||
-    Boolean(wrongQuery.trim());
+    Boolean(selectedWrongReason) ||
+    selectedWrongKeywords.length > 0;
 
   function clearDetailFilters() {
     setProblemQuery("");
-    setWrongQuery("");
+    setSelectedWrongReason("");
+    setSelectedWrongKeywords([]);
     setSubjectFilter("all");
     setDateFrom("");
     setDateTo("");
+  }
+
+  function selectWrongReason(reason: string) {
+    setSelectedWrongReason((prev) => (prev === reason ? "" : reason));
   }
 
   const bulkDeleteDescription = useMemo(() => {
@@ -254,32 +320,90 @@ export function ArchiveList({ userId }: Props) {
         <div>
           <p className="remind-section-title">검색 · 상세 필터</p>
           <p className="mt-1 text-xs text-slate-500">
-            문제 키워드와 틀린 이유 키워드를 나눠서 검색할 수 있어요.
+            틀린 이유를 고르면, 그 이유에 달린 오답 키워드만 이어서 고를 수
+            있어요.
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="remind-field-label">문제 키워드</span>
-            <input
-              type="search"
-              value={problemQuery}
-              onChange={(event) => setProblemQuery(event.target.value)}
-              placeholder="예: 이차함수, 모평22번"
-              className="remind-input mt-1"
-            />
-          </label>
-          <label className="block">
-            <span className="remind-field-label">틀린 이유 키워드</span>
-            <input
-              type="search"
-              value={wrongQuery}
-              onChange={(event) => setWrongQuery(event.target.value)}
-              placeholder="예: 계산실수, 개념부족"
-              className="remind-input mt-1"
-            />
-          </label>
+        <label className="block">
+          <span className="remind-field-label">문제 키워드</span>
+          <input
+            type="search"
+            value={problemQuery}
+            onChange={(event) => setProblemQuery(event.target.value)}
+            placeholder="예: 이차함수, 모평22번"
+            className="remind-input mt-1"
+          />
+        </label>
+
+        <div className="space-y-2">
+          <p className="remind-field-label">틀린 이유</p>
+          {wrongReasonOptions.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              아직 틀린 이유를 적은 문제가 없어요.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {wrongReasonOptions.map((option) => {
+                const active = selectedWrongReason === option.label;
+                return (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => selectWrongReason(option.label)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                      active
+                        ? "border-rose-300 bg-rose-50 text-rose-800"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    {option.label}
+                    <span className="ml-1 text-[10px] opacity-60">
+                      {option.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+        {selectedWrongReason && wrongKeywordOptions.length > 0 ? (
+          <div className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3">
+            <p className="remind-field-label">
+              오답 키워드
+              <span className="ml-1 font-normal text-slate-500">
+                · {selectedWrongReason}
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {wrongKeywordOptions.map((option) => {
+                const active = selectedWrongKeywords.includes(option.label);
+                return (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() =>
+                      setSelectedWrongKeywords((prev) =>
+                        toggleInList(prev, option.label),
+                      )
+                    }
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                      active
+                        ? "border-blue-300 bg-blue-50 text-blue-800"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    #{option.label}
+                    <span className="ml-1 text-[10px] opacity-60">
+                      {option.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <label className="block">
           <span className="remind-field-label">과목</span>
