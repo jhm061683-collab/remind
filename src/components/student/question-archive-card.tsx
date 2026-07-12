@@ -8,7 +8,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImage } from "@/components/student/question-image";
 import { QuestionImages } from "@/components/student/question-images";
-import { WRONG_REASONS } from "@/lib/constants/wrong-reasons";
+import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { deleteQuestion, updateQuestion, type StoredQuestion } from "@/lib/data/questions";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
@@ -36,6 +36,9 @@ export function QuestionArchiveCard({
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState(question.source ?? "");
   const [wrongReason, setWrongReason] = useState(question.wrongReason ?? "");
+  const [wrongReasonDetail, setWrongReasonDetail] = useState(
+    question.wrongReasonDetail ?? "",
+  );
   const [reflectionMemo, setReflectionMemo] = useState(
     question.reflectionMemo ?? "",
   );
@@ -46,7 +49,10 @@ export function QuestionArchiveCard({
 
   const hasAnswer = Boolean(question.answerText || question.answerImageDataUrl);
   const hasReflection = Boolean(
-    question.reflectionMemo || question.wrongReason || question.source,
+    question.reflectionMemo ||
+      question.wrongReason ||
+      question.wrongReasonDetail ||
+      question.source,
   );
 
   async function handleSaveReflection() {
@@ -56,6 +62,7 @@ export function QuestionArchiveCard({
       const patch = {
         source: source.trim() || undefined,
         wrongReason: wrongReason || undefined,
+        wrongReasonDetail: wrongReasonDetail.trim() || undefined,
         reflectionMemo: reflectionMemo.trim() || undefined,
       };
 
@@ -146,6 +153,9 @@ export function QuestionArchiveCard({
           {question.wrongReason ? (
             <span className="mt-2 inline-block rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
               {question.wrongReason}
+              {question.wrongReasonDetail
+                ? ` · ${question.wrongReasonDetail}`
+                : ""}
             </span>
           ) : null}
           <p className="mt-1 text-slate-500">
@@ -216,23 +226,15 @@ export function QuestionArchiveCard({
                     className="remind-input mt-1 text-sm"
                   />
                 </label>
-                <label className="block">
-                  <span className="text-xs font-medium text-slate-600">
-                    틀린 이유
-                  </span>
-                  <select
-                    value={wrongReason}
-                    onChange={(e) => setWrongReason(e.target.value)}
-                    className="remind-input mt-1 text-sm"
-                  >
-                    <option value="">선택 (선택)</option>
-                    {WRONG_REASONS.map((reason) => (
-                      <option key={reason} value={reason}>
-                        {reason}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <WrongReasonFields
+                  userId={userId}
+                  wrongReason={wrongReason}
+                  wrongReasonDetail={wrongReasonDetail}
+                  onWrongReasonChange={setWrongReason}
+                  onWrongReasonDetailChange={setWrongReasonDetail}
+                  selectClassName="remind-input mt-1 text-sm"
+                  inputClassName="remind-input mt-1 text-sm"
+                />
                 <label className="block">
                   <span className="text-xs font-medium text-slate-600">
                     오답 분석 메모

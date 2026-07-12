@@ -129,6 +129,7 @@ export async function updateReflectionAction(input: {
   questionId: string;
   source?: string;
   wrongReason?: string;
+  wrongReasonDetail?: string;
   reflectionMemo?: string;
 }): Promise<UpdateReflectionState> {
   if (!isSupabaseEnabled()) {

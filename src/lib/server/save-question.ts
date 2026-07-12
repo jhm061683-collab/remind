@@ -19,6 +19,7 @@ type QuestionRow = {
   keywords: string[] | null;
   source: string | null;
   wrong_reason: string | null;
+  wrong_reason_detail: string | null;
   reflection_memo: string | null;
   phase: ReviewPhase;
   streak_count: number;
@@ -40,6 +41,7 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     keywords: row.keywords ?? [],
     source: row.source ?? undefined,
     wrongReason: row.wrong_reason ?? undefined,
+    wrongReasonDetail: row.wrong_reason_detail ?? undefined,
     reflectionMemo: row.reflection_memo ?? undefined,
     phase: row.phase,
     streakCount: row.streak_count,
@@ -59,6 +61,7 @@ export type SaveQuestionInput = {
   keywords: string[];
   source?: string;
   wrongReason?: string;
+  wrongReasonDetail?: string;
   reflectionMemo?: string;
 };
 
@@ -66,6 +69,7 @@ export type UpdateReflectionInput = {
   questionId: string;
   source?: string;
   wrongReason?: string;
+  wrongReasonDetail?: string;
   reflectionMemo?: string;
 };
 
@@ -115,6 +119,7 @@ export async function saveQuestionOnServer(
       keywords: input.keywords,
       source: input.source ?? null,
       wrong_reason: input.wrongReason ?? null,
+      wrong_reason_detail: input.wrongReasonDetail ?? null,
       reflection_memo: input.reflectionMemo ?? null,
       phase: "short",
       streak_count: 0,
@@ -146,6 +151,7 @@ export async function updateReflectionOnServer(
     .update({
       source: input.source ?? null,
       wrong_reason: input.wrongReason ?? null,
+      wrong_reason_detail: input.wrongReasonDetail ?? null,
       reflection_memo: input.reflectionMemo ?? null,
     })
     .eq("id", input.questionId)

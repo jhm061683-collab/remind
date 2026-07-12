@@ -54,6 +54,10 @@ function buildSearchHaystack(
     resolveSubjectName(question.subjectId),
     ...(question.keywords ?? []),
     question.answerText ?? "",
+    question.source ?? "",
+    question.wrongReason ?? "",
+    question.wrongReasonDetail ?? "",
+    question.reflectionMemo ?? "",
   ].join(" ");
 }
 
@@ -224,7 +228,7 @@ export function ArchiveList({ userId }: Props) {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="예: 비대칭, 이차함수, 3번"
+            placeholder="예: 발문 오독, 이차함수, 빈칸추론"
             className="remind-input mt-1"
           />
         </label>

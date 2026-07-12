@@ -17,7 +17,7 @@ import {
 } from "@/lib/data/questions";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { isLocalStorageAvailable } from "@/lib/storage/safe-storage";
-import { WRONG_REASONS } from "@/lib/constants/wrong-reasons";
+import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import {
   fileOrPreviewToDataUrl,
 } from "@/lib/utils/compress-image";
@@ -44,6 +44,7 @@ function resetFormFields(setters: {
   setKeywordInput: (v: string) => void;
   setSource: (v: string) => void;
   setWrongReason: (v: string) => void;
+  setWrongReasonDetail: (v: string) => void;
   setReflectionMemo: (v: string) => void;
 }) {
   setters.setQuestionPages([]);
@@ -54,6 +55,7 @@ function resetFormFields(setters: {
   setters.setKeywordInput("");
   setters.setSource("");
   setters.setWrongReason("");
+  setters.setWrongReasonDetail("");
   setters.setReflectionMemo("");
 }
 
@@ -69,6 +71,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [keywordInput, setKeywordInput] = useState("");
   const [source, setSource] = useState("");
   const [wrongReason, setWrongReason] = useState("");
+  const [wrongReasonDetail, setWrongReasonDetail] = useState("");
   const [reflectionMemo, setReflectionMemo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,6 +155,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         keywords: parseKeywords(keywordInput),
         source: source.trim() || undefined,
         wrongReason: wrongReason || undefined,
+        wrongReasonDetail: wrongReasonDetail.trim() || undefined,
         reflectionMemo: reflectionMemo.trim() || undefined,
       };
 
@@ -194,6 +198,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       setKeywordInput,
       setSource,
       setWrongReason,
+      setWrongReasonDetail,
       setReflectionMemo,
     });
   }
@@ -291,21 +296,13 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
             className="remind-input mt-1 text-base"
           />
         </label>
-        <label className="block">
-          <span className="rm-field-hint">틀린 이유 (선택)</span>
-          <select
-            value={wrongReason}
-            onChange={(e) => setWrongReason(e.target.value)}
-            className="remind-input mt-1 text-base"
-          >
-            <option value="">선택 안 함</option>
-            {WRONG_REASONS.map((reason) => (
-              <option key={reason} value={reason}>
-                {reason}
-              </option>
-            ))}
-          </select>
-        </label>
+        <WrongReasonFields
+          userId={userId}
+          wrongReason={wrongReason}
+          wrongReasonDetail={wrongReasonDetail}
+          onWrongReasonChange={setWrongReason}
+          onWrongReasonDetailChange={setWrongReasonDetail}
+        />
         <label className="block">
           <span className="rm-field-hint">오답 분석 메모</span>
           <textarea
