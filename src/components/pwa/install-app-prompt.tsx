@@ -223,9 +223,11 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <AppMark size={44} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-slate-900">앱처럼 설치할까요?</p>
+            <p className="text-sm font-extrabold tracking-tight text-slate-950">
+              3초 만에 홈 화면에 앱 추가하기
+            </p>
             <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-              홈 화면에 추가하면 더 편하게 쓸 수 있어요.
+              지금 설치하시면 더 편하게 쓸 수 있어요.
             </p>
           </div>
           <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
