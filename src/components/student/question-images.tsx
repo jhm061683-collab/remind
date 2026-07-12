@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { QuestionImage } from "@/components/student/question-image";
 import type { StoredQuestion } from "@/lib/storage/questions";
 import { getQuestionImageUrls } from "@/lib/utils/question-images";
@@ -7,6 +8,7 @@ import { getQuestionImageUrls } from "@/lib/utils/question-images";
 type Props = {
   question: Pick<StoredQuestion, "imageDataUrl" | "extraImageDataUrls">;
   alt?: string;
+  /** 카드 상단 썸네일(한 장씩 넘김) */
   thumbnail?: boolean;
   fill?: boolean;
   className?: string;
@@ -22,43 +24,109 @@ export function QuestionImages({
   imageClassName = "object-contain",
 }: Props) {
   const urls = getQuestionImageUrls(question);
-  const visible = thumbnail ? urls.slice(0, 1) : urls;
-  const extraCount = urls.length - 1;
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const safeIndex = urls.length === 0 ? 0 : Math.min(index, urls.length - 1);
+  const current = urls[safeIndex];
+  const useCarousel = Boolean(thumbnail || fill) || urls.length === 1;
 
-  if (visible.length === 0) {
+  if (urls.length === 0) {
     return (
-      <QuestionImage src="" alt={alt} fill={fill} className={imageClassName} />
+      <div className={fill || thumbnail ? "absolute inset-0" : className}>
+        <QuestionImage src="" alt={alt} fill={fill || thumbnail} className={imageClassName} />
+      </div>
     );
   }
 
-  if (visible.length === 1) {
+  function go(delta: number, e?: MouseEvent) {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setIndex((prev) => {
+      const next = prev + delta;
+      if (next < 0) return urls.length - 1;
+      if (next >= urls.length) return 0;
+      return next;
+    });
+  }
+
+  function onTouchStart(e: TouchEvent) {
+    touchStartX.current = e.changedTouches[0]?.clientX ?? null;
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    if (touchStartX.current == null || urls.length < 2) return;
+    const endX = e.changedTouches[0]?.clientX ?? touchStartX.current;
+    const dx = endX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return;
+    go(dx < 0 ? 1 : -1);
+  }
+
+  if (useCarousel) {
     return (
-      <div className="relative">
-        {thumbnail && extraCount > 0 ? (
-          <span className="absolute right-2 top-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
-            +{extraCount}
-          </span>
-        ) : null}
+      <div
+        className={
+          fill || thumbnail
+            ? `relative h-full w-full touch-pan-y ${className ?? ""}`
+            : className
+        }
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <QuestionImage
-          src={visible[0]!}
-          alt={alt}
-          fill={fill}
+          src={current!}
+          alt={urls.length > 1 ? `${alt} ${safeIndex + 1}` : alt}
+          fill={Boolean(fill || thumbnail)}
           className={imageClassName}
         />
+
+        {urls.length > 1 ? (
+          <>
+            <span className="pointer-events-none absolute right-2 top-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
+              {safeIndex + 1}/{urls.length}
+            </span>
+            <button
+              type="button"
+              aria-label="이전 사진"
+              onClick={(e) => go(-1, e)}
+              className="absolute left-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-sm font-bold text-white backdrop-blur-sm"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              aria-label="다음 사진"
+              onClick={(e) => go(1, e)}
+              className="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-sm font-bold text-white backdrop-blur-sm"
+            >
+              ›
+            </button>
+            <div className="pointer-events-none absolute bottom-2 left-0 right-0 z-10 flex justify-center gap-1">
+              {urls.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    i === safeIndex ? "bg-white" : "bg-white/40"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
       </div>
     );
   }
 
   return (
     <div className={className ?? "space-y-2"}>
-      {visible.map((url, index) => (
-        <div key={`${url}-${index}`} className="relative">
+      {urls.map((url, i) => (
+        <div key={`${url}-${i}`} className="relative">
           <span className="absolute left-2 top-2 z-10 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
-            {index + 1}/{urls.length}
+            {i + 1}/{urls.length}
           </span>
           <QuestionImage
             src={url}
-            alt={`${alt} ${index + 1}`}
+            alt={`${alt} ${i + 1}`}
             className={imageClassName}
           />
         </div>
