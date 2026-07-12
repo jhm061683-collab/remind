@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RemindLogo } from "@/components/brand/remind-logo";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   IconArchive,
@@ -60,6 +61,19 @@ export function StudentHeader({ userName }: Props) {
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          <InstallAppPrompt variant="chip" />
+          <Link
+            href="/account"
+            prefetch={false}
+            aria-label="계정 · 비밀번호"
+            className={`rm-nav-item rounded-xl px-2.5 py-2 text-xs font-semibold transition sm:text-sm ${
+              pathname.startsWith("/account")
+                ? "rm-nav-item--active"
+                : "hover:bg-[var(--rm-surface)]"
+            }`}
+          >
+            계정
+          </Link>
           <Link
             href="/subjects"
             prefetch={false}

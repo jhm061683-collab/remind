@@ -7,6 +7,7 @@ import { computeUserStats } from "@/lib/stats/compute";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
 import { DEMO_USERS } from "@/lib/auth/users";
+import { getAdminVisiblePasswords } from "@/lib/server/admin/password-notes";
 import type {
   AdminDashboardData,
   AdminStudentRow,
@@ -227,6 +228,7 @@ function demoDashboard(): AdminDashboardData {
     inactiveDays: 999,
     dueToday: 0,
     reviewedToday: 0,
+    passwordPlain: "student123",
   };
   return {
     totalStudents: 1,
@@ -479,8 +481,14 @@ async function fetchDashboardForStudentIds(
       inactiveDays: calcInactiveDays(lastLogin),
       dueToday,
       reviewedToday,
+      passwordPlain: null,
     };
   });
+
+  const passwordMap = await getAdminVisiblePasswords(studentIds);
+  for (const student of students) {
+    student.passwordPlain = passwordMap.get(student.id) ?? null;
+  }
 
   const subAdmins: SubAdminRow[] = subAdminProfiles.map((p) => ({
     id: p.id,

@@ -7,6 +7,7 @@ import { PrimaryActions } from "@/components/student/dashboard/primary-actions";
 import { StreakProgressCard } from "@/components/student/dashboard/streak-progress-card";
 import { WeeklyTrendCard } from "@/components/student/dashboard/weekly-trend-card";
 import { useSubjects } from "@/components/student/subject-provider";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import type { UserStats } from "@/lib/data/user-stats";
 import { getActivityEvents } from "@/lib/data/activity";
 import { IconArchive, IconChevronRight, IconTrophy } from "@/components/ui/icons";
@@ -110,6 +111,8 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
 
       <div className="rm-section-gap">
         <PrimaryActions todayCount={todayCount ?? 0} loading={loading} />
+
+        <InstallAppPrompt variant="card" />
 
         <Link href="/records" className="rm-link-row rm-link-row--compact group">
           <span className="rm-icon-wrap h-8 w-8 shrink-0">

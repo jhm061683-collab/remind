@@ -132,5 +132,10 @@ export async function createAcademyUser(
       .eq("id", data.user.id);
   }
 
+  const { upsertAdminVisiblePassword } = await import(
+    "@/lib/server/admin/password-notes"
+  );
+  await upsertAdminVisiblePassword(data.user.id, password, adminId);
+
   return { userId: data.user.id, username, password };
 }

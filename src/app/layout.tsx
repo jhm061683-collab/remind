@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SITE_DESCRIPTION } from "@/lib/constants/brand-copy";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
@@ -24,8 +26,20 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: "Re:mind",
+  appleWebApp: {
+    capable: true,
+    title: "Re:mind",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: [{ url: "/icon", type: "image/png", sizes: "32x32" }],
+    icon: [
+      { url: "/icon", type: "image/png", sizes: "32x32" },
+      { url: "/pwa-icon/192", type: "image/png", sizes: "192x192" },
+      { url: "/pwa-icon/512", type: "image/png", sizes: "512x512" },
+    ],
     apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
     shortcut: "/icon",
   },
@@ -47,6 +61,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -61,6 +76,8 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)]">
         {children}
+        <ServiceWorkerRegister />
+        <InstallAppPrompt variant="banner" />
       </body>
     </html>
   );

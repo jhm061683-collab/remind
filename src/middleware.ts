@@ -12,6 +12,7 @@ const STUDENT_PREFIXES = [
   "/archive",
   "/upload",
   "/records",
+  "/account",
 ];
 const ADMIN_PREFIXES = ["/admin"];
 const LEGACY_SUB_ADMIN_PREFIXES = ["/sub-admin"];
@@ -123,6 +124,8 @@ export const config = {
     "/archive/:path*",
     "/upload/:path*",
     "/records/:path*",
+    "/account/:path*",
+    "/account",
     "/admin/:path*",
     "/sub-admin/:path*",
   ],

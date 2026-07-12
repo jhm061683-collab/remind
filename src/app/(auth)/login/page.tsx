@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { RemindLogo } from "@/components/brand/remind-logo";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 
 type Props = {
   searchParams: Promise<{ reason?: string }>;
@@ -33,6 +34,10 @@ export default async function LoginPage({ searchParams }: Props) {
       ) : null}
 
       <LoginForm />
+
+      <div className="mt-4">
+        <InstallAppPrompt variant="button" />
+      </div>
 
       <p className="mt-6 text-center text-sm text-slate-500">
         <Link href="/" className="font-medium text-blue-600 hover:underline">

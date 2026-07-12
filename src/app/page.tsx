@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { RemindLogo } from "@/components/brand/remind-logo";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { BRAND_SUBLINE, BRAND_TAGLINE } from "@/lib/constants/brand-copy";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 pb-28">
       <main className="w-full max-w-lg text-center">
         <div className="mb-8 flex justify-center">
           <RemindLogo href="/" size="lg" />
@@ -23,6 +24,7 @@ export default function Home() {
           >
             로그인
           </Link>
+          <InstallAppPrompt variant="button" className="sm:min-w-[10rem]" />
         </div>
       </main>
     </div>

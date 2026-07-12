@@ -119,7 +119,7 @@ export async function resetStudentPasswordAction(
   studentId: string,
   nextPassword: string,
 ): Promise<{ error?: string; success?: string }> {
-  await requireStaff();
+  const session = await requireStaff();
   if (!nextPassword || nextPassword.length < 4) {
     return { error: "비밀번호는 4자 이상으로 입력해 주세요." };
   }
@@ -128,6 +128,12 @@ export async function resetStudentPasswordAction(
     password: nextPassword,
   });
   if (error) return { error: error.message };
+  const { upsertAdminVisiblePassword } = await import(
+    "@/lib/server/admin/password-notes"
+  );
+  await upsertAdminVisiblePassword(studentId, nextPassword, session.id);
+  revalidatePath(`/admin/students/${studentId}`);
+  revalidatePath("/admin/students");
   return { success: "비밀번호를 변경했습니다." };
 }
 

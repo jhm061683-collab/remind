@@ -112,6 +112,7 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
             </th>
             <th className="px-4 py-3 font-medium">이름</th>
             <th className="px-4 py-3 font-medium">아이디</th>
+            <th className="px-4 py-3 font-medium">비밀번호</th>
             <th className="px-4 py-3 font-medium">반</th>
             <th className="px-4 py-3 font-medium">담당 선생님</th>
             <th className="px-4 py-3 font-medium">마지막 로그인</th>
@@ -144,6 +145,9 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
                 </Link>
               </td>
               <td className="px-4 py-3 text-zinc-600">{student.username}</td>
+              <td className="px-4 py-3 font-mono text-xs text-zinc-700">
+                {student.passwordPlain ?? <span className="text-zinc-400">—</span>}
+              </td>
               <td className="px-4 py-3 text-zinc-600">{student.className ?? "—"}</td>
               <td className="px-4 py-3 text-zinc-600">
                 {student.teacherNames.length > 0 ? student.teacherNames.join(", ") : <span className="text-zinc-400">미배정</span>}
@@ -206,6 +210,7 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-600">
               <p>반: {student.className ?? "—"}</p>
+              <p>비밀번호: {student.passwordPlain ?? "—"}</p>
               <p>담당: {student.teacherNames.join(", ") || "미배정"}</p>
               <p>마지막 로그인: {formatLastLogin(student.lastLoginAt)}</p>
               <p>등록: {student.totalRegistered}개</p>

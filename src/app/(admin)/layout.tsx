@@ -3,6 +3,7 @@ import {
   AdminMobileNav,
   AdminSidebar,
 } from "@/components/layout/admin-sidebar";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { getSession } from "@/lib/auth/session";
 
 export default async function AdminLayout({
@@ -18,7 +19,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-zinc-200 bg-white px-4 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-zinc-800">
             {session?.name ?? "관리자"}님
             {roleLabel ? (
@@ -27,7 +28,10 @@ export default async function AdminLayout({
               </span>
             ) : null}
           </p>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <InstallAppPrompt variant="chip" />
+            <LogoutButton />
+          </div>
         </div>
       </header>
       <div className="flex flex-1">

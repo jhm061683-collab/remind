@@ -108,8 +108,18 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <h3 className="font-semibold text-zinc-900">관리자 비밀번호 설정</h3>
-        <div className="mt-2 flex gap-2">
+        <h3 className="font-semibold text-zinc-900">비밀번호</h3>
+        <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <span className="font-semibold">현재 기록된 비밀번호: </span>
+          {student.passwordPlain ? (
+            <span className="font-mono tracking-wide">{student.passwordPlain}</span>
+          ) : (
+            <span className="text-amber-800/80">
+              아직 없음 (학생이 변경하거나 아래에서 재설정하면 표시됩니다)
+            </span>
+          )}
+        </p>
+        <div className="mt-3 flex gap-2">
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -125,6 +135,7 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
               startTransition(async () => {
                 const res = await resetStudentPasswordAction(student.id, password);
                 setMessage(res.error ?? res.success ?? null);
+                if (res.success) setPassword("");
               })
             }
           >
