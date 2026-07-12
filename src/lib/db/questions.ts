@@ -178,30 +178,54 @@ export async function saveQuestion(
       )
     : [];
 
+  const answerText = input.answerText?.trim();
+  if (!answerText) {
+    throw new Error("ANSWER_TEXT_REQUIRED");
+  }
+
+  const wrongReasonDetail =
+    input.wrongReasonDetail ??
+    (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null);
+
   const supabase = createClient();
-  const { data, error } = await supabase
+  const baseRow = {
+    user_id: userId,
+    subject_id: input.subjectId,
+    image_url: imageUrl,
+    extra_image_urls: extraImageUrls,
+    answer_text: answerText,
+    answer_image_url: answerImageUrl ?? null,
+    keywords: input.keywords,
+    source: input.source ?? null,
+    wrong_reason: input.wrongReason ?? null,
+    wrong_reason_detail: wrongReasonDetail,
+    reflection_memo: input.reflectionMemo ?? null,
+    phase: "short" as const,
+    streak_count: 0,
+    next_review_date: nextReviewDate.toISOString(),
+  };
+
+  let { data, error } = await supabase
     .from("questions")
     .insert({
-      user_id: userId,
-      subject_id: input.subjectId,
-      image_url: imageUrl,
-      extra_image_urls: extraImageUrls,
-      answer_text: input.answerText ?? null,
-      answer_image_url: answerImageUrl ?? null,
-      keywords: input.keywords,
-      source: input.source ?? null,
-      wrong_reason: input.wrongReason ?? null,
+      ...baseRow,
       wrong_keywords: input.wrongKeywords ?? [],
-      wrong_reason_detail:
-        input.wrongReasonDetail ??
-        (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null),
-      reflection_memo: input.reflectionMemo ?? null,
-      phase: "short",
-      streak_count: 0,
-      next_review_date: nextReviewDate.toISOString(),
     })
     .select("*")
     .single();
+
+  if (
+    error &&
+    (error.code === "PGRST204" ||
+      (error.message ?? "").includes("wrong_keywords") ||
+      (error.message ?? "").includes("schema cache"))
+  ) {
+    ({ data, error } = await supabase
+      .from("questions")
+      .insert(baseRow)
+      .select("*")
+      .single());
+  }
 
   if (error) throw error;
   return rowToStored(data as QuestionRow);

@@ -116,6 +116,12 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       return;
     }
 
+    const trimmedAnswer = answerText.trim();
+    if (!trimmedAnswer) {
+      setError("정답을 입력해 주세요. (해설 사진은 없어도 돼요)");
+      return;
+    }
+
     if (!canPersist(userId)) {
       setError(
         "저장할 수 없습니다. 로그인 상태를 확인하거나 브라우저 저장을 허용해 주세요.",
@@ -138,6 +144,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         );
       }
 
+      // 해설 사진은 선택 — 없어도 등록 가능
       let answerImageDataUrl: string | undefined;
       if (answerFile || answerPreview) {
         answerImageDataUrl = await fileOrPreviewToDataUrl(
@@ -151,7 +158,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         subjectId,
         imageDataUrl,
         extraImageDataUrls,
-        answerText: answerText.trim() || undefined,
+        answerText: trimmedAnswer,
         answerImageDataUrl,
         keywords,
         source: source.trim() || undefined,
@@ -190,7 +197,12 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       } else if (err instanceof StorageBlockedError) {
         setError(err.message);
       } else {
-        setError("등록 실패. 사진을 다시 선택해 주세요.");
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("ANSWER_TEXT_REQUIRED")) {
+          setError("정답을 입력해 주세요. (해설 사진은 없어도 돼요)");
+        } else {
+          setError("등록 실패. 사진을 다시 선택해 주세요.");
+        }
       }
     } finally {
       setIsSaving(false);
@@ -242,7 +254,11 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     );
   }
 
-  const canSubmit = Boolean(subjectId) && questionReady && questionPages.length > 0;
+  const canSubmit =
+    Boolean(subjectId) &&
+    questionReady &&
+    questionPages.length > 0 &&
+    answerText.trim().length > 0;
 
   return (
     <div className="remind-card space-y-4 p-5 md:p-6">
@@ -325,20 +341,26 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       </div>
 
       <div className="rm-solution-panel space-y-3">
-        <p className="text-sm font-bold">해설 (선택)</p>
+        <p className="text-sm font-bold">정답 · 해설</p>
+        <label className="block">
+          <span className="remind-field-label">
+            정답 <span className="text-red-500">*</span>
+          </span>
+          <textarea
+            rows={2}
+            value={answerText}
+            onChange={(e) => setAnswerText(e.target.value)}
+            placeholder="예: ③ / x=2"
+            className="remind-input mt-1 text-base"
+          />
+        </label>
         <ImagePicker
-          label="해설 사진"
+          label="해설 사진 (선택)"
+          hint="없어도 등록할 수 있어요."
           onChange={(file, preview) => {
             setAnswerFile(file);
             setAnswerPreview(preview);
           }}
-        />
-        <textarea
-          rows={2}
-          value={answerText}
-          onChange={(e) => setAnswerText(e.target.value)}
-          placeholder="정답/해설 텍스트"
-          className="remind-input text-base"
         />
       </div>
 
@@ -350,7 +372,13 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           canSubmit ? "bg-blue-600" : "bg-zinc-400"
         }`}
       >
-        {isSaving ? "등록 중..." : canSubmit ? "등록하기" : "사진과 과목을 선택하세요"}
+        {isSaving
+          ? "등록 중..."
+          : canSubmit
+            ? "등록하기"
+            : !answerText.trim()
+              ? "정답을 입력하세요"
+              : "사진과 과목을 선택하세요"}
       </button>
     </div>
   );

@@ -33,9 +33,17 @@ function toErrorMessage(err: unknown): string {
     return "등록 실패. 사진을 다시 선택해 주세요.";
   }
 
-  const record = err as { message?: string; statusCode?: string; error?: string };
+  const record = err as {
+    message?: string;
+    statusCode?: string;
+    error?: string;
+    code?: string;
+  };
   const message = record.message ?? record.error ?? "";
 
+  if (message.includes("ANSWER_TEXT_REQUIRED")) {
+    return "정답을 입력해 주세요. (해설 사진은 선택이에요)";
+  }
   if (message.includes("Bucket not found") || message.includes("question-images")) {
     return "Storage 버킷이 없습니다. Supabase SQL을 다시 실행해 주세요.";
   }
@@ -44,6 +52,13 @@ function toErrorMessage(err: unknown): string {
   }
   if (message.includes("INVALID_IMAGE_DATA") || message.includes("NO_IMAGE")) {
     return "사진을 불러오지 못했습니다. 다시 선택해 주세요.";
+  }
+  if (
+    record.code === "PGRST204" ||
+    message.includes("wrong_keywords") ||
+    message.includes("schema cache")
+  ) {
+    return "DB 설정이 오래됐어요. Supabase에서 wrong_keywords SQL을 실행한 뒤 다시 시도해 주세요.";
   }
 
   return "등록 실패. 사진을 다시 선택해 주세요.";
