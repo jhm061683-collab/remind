@@ -28,9 +28,9 @@ export default async function AdminLayout({
               </span>
             ) : null}
           </p>
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
             <InstallAppPrompt variant="chip" />
-            <LogoutButton />
+            <LogoutButton compact />
           </div>
         </div>
       </header>

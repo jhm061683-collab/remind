@@ -25,9 +25,12 @@ function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+/** 좁은 화면 또는 모바일 UA — 데스크톱 웹에서는 설치 권유 숨김 */
 function isMobileWeb(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  if (typeof window === "undefined") return false;
+  const narrow = window.matchMedia("(max-width: 767px)").matches;
+  const ua = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  return narrow || ua;
 }
 
 function isBannerDismissed(): boolean {
@@ -42,8 +45,28 @@ function isBannerDismissed(): boolean {
   }
 }
 
+function AppMark({ size = 44 }: { size?: number }) {
+  const glyph = Math.round(size * 0.55);
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center text-white shadow-sm"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.24),
+        background: "linear-gradient(135deg, #936dff 0%, #2563eb 100%)",
+      }}
+      aria-hidden
+    >
+      <svg viewBox="0 0 24 24" width={glyph} height={glyph} fill="currentColor">
+        <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 8.5L5.5 8 12 4.5 18.5 8 12 11.5zM3 19v-2h18v2H3z" />
+      </svg>
+    </span>
+  );
+}
+
 type Props = {
-  /** banner: 하단 유도 / button: 큰 CTA / chip: 헤더 / card: 로그인 후 홈 카드 */
+  /** banner: 하단 유도 / button: 큰 CTA / chip: 헤더 / card: 홈·계정 카드 */
   variant?: "banner" | "button" | "chip" | "card";
   className?: string;
 };
@@ -59,6 +82,8 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
       setInstalled(true);
       return;
     }
+    // 데스크톱 웹에서는 어떤 변형도 노출하지 않음
+    if (!isMobileWeb()) return;
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -74,18 +99,25 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
 
-    // 웹(특히 모바일)에서는 로그인 후에도 설치 권유를 보이게
     if (variant === "banner") {
-      if (!isBannerDismissed() && (isMobileWeb() || isIos())) {
-        setVisible(true);
-      }
+      if (!isBannerDismissed()) setVisible(true);
     } else {
       setVisible(true);
     }
 
+    const onResize = () => {
+      if (!isMobileWeb()) {
+        setVisible(false);
+      } else if (variant !== "banner" || !isBannerDismissed()) {
+        if (!isStandalone()) setVisible(true);
+      }
+    };
+    window.addEventListener("resize", onResize);
+
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("resize", onResize);
     };
   }, [variant]);
 
@@ -118,17 +150,21 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
     setGuideOpen(true);
   };
 
-  const buttonLabel = isIos() ? "홈 화면에 추가" : "앱으로 설치";
+  const buttonLabel = isIos() ? "홈 화면 추가" : "앱 설치";
 
   if (variant === "chip") {
     return (
-      <div className={className}>
+      <div className={`shrink-0 ${className}`}>
         <button
           type="button"
           onClick={() => void handleInstall()}
-          className="rm-nav-item rounded-xl bg-blue-50 px-2.5 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100"
+          aria-label="앱 설치"
+          className="inline-flex h-8 items-center gap-1 rounded-full bg-gradient-to-r from-[#936dff] to-blue-600 px-2.5 text-[11px] font-bold text-white shadow-sm shadow-blue-600/30 transition active:scale-[0.97] hover:brightness-110"
         >
-          앱 설치
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
+            <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 8.5L5.5 8 12 4.5 18.5 8 12 11.5zM3 19v-2h18v2H3z" />
+          </svg>
+          <span className="whitespace-nowrap">설치</span>
         </button>
         {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
       </div>
@@ -138,21 +174,22 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
   if (variant === "card") {
     return (
       <div
-        className={`rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 ${className}`}
+        className={`flex items-center gap-3 rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50 to-violet-50 p-3 ${className}`}
       >
-        <p className="text-sm font-bold text-slate-900">앱처럼 설치해 보세요</p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-600">
-          홈 화면에 추가하면 브라우저 주소창 없이 바로 Re:mind를 열 수 있어요.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => void handleInstall()}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
-          >
-            {buttonLabel}
-          </button>
+        <AppMark size={48} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-900">앱처럼 쓰기</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-600">
+            홈 화면에 추가하면 바로 열 수 있어요.
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => void handleInstall()}
+          className="shrink-0 rounded-full bg-blue-600 px-3 py-2 text-[11px] font-bold whitespace-nowrap text-white shadow-sm active:scale-[0.97] hover:bg-blue-700"
+        >
+          {buttonLabel}
+        </button>
         {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
       </div>
     );
@@ -164,8 +201,9 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
         <button
           type="button"
           onClick={() => void handleInstall()}
-          className="w-full rounded-xl border border-blue-200 bg-blue-50 px-8 py-3.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-6 py-3.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
         >
+          <AppMark size={28} />
           {buttonLabel}
         </button>
         {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
@@ -178,35 +216,33 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
   return (
     <>
       <div
-        className={`fixed inset-x-0 z-40 border-t border-slate-200 bg-white/95 p-4 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4.25rem+env(safe-area-inset-bottom))] md:bottom-0 ${className}`}
+        className={`fixed inset-x-0 z-40 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4.25rem+env(safe-area-inset-bottom))] ${className}`}
         role="dialog"
         aria-label="앱 설치 안내"
       >
-        <div className="mx-auto flex max-w-lg items-start gap-3">
-          <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#936dff] to-blue-600 text-lg font-bold text-white">
-            R
-          </div>
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <AppMark size={44} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-slate-900">Re:mind를 앱처럼 설치하세요</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              로그인 후에도 홈 화면에 추가하면 더 편하게 쓸 수 있어요.
+            <p className="text-sm font-bold text-slate-900">앱처럼 설치할까요?</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+              홈 화면에 추가하면 더 편하게 쓸 수 있어요.
             </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => void handleInstall()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
-              >
-                {buttonLabel}
-              </button>
-              <button
-                type="button"
-                onClick={dismiss}
-                className="rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100"
-              >
-                나중에
-              </button>
-            </div>
+          </div>
+          <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void handleInstall()}
+              className="rounded-full bg-blue-600 px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-white hover:bg-blue-700"
+            >
+              {buttonLabel}
+            </button>
+            <button
+              type="button"
+              onClick={dismiss}
+              className="rounded-full px-2.5 py-2 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
+            >
+              나중에
+            </button>
           </div>
         </div>
       </div>
@@ -229,11 +265,14 @@ function InstallGuideModal({ onClose }: { onClose: () => void }) {
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="pwa-guide-title" className="text-base font-bold text-slate-900">
-          {ios ? "아이폰에서 설치하기" : "앱처럼 설치하기"}
-        </h2>
+        <div className="mb-3 flex items-center gap-3">
+          <AppMark size={48} />
+          <h2 id="pwa-guide-title" className="text-base font-bold text-slate-900">
+            {ios ? "아이폰에서 설치하기" : "앱처럼 설치하기"}
+          </h2>
+        </div>
         {ios ? (
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
+          <ol className="mt-1 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
             <li>
               하단(또는 상단) <strong>공유</strong> 버튼을 누르세요.
             </li>
@@ -245,7 +284,7 @@ function InstallGuideModal({ onClose }: { onClose: () => void }) {
             </li>
           </ol>
         ) : (
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
+          <ol className="mt-1 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
             <li>브라우저 메뉴(⋮)를 엽니다.</li>
             <li>
               <strong>앱 설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택하세요.

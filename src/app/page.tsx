@@ -5,7 +5,7 @@ import { BRAND_SUBLINE, BRAND_TAGLINE } from "@/lib/constants/brand-copy";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 pb-28">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 md:pb-16 pb-28">
       <main className="w-full max-w-lg text-center">
         <div className="mb-8 flex justify-center">
           <RemindLogo href="/" size="lg" />
@@ -24,7 +24,10 @@ export default function Home() {
           >
             로그인
           </Link>
-          <InstallAppPrompt variant="button" className="sm:min-w-[10rem]" />
+          {/* 모바일에서만 렌더 — 데스크톱 웹 설치 권유 없음 */}
+          <div className="md:hidden">
+            <InstallAppPrompt variant="button" />
+          </div>
         </div>
       </main>
     </div>

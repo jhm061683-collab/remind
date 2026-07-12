@@ -33,8 +33,10 @@ export function StudentHeader({ userName }: Props) {
 
   return (
     <header className="student-shell-header rm-header sticky top-0 z-30 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
-        <RemindLogo href="/dashboard" size="sm" />
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
+        <div className="min-w-0 shrink">
+          <RemindLogo href="/dashboard" size="sm" />
+        </div>
 
         <nav className="hidden flex-1 justify-center md:flex">
           <ul className="flex items-center gap-1">
@@ -60,31 +62,35 @@ export function StudentHeader({ userName }: Props) {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
           <InstallAppPrompt variant="chip" />
+
           <Link
             href="/account"
             prefetch={false}
             aria-label="계정 · 비밀번호"
-            className={`rm-nav-item rounded-xl px-2.5 py-2 text-xs font-semibold transition sm:text-sm ${
+            title="계정"
+            className={`rm-nav-item inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition sm:h-auto sm:w-auto sm:rounded-xl sm:px-2.5 sm:py-2 sm:font-semibold ${
               pathname.startsWith("/account")
                 ? "rm-nav-item--active"
                 : "hover:bg-[var(--rm-surface)]"
             }`}
           >
-            계정
+            <span className="sm:hidden">{initial}</span>
+            <span className="hidden sm:inline">계정</span>
           </Link>
+
           <Link
             href="/subjects"
             prefetch={false}
             aria-label="과목 설정"
-            className={`rm-nav-item rounded-xl p-2 transition md:hidden ${
+            className={`rm-nav-item inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition md:hidden ${
               pathname.startsWith("/subjects")
                 ? "rm-nav-item--active"
                 : "hover:bg-[var(--rm-surface)]"
             }`}
           >
-            <IconSettings size={20} />
+            <IconSettings size={18} />
           </Link>
 
           <Link
@@ -102,15 +108,13 @@ export function StudentHeader({ userName }: Props) {
 
           <ThemeToggle />
 
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--rm-accent-muted)] text-sm font-bold text-[var(--rm-accent-bright)]">
-              {initial}
-            </span>
+          <div className="hidden items-center gap-2 lg:flex">
             <span className="max-w-[8rem] truncate text-sm font-medium text-[var(--rm-text)]">
               {userName}
             </span>
           </div>
-          <LogoutButton />
+
+          <LogoutButton compact />
         </div>
       </div>
     </header>
