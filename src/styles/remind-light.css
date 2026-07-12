@@ -1,0 +1,86 @@
+/* ─── Re:mind Light — 토큰만 다크와 다름 (컴포넌트 스타일은 remind-dark.css 공유) ─── */
+
+[data-theme="remind-light"] {
+  --rm-bg-base: #f4f7fb;
+  --rm-bg-elevated: #eef2ff;
+  --rm-surface: #ffffff;
+  --rm-surface-raised: #f8fafc;
+
+  --rm-text: #0f172a;
+  --rm-text-on-surface: #1e293b;
+  --rm-text-on-elevated: #334155;
+
+  --rm-text-muted: color-mix(in srgb, var(--rm-text) 58%, white);
+  --rm-text-subtle: color-mix(in srgb, var(--rm-text) 42%, white);
+  --rm-text-faint: color-mix(in srgb, var(--rm-text) 30%, white);
+
+  --rm-text-on-info: #1d4ed8;
+  --rm-text-on-success: #047857;
+  --rm-text-on-error: #b91c1c;
+  --rm-text-on-accent: #ffffff;
+
+  --rm-accent: var(--rm-brand);
+  --rm-accent-bright: var(--rm-brand-bright);
+  --rm-accent-dark: var(--rm-brand-dark);
+  --rm-nav-active: var(--rm-brand);
+  --rm-accent-glow: color-mix(in srgb, var(--rm-brand) 35%, transparent);
+  --rm-accent-muted: color-mix(in srgb, var(--rm-brand) 10%, transparent);
+  --rm-border: #e2e8f0;
+  --rm-border-glow: color-mix(in srgb, var(--rm-brand) 24%, transparent);
+  --rm-shadow-soft: 0 1px 3px rgb(15 23 42 / 0.06), 0 4px 12px rgb(15 23 42 / 0.04);
+  --rm-shadow-glow: 0 4px 14px color-mix(in srgb, var(--rm-brand) 20%, transparent);
+
+  --rm-success: #10b981;
+  --rm-warning: #d97706;
+  --rm-danger: #ef4444;
+
+  --rm-info-bg: color-mix(in srgb, var(--rm-brand) 8%, var(--rm-surface));
+  --rm-info-border: color-mix(in srgb, var(--rm-brand) 22%, transparent);
+  --rm-error-bg: #fef2f2;
+  --rm-error-border: #fecaca;
+  --rm-success-bg: #ecfdf5;
+  --rm-success-border: #a7f3d0;
+
+  --background: var(--rm-bg-base);
+  --foreground: var(--rm-text);
+  --card: var(--rm-surface);
+  --muted: var(--rm-text-muted);
+  --border: var(--rm-border);
+  --remind-primary: var(--rm-brand);
+  --rm-brand-text: #0f172a;
+
+  background: linear-gradient(
+    180deg,
+    #eef2ff 0%,
+    var(--rm-bg-base) 8rem,
+    var(--rm-bg-base) 100%
+  );
+  color: var(--rm-text);
+  min-height: 100%;
+}
+
+[data-theme="remind-light"] .rm-ambient {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(37, 99, 235, 0.07), transparent),
+    radial-gradient(ellipse 55% 35% at 100% 0%, rgba(147, 109, 255, 0.05), transparent);
+}
+
+[data-theme="remind-light"] .rm-header .brand-logo-icon {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--rm-brand) 28%, transparent);
+}
+
+[data-theme="remind-light"] .rm-nav-item--active svg {
+  filter: none;
+}
+
+[data-theme="remind-light"] .rm-bottom-nav-link--active .rm-bottom-nav-icon {
+  filter: none;
+}
+
+[data-theme="remind-light"] .rm-bottom-nav-link--active span:last-child {
+  text-shadow: none;
+}
+
+[data-theme="remind-light"] .rm-achievement-unlocked {
+  color: var(--rm-text-on-surface);
+}

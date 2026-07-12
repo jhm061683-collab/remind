@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "../styles/remind-dark.css";
+@import "../styles/remind-light.css";
+
+:root {
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+  --rm-brand: #2563eb;
+  --rm-brand-violet: #936dff;
+  --rm-brand-dark: #1d4ed8;
+  --rm-brand-bright: #3b82f6;
+  --rm-brand-muted: rgba(37, 99, 235, 0.14);
+  --rm-brand-glow: rgba(37, 99, 235, 0.4);
+  --rm-radius-sm: 14px;
+  --rm-radius-md: 18px;
+  --rm-radius-lg: 22px;
+  --rm-radius-xl: 28px;
+  --rm-logo-gradient: linear-gradient(135deg, #936dff 0%, #2563eb 100%);
+  --rm-logo-glow: 0 0 14px rgba(147, 109, 255, 0.38), 0 0 26px rgba(37, 99, 235, 0.22);
+  --remind-primary: var(--rm-brand);
+  --remind-primary-dark: var(--rm-brand-dark);
+  --card: #ffffff;
+  --muted: #64748b;
+  --border: #e2e8f0;
+}
+
+.brand-logo-icon {
+  background: var(--rm-logo-gradient);
+  color: #fff;
+  box-shadow: var(--rm-logo-glow);
+  border-radius: var(--rm-radius-md, 18px);
+}
+
+.brand-logo-text {
+  color: var(--rm-brand-text, #0f172a);
+  font-weight: 800;
+}
+
+.brand-logo-colon {
+  color: var(--rm-brand-violet);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: linear-gradient(
+    180deg,
+    #eef2ff 0%,
+    #f4f7fb 8rem,
+    #f4f7fb 100%
+  );
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), "Pretendard", "Apple SD Gothic Neo",
+    sans-serif;
+  touch-action: manipulation;
+  min-height: 100dvh;
+}
+
+label[for] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.remind-card {
+  border-radius: 1.25rem;
+  border: 1px solid #dbe3ef;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.05), 0 4px 12px rgb(15 23 42 / 0.04);
+}
+
+.remind-action-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  padding: 0.875rem 1rem;
+  color: #fff;
+  box-shadow: 0 4px 14px rgb(37 99 235 / 0.28);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.remind-action-primary:active {
+  transform: scale(0.98);
+}
+
+.remind-action-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+  transition: border-color 0.12s ease, background-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.remind-action-secondary:active {
+  transform: scale(0.98);
+}
+
+.remind-action-secondary:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.remind-stat-tile {
+  border-radius: 1.25rem;
+  border: 1px solid #e8edf5;
+  background: #fff;
+  padding: 0.75rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.remind-icon-badge {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.875rem;
+}
+
+.remind-icon-badge--slate {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.remind-icon-badge--blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.remind-icon-badge--emerald {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.remind-icon-badge--amber {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.remind-icon-badge--rose {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.remind-icon-badge--violet {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.remind-row-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid #e8edf5;
+  background: #fff;
+  padding: 0.875rem;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.remind-row-link:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.remind-card-hover:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 18px rgb(37 99 235 / 0.1);
+}
+
+.remind-section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.remind-field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.remind-input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1.5px solid #cbd5e1;
+  background: #fff;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.remind-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+}
+
+.remind-filter-panel {
+  border-radius: 1.25rem;
+  border: 1.5px solid #dbeafe;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding: 1.25rem;
+  box-shadow: 0 2px 10px rgb(37 99 235 / 0.06);
+}
+
+.remind-link-btn {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.remind-empty-state {
+  border-radius: 1.25rem;
+  border: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.remind-tag {
+  border-radius: 9999px;
+  background: #eff6ff;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1d4ed8;
+}
+
+.remind-preset-tab {
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  padding: 1rem;
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.remind-preset-tab--active {
+  border: 2px solid #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgb(37 99 235 / 0.22);
+}
+
+.remind-preset-tab--idle {
+  border: 1.5px solid #cbd5e1;
+  background: #fff;
+  color: #18181b;
+}
+
+.remind-preset-tab--idle:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
