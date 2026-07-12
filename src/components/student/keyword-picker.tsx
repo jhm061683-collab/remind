@@ -21,6 +21,8 @@ type Props = {
   onChange: (next: string[]) => void;
   label: string;
   hint?: string;
+  /** 저장된 키워드 목록 제목 */
+  libraryTitle?: string;
   placeholder?: string;
 };
 
@@ -31,6 +33,7 @@ export function KeywordPicker({
   onChange,
   label,
   hint,
+  libraryTitle,
   placeholder = "키워드 입력 후 Enter",
 }: Props) {
   const [entries, setEntries] = useState<KeywordEntry[]>([]);
@@ -46,6 +49,10 @@ export function KeywordPicker({
     () => new Set(selected.map((s) => s.toLowerCase())),
     [selected],
   );
+
+  const listTitle =
+    libraryTitle ??
+    (kind === "wrong" ? "내가 만든 오답 키워드" : "내가 만든 문제 키워드");
 
   function toggleSelect(labelText: string) {
     const normalized = normalizeKeywordLabel(labelText);
@@ -132,60 +139,66 @@ export function KeywordPicker({
       </div>
 
       {sorted.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
-          {sorted.map((entry) => {
-            const active = selectedSet.has(entry.label.toLowerCase());
-            return (
-              <div
-                key={entry.label}
-                className={`inline-flex max-w-full items-center gap-0.5 rounded-full border pl-2.5 pr-1 py-1 text-xs transition ${
-                  active
-                    ? "border-blue-300 bg-blue-50 text-blue-800"
-                    : entry.favorite
-                      ? "border-amber-200 bg-amber-50 text-amber-900"
-                      : "border-slate-200 bg-white text-slate-700"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleSelect(entry.label)}
-                  className="max-w-[9rem] truncate font-semibold"
-                  title={
-                    entry.favorite
-                      ? `즐겨찾기 · 사용 ${entry.useCount}회`
-                      : `사용 ${entry.useCount}회`
-                  }
-                >
-                  {entry.favorite ? "★ " : ""}
-                  {entry.label}
-                </button>
-                <button
-                  type="button"
-                  aria-label="즐겨찾기"
-                  disabled={busy}
-                  onClick={(e) => void handleFavorite(entry.label, e)}
-                  className={`rounded-full px-1.5 py-0.5 ${
-                    entry.favorite ? "text-amber-500" : "text-slate-400"
+        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+          <p className="text-[11px] font-semibold text-slate-500">
+            {listTitle} · 탭해서 선택
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {sorted.map((entry) => {
+              const active = selectedSet.has(entry.label.toLowerCase());
+              return (
+                <div
+                  key={entry.label}
+                  className={`inline-flex max-w-full items-center gap-0.5 rounded-full border pl-2.5 pr-1 py-1 text-xs transition ${
+                    active
+                      ? "border-blue-300 bg-blue-50 text-blue-800"
+                      : entry.favorite
+                        ? "border-amber-200 bg-amber-50 text-amber-900"
+                        : "border-slate-200 bg-white text-slate-700"
                   }`}
                 >
-                  {entry.favorite ? "★" : "☆"}
-                </button>
-                <button
-                  type="button"
-                  aria-label="삭제"
-                  disabled={busy}
-                  onClick={(e) => void handleDelete(entry.label, e)}
-                  className="rounded-full px-1.5 py-0.5 text-slate-400 hover:text-rose-600"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(entry.label)}
+                    className="max-w-[9rem] truncate font-semibold"
+                    title={
+                      entry.favorite
+                        ? `즐겨찾기 · 사용 ${entry.useCount}회`
+                        : `사용 ${entry.useCount}회`
+                    }
+                  >
+                    {entry.favorite ? "★ " : ""}
+                    {entry.label}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="즐겨찾기"
+                    disabled={busy}
+                    onClick={(e) => void handleFavorite(entry.label, e)}
+                    className={`rounded-full px-1.5 py-0.5 ${
+                      entry.favorite ? "text-amber-500" : "text-slate-400"
+                    }`}
+                  >
+                    {entry.favorite ? "★" : "☆"}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="삭제"
+                    disabled={busy}
+                    onClick={(e) => void handleDelete(entry.label, e)}
+                    className="rounded-full px-1.5 py-0.5 text-slate-400 hover:text-rose-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
-        <p className="text-[11px] text-slate-400">
-          아직 저장된 키워드가 없어요. 위에서 추가해 보세요.
+        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-400">
+          아직 만든 {kind === "wrong" ? "오답" : "문제"} 키워드가 없어요. 위에서
+          추가하면 다음에 여기 목록으로 나와요.
         </p>
       )}
 
