@@ -2,11 +2,14 @@
 
 import { useState, useTransition } from "react";
 import {
+  deleteStudentsAction,
   resetStudentPasswordAction,
   saveStudentDetailAction,
   sendAdminNotificationAction,
 } from "@/lib/actions/admin";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { StudentDetailData } from "@/lib/types/admin";
+import { useRouter } from "next/navigation";
 
 type TeacherOption = { id: string; displayName: string };
 
@@ -16,6 +19,7 @@ type Props = {
 };
 
 export function StudentDetailPanel({ detail, teacherOptions }: Props) {
+  const router = useRouter();
   const student = detail.student;
   const [className, setClassName] = useState(student.className ?? "");
   const [phone, setPhone] = useState(student.phone ?? "");
@@ -24,10 +28,34 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
   const [teacherIds, setTeacherIds] = useState<string[]>([]);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="이 학생 계정을 삭제할까요?"
+        description={`「${student.displayName}」 계정과 학습 기록이 모두 지워지고 되돌릴 수 없어요.`}
+        confirmLabel="계정 삭제"
+        cancelLabel="취소"
+        variant="danger"
+        loading={pending}
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          startTransition(async () => {
+            const res = await deleteStudentsAction([student.id]);
+            if (res.error) {
+              setMessage(res.error);
+              setShowDeleteConfirm(false);
+              return;
+            }
+            router.push("/admin/students");
+            router.refresh();
+          });
+        }}
+      />
+
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">{student.displayName}</h2>
         <p className="text-sm text-zinc-500">
@@ -176,6 +204,22 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
           ))}
         </div>
       </section>
+
+      <section className="rounded-2xl border border-red-200 bg-red-50/40 p-4">
+        <h3 className="font-semibold text-red-800">계정 삭제</h3>
+        <p className="mt-1 text-xs text-red-700/80">
+          로그인 계정과 이 학생의 문제·학습 기록이 모두 삭제됩니다.
+        </p>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => setShowDeleteConfirm(true)}
+          className="mt-3 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+        >
+          이 학생 계정 삭제
+        </button>
+      </section>
+
       {message ? <p className="text-sm text-zinc-600">{message}</p> : null}
     </div>
   );

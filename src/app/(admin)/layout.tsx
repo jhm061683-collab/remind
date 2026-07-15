@@ -3,7 +3,6 @@ import {
   AdminMobileNav,
   AdminSidebar,
 } from "@/components/layout/admin-sidebar";
-import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { getSession } from "@/lib/auth/session";
 
 export default async function AdminLayout({
@@ -28,10 +27,7 @@ export default async function AdminLayout({
               </span>
             ) : null}
           </p>
-            <div className="flex items-center gap-1.5">
-            <InstallAppPrompt variant="chip" />
-            <LogoutButton compact />
-          </div>
+          <LogoutButton compact />
         </div>
       </header>
       <div className="flex flex-1">

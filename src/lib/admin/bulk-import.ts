@@ -1,5 +1,8 @@
 import * as XLSX from "xlsx";
-import type { SchoolLevel } from "@/lib/admin/grade";
+import {
+  restorePhoneLeadingZero,
+  type SchoolLevel,
+} from "@/lib/admin/grade";
 
 export type BulkStudentRow = {
   displayName: string;
@@ -21,11 +24,14 @@ export function parseBulkStudentXlsx(buffer: ArrayBuffer): {
   rows: BulkStudentRow[];
   errors: string[];
 } {
-  const wb = XLSX.read(buffer, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const wb = XLSX.read(buffer, { type: "array", cellText: true, cellDates: true });
+  const sheetName =
+    wb.SheetNames.find((name) => name !== "작성안내") ?? wb.SheetNames[0];
+  const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
   if (!sheet) return { rows: [], errors: ["시트가 비어 있습니다."] };
   const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
     defval: "",
+    raw: true,
   });
 
   const rows: BulkStudentRow[] = [];
@@ -34,16 +40,22 @@ export function parseBulkStudentXlsx(buffer: ArrayBuffer): {
   json.forEach((raw, idx) => {
     const line = idx + 2;
     const displayName = String(raw["이름"] ?? "").trim();
-    const phone = String(raw["휴대폰"] ?? "").trim();
+    if (!displayName || displayName === "이름" || displayName.startsWith("(")) {
+      return;
+    }
+
+    const phone = restorePhoneLeadingZero(raw["휴대폰"]);
     const school = parseSchoolLevel(String(raw["학교급"] ?? ""));
     const gradeNumber = Number(raw["학년"] ?? 0);
 
-    if (!displayName) {
-      errors.push(`${line}행: 이름이 비어 있습니다.`);
-      return;
-    }
     if (!phone) {
       errors.push(`${line}행: 휴대폰이 비어 있습니다.`);
+      return;
+    }
+    if (phone.length < 10 || phone.length > 11) {
+      errors.push(
+        `${line}행: 휴대폰 번호가 올바르지 않습니다. (입력값: ${phone}) 010으로 시작하는 11자리를 확인하세요.`,
+      );
       return;
     }
     if (!school) {

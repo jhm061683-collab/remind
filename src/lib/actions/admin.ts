@@ -115,6 +115,64 @@ export async function createStudentsBulkAction(
   return { success: `${created}명 학생 계정을 일괄 등록했습니다.` };
 }
 
+export async function deleteStudentsAction(
+  studentIds: string[],
+): Promise<{ error?: string; success?: string; deletedCount?: number }> {
+  const session = await requireAdmin();
+  if (studentIds.length === 0) {
+    return { error: "삭제할 학생을 선택해 주세요." };
+  }
+
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보를 찾을 수 없습니다." };
+
+  const { data: targets, error: listError } = await supabase
+    .from("profiles")
+    .select("id, role, academy_id, display_name")
+    .in("id", studentIds)
+    .eq("role", "student")
+    .eq("academy_id", me.academy_id);
+
+  if (listError) return { error: listError.message };
+  const deletable = targets ?? [];
+  if (deletable.length === 0) {
+    return { error: "삭제할 수 있는 학생 계정이 없습니다." };
+  }
+
+  let deleted = 0;
+  const failures: string[] = [];
+  for (const student of deletable) {
+    const { error } = await supabase.auth.admin.deleteUser(student.id);
+    if (error) {
+      failures.push(`${student.display_name}: ${error.message}`);
+      continue;
+    }
+    deleted += 1;
+  }
+
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/assignments");
+
+  if (failures.length > 0) {
+    return {
+      error: `삭제 ${deleted}명 / 실패 ${failures.length}명\n${failures
+        .slice(0, 5)
+        .join("\n")}`,
+      deletedCount: deleted,
+    };
+  }
+  return {
+    success: `${deleted}명 학생 계정을 삭제했습니다.`,
+    deletedCount: deleted,
+  };
+}
+
 export async function resetStudentPasswordAction(
   studentId: string,
   nextPassword: string,
