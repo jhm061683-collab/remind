@@ -11,6 +11,20 @@ const DISMISS_KEY = "remind-pwa-install-dismissed-at";
 /** 배너 다시 보이기까지 (ms) — 3일 */
 const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
+/** React 마운트 전에 오는 beforeinstallprompt 도 잡아 둠 */
+let cachedPrompt: BeforeInstallPromptEvent | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    cachedPrompt = e as BeforeInstallPromptEvent;
+    window.dispatchEvent(new Event("remind-pwa-ready"));
+  });
+  window.addEventListener("appinstalled", () => {
+    cachedPrompt = null;
+  });
+}
+
 function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
   const mq = window.matchMedia("(display-mode: standalone)").matches;
@@ -18,11 +32,6 @@ function isStandalone(): boolean {
     "standalone" in navigator &&
     Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
   return mq || iosStandalone;
-}
-
-function isIos(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
 /** 좁은 화면 또는 모바일 UA — 데스크톱 웹에서는 설치 권유 숨김 */
@@ -71,86 +80,78 @@ type Props = {
   className?: string;
 };
 
+/**
+ * Chrome/Edge/Android 등 beforeinstallprompt 를 지원할 때만 버튼을 보여 주고,
+ * 누르면 브라우저 설치 창이 바로 뜹니다. (안내 모달 없음)
+ * iOS Safari 는 자동 설치 API가 없어 버튼을 표시하지 않습니다.
+ */
 export function InstallAppPrompt({ variant = "banner", className = "" }: Props) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [bannerAllowed, setBannerAllowed] = useState(true);
 
   useEffect(() => {
     if (isStandalone()) {
       setInstalled(true);
       return;
     }
-    // 데스크톱 웹에서는 어떤 변형도 노출하지 않음
     if (!isMobileWeb()) return;
 
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-      setVisible(true);
+    if (cachedPrompt) setDeferred(cachedPrompt);
+    if (variant === "banner" && isBannerDismissed()) {
+      setBannerAllowed(false);
+    }
+
+    const syncPrompt = () => {
+      if (cachedPrompt) setDeferred(cachedPrompt);
     };
     const onInstalled = () => {
       setInstalled(true);
-      setVisible(false);
       setDeferred(null);
+      cachedPrompt = null;
     };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", onInstalled);
-
-    if (variant === "banner") {
-      if (!isBannerDismissed()) setVisible(true);
-    } else {
-      setVisible(true);
-    }
-
     const onResize = () => {
-      if (!isMobileWeb()) {
-        setVisible(false);
-      } else if (variant !== "banner" || !isBannerDismissed()) {
-        if (!isStandalone()) setVisible(true);
-      }
+      if (!isMobileWeb()) setDeferred(null);
+      else syncPrompt();
     };
+
+    window.addEventListener("remind-pwa-ready", syncPrompt);
+    window.addEventListener("beforeinstallprompt", syncPrompt);
+    window.addEventListener("appinstalled", onInstalled);
     window.addEventListener("resize", onResize);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("remind-pwa-ready", syncPrompt);
+      window.removeEventListener("beforeinstallprompt", syncPrompt);
       window.removeEventListener("appinstalled", onInstalled);
       window.removeEventListener("resize", onResize);
     };
   }, [variant]);
 
-  if (installed) return null;
-  if (!visible && !deferred) return null;
+  if (installed || !deferred) return null;
+  if (variant === "banner" && !bannerAllowed) return null;
 
-  const dismiss = () => {
-    if (variant === "banner") {
-      try {
-        localStorage.setItem(DISMISS_KEY, String(Date.now()));
-      } catch {
-        /* ignore */
-      }
+  const dismissBanner = () => {
+    try {
+      localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    } catch {
+      /* ignore */
     }
-    setVisible(false);
-    setGuideOpen(false);
+    setBannerAllowed(false);
   };
 
   const handleInstall = async () => {
-    if (deferred) {
-      await deferred.prompt();
-      const choice = await deferred.userChoice;
-      setDeferred(null);
-      if (choice.outcome === "accepted") {
-        setInstalled(true);
-        setVisible(false);
-      }
-      return;
-    }
-    setGuideOpen(true);
-  };
+    const promptEvent = deferred ?? cachedPrompt;
+    if (!promptEvent) return;
 
-  const buttonLabel = isIos() ? "홈 화면 추가" : "앱 설치";
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    setDeferred(null);
+    cachedPrompt = null;
+    if (choice.outcome === "accepted") {
+      setInstalled(true);
+    }
+  };
 
   if (variant === "chip") {
     return (
@@ -166,7 +167,6 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
           </svg>
           <span className="whitespace-nowrap">설치</span>
         </button>
-        {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
       </div>
     );
   }
@@ -188,9 +188,8 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
           onClick={() => void handleInstall()}
           className="shrink-0 rounded-full bg-blue-600 px-3 py-2 text-[11px] font-bold whitespace-nowrap text-white shadow-sm active:scale-[0.97] hover:bg-blue-700"
         >
-          {buttonLabel}
+          앱 설치
         </button>
-        {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
       </div>
     );
   }
@@ -204,103 +203,44 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-6 py-3.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
         >
           <AppMark size={28} />
-          {buttonLabel}
+          앱 설치
         </button>
-        {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
       </div>
     );
   }
 
-  if (!visible) return null;
-
-  return (
-    <>
-      <div
-        className={`fixed inset-x-0 z-40 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4.25rem+env(safe-area-inset-bottom))] ${className}`}
-        role="dialog"
-        aria-label="앱 설치 안내"
-      >
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          <AppMark size={44} />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold tracking-tight text-slate-950">
-              3초 만에 홈 화면에 앱 추가하기
-            </p>
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-              지금 설치하시면 더 편하게 쓸 수 있어요.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => void handleInstall()}
-              className="rounded-full bg-blue-600 px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-white hover:bg-blue-700"
-            >
-              {buttonLabel}
-            </button>
-            <button
-              type="button"
-              onClick={dismiss}
-              className="rounded-full px-2.5 py-2 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
-            >
-              나중에
-            </button>
-          </div>
-        </div>
-      </div>
-      {guideOpen ? <InstallGuideModal onClose={() => setGuideOpen(false)} /> : null}
-    </>
-  );
-}
-
-function InstallGuideModal({ onClose }: { onClose: () => void }) {
-  const ios = isIos();
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      className={`fixed inset-x-0 z-40 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4.25rem+env(safe-area-inset-bottom))] ${className}`}
       role="dialog"
-      aria-modal="true"
-      aria-labelledby="pwa-guide-title"
-      onClick={onClose}
+      aria-label="앱 설치"
     >
-      <div
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center gap-3">
-          <AppMark size={48} />
-          <h2 id="pwa-guide-title" className="text-base font-bold text-slate-900">
-            {ios ? "아이폰에서 설치하기" : "앱처럼 설치하기"}
-          </h2>
+      <div className="mx-auto flex max-w-lg items-center gap-3">
+        <AppMark size={44} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-extrabold tracking-tight text-slate-950">
+            3초 만에 홈 화면에 앱 추가하기
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+            지금 설치하시면 더 편하게 쓸 수 있어요.
+          </p>
         </div>
-        {ios ? (
-          <ol className="mt-1 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-            <li>
-              하단(또는 상단) <strong>공유</strong> 버튼을 누르세요.
-            </li>
-            <li>
-              <strong>홈 화면에 추가</strong>를 선택하세요.
-            </li>
-            <li>
-              <strong>추가</strong>를 누르면 앱처럼 실행됩니다.
-            </li>
-          </ol>
-        ) : (
-          <ol className="mt-1 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-600">
-            <li>브라우저 메뉴(⋮)를 엽니다.</li>
-            <li>
-              <strong>앱 설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택하세요.
-            </li>
-            <li>설치가 끝나면 아이콘으로 바로 실행할 수 있습니다.</li>
-          </ol>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white"
-        >
-          확인
-        </button>
+        <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => void handleInstall()}
+            className="rounded-full bg-blue-600 px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-white hover:bg-blue-700"
+          >
+            앱 설치
+          </button>
+          <button
+            type="button"
+            onClick={dismissBanner}
+            className="rounded-full px-2.5 py-2 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
+          >
+            나중에
+          </button>
+        </div>
       </div>
     </div>
   );
