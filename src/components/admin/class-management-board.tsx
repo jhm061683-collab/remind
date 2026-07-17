@@ -389,13 +389,18 @@ export function ClassManagementBoard({ data }: Props) {
                     }
                   />
                   {teacher.displayName}
+                  {teacher.isDirector ? (
+                    <span className="ml-1 text-[10px] font-semibold text-violet-700">
+                      원장
+                    </span>
+                  ) : null}
                 </label>
               ))}
             </div>
           </div>
         ) : (
           <p className="mt-3 text-xs text-amber-700">
-            서브관리자를 먼저 등록하면 반 담당으로 지정할 수 있어요.
+            원장 또는 서브관리자를 등록하면 반 담당으로 지정할 수 있어요.
           </p>
         )}
       </section>
@@ -553,6 +558,11 @@ export function ClassManagementBoard({ data }: Props) {
                                 }}
                               />
                               {teacher.displayName}
+                              {teacher.isDirector ? (
+                                <span className="ml-1 text-[10px] font-semibold text-violet-700">
+                                  원장
+                                </span>
+                              ) : null}
                             </label>
                           ))}
                         </div>
@@ -770,6 +780,12 @@ export function ClassManagementBoard({ data }: Props) {
                     <div>
                       <p className="font-semibold text-slate-900">
                         {teacher.displayName}
+                        {data.teachers.find((t) => t.id === teacher.id)
+                          ?.isDirector ? (
+                          <span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                            원장
+                          </span>
+                        ) : null}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         담당 반 {teacher.classLabels.length}개 · 학생{" "}

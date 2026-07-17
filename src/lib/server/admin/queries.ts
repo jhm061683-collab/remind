@@ -777,7 +777,7 @@ export async function getClassManagementData(
       .from("profiles")
       .select("id, display_name, username, role, school_level, grade_number, is_director")
       .eq("academy_id", academyId)
-      .in("role", ["student", "sub_admin"]),
+      .in("role", ["student", "sub_admin", "admin"]),
   ]);
 
   const rooms = (classRows ?? []) as ClassRoomRow[];
@@ -891,9 +891,17 @@ export async function getClassManagementData(
     .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
 
   const teachers = profileList
-    .filter((p) => p.role === "sub_admin")
-    .map((p) => ({ id: p.id, displayName: p.display_name }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+    .filter((p) => p.role === "sub_admin" || p.role === "admin")
+    .map((p) => ({
+      id: p.id,
+      displayName: p.display_name,
+      isDirector: p.role === "admin" || Boolean(p.is_director),
+    }))
+    .sort((a, b) => {
+      // 원장 먼저, 그다음 이름
+      if (a.isDirector !== b.isDirector) return a.isDirector ? -1 : 1;
+      return a.displayName.localeCompare(b.displayName, "ko");
+    });
 
   const teacherOverviews: TeacherClassOverview[] = teachers.map((teacher) => {
     const ownedClasses = classes.filter((c) => c.teacherIds.includes(teacher.id));

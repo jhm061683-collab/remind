@@ -105,7 +105,7 @@ export type TeacherClassOverview = {
 export type ClassManagementData = {
   classes: ClassRoomSummary[];
   students: ClassStudentBrief[];
-  teachers: { id: string; displayName: string }[];
+  teachers: { id: string; displayName: string; isDirector: boolean }[];
   teacherOverviews: TeacherClassOverview[];
 };
 
