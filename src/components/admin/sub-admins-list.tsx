@@ -21,7 +21,7 @@ export function SubAdminsList({ subAdmins }: Props) {
 
   if (subAdmins.length === 0) {
     return (
-      <p className="rounded-2xl border border-zinc-200 bg-white px-5 py-10 text-center text-sm text-zinc-500 shadow-sm">
+      <p className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-500 shadow-sm">
         등록된 선생님이 없습니다. 위에서 계정을 추가해 주세요.
       </p>
     );
@@ -29,31 +29,33 @@ export function SubAdminsList({ subAdmins }: Props) {
 
   return (
     <>
-      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
             <tr>
-              <th className="px-4 py-3 font-medium">이름</th>
-              <th className="px-4 py-3 font-medium">아이디</th>
-              <th className="px-4 py-3 font-medium">권한</th>
-              <th className="px-4 py-3 font-medium">담당 학생</th>
-              <th className="px-4 py-3 font-medium">관리</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">이름</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">아이디</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">권한</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">담당</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {subAdmins.map((row) => (
               <tr key={row.id}>
-                <td className="px-4 py-3 font-medium text-zinc-900">
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-zinc-900">
                   {row.displayName}
                   {row.isDirector ? (
-                    <span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                    <span className="ml-1.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
                       팀장
                     </span>
                   ) : null}
                 </td>
-                <td className="px-4 py-3 text-zinc-600">{row.username}</td>
-                <td className="px-4 py-3">
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
+                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                  {row.username}
+                </td>
+                <td className="px-3 py-2">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-zinc-700">
                     <input
                       type="checkbox"
                       checked={row.isDirector}
@@ -71,18 +73,18 @@ export function SubAdminsList({ subAdmins }: Props) {
                         });
                       }}
                     />
-                    팀장 (관리자 권한)
+                    팀장
                   </label>
                 </td>
-                <td className="px-4 py-3 text-zinc-800">
+                <td className="whitespace-nowrap px-3 py-2 text-zinc-800">
                   {row.assignedCount}명
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2">
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() => setDeleteTarget(row)}
-                    className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
                   >
                     삭제
                   </button>
@@ -97,10 +99,8 @@ export function SubAdminsList({ subAdmins }: Props) {
         <p className="mt-3 text-sm text-zinc-700">{feedback}</p>
       ) : null}
 
-      <p className="mt-3 text-xs text-zinc-500">
-        팀장은 1명 이상 지정할 수 있어요. 팀장으로 로그인하면 관리자/선생님
-        모드를 전환할 수 있습니다. 삭제해도 반은 그대로 남고, 담당만
-        비워집니다.
+      <p className="mt-2 text-[11px] text-zinc-500">
+        팀장은 여러 명 가능 · 관리자/선생님 모드 전환 · 삭제 시 반은 유지
       </p>
 
       <ConfirmDialog

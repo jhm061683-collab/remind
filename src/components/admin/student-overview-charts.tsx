@@ -142,7 +142,7 @@ function BarChart({ slices }: { slices: ChartSlice[] }) {
 
   if (slices.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-zinc-500">
+      <p className="py-8 text-center text-sm text-zinc-500">
         표시할 데이터가 없습니다.
       </p>
     );
@@ -182,7 +182,7 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
   const total = slices.reduce((sum, s) => sum + s.count, 0);
   if (total === 0 || slices.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-zinc-500">
+      <p className="py-8 text-center text-sm text-zinc-500">
         표시할 데이터가 없습니다.
       </p>
     );
@@ -195,7 +195,7 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
   let offset = 0;
 
   return (
-    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center sm:gap-10">
+    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center sm:gap-6">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle
@@ -316,17 +316,21 @@ export function StudentOverviewCharts({
   const showDonutOption = kind !== "reviews";
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="font-semibold text-zinc-900">{title}</h2>
-          <p className="mt-1 text-xs text-zinc-500">{option.hint}</p>
+    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-zinc-900 sm:text-base">
+            {title}
+          </h2>
+          <p className="mt-0.5 text-[11px] text-zinc-500 sm:text-xs">
+            {option.hint}
+          </p>
         </div>
-        <div className="flex shrink-0 gap-1 rounded-xl bg-zinc-100 p-1">
+        <div className="flex shrink-0 gap-1 self-start rounded-lg bg-zinc-100 p-0.5">
           <button
             type="button"
             onClick={() => setView("bar")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
               view === "bar"
                 ? "bg-white text-zinc-900 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-700"
@@ -338,7 +342,7 @@ export function StudentOverviewCharts({
             type="button"
             disabled={!showDonutOption}
             onClick={() => setView("donut")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
               view === "donut"
                 ? "bg-white text-zinc-900 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-700"
@@ -349,7 +353,7 @@ export function StudentOverviewCharts({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {CHART_OPTIONS.map((opt) => {
           const active = kind === opt.id;
           return (
@@ -360,7 +364,7 @@ export function StudentOverviewCharts({
                 setKind(opt.id);
                 if (opt.id === "reviews") setView("bar");
               }}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
                 active
                   ? "bg-blue-600 text-white"
                   : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
@@ -372,7 +376,7 @@ export function StudentOverviewCharts({
         })}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         {view === "donut" && showDonutOption ? (
           <DonutChart slices={slices} />
         ) : (
@@ -380,10 +384,10 @@ export function StudentOverviewCharts({
         )}
       </div>
 
-      <p className="mt-5 border-t border-zinc-100 pt-3 text-xs text-zinc-400">
+      <p className="mt-3 border-t border-zinc-100 pt-2 text-[11px] text-zinc-400">
         기준 인원 {students.length}명
         {kind === "class" || kind === "teacher"
-          ? " · 복수 소속은 각 항목에 중복 집계될 수 있어요"
+          ? " · 복수 소속은 중복 집계될 수 있어요"
           : null}
       </p>
     </section>

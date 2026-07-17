@@ -16,14 +16,14 @@ export function AdminSidebar({ role }: Props) {
   const roleLabel = role === "sub_admin" ? "서브관리자" : "관리자";
 
   return (
-    <aside className="sticky top-[3.25rem] hidden h-[calc(100dvh-3.25rem)] w-60 shrink-0 self-start overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 p-4 md:block">
-      <div className="mb-5 px-1">
+    <aside className="sticky top-[3.25rem] hidden h-[calc(100dvh-3.25rem)] w-52 shrink-0 self-start overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 p-3 md:block">
+      <div className="mb-3 px-1">
         <RemindLogo href="/admin/dashboard" size="sm" />
-        <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          {roleLabel} 모드
+        <p className="mt-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
+          {roleLabel}
         </p>
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {links.map((link) => {
           const active =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -32,7 +32,7 @@ export function AdminSidebar({ role }: Props) {
               <Link
                 href={link.href}
                 prefetch={false}
-                className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
                     ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
                     : "text-slate-700 hover:bg-slate-100"
@@ -53,7 +53,7 @@ export function AdminMobileNav({ role }: Props) {
   const links = navItemsForRole(role);
 
   return (
-    <nav className="flex flex-wrap gap-2">
+    <nav className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((link) => {
         const active =
           pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -62,13 +62,13 @@ export function AdminMobileNav({ role }: Props) {
             key={link.href}
             href={link.href}
             prefetch={false}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
               active
                 ? "bg-blue-600 text-white"
                 : "bg-slate-100 text-slate-700"
             }`}
           >
-            {link.label}
+            {link.shortLabel ?? link.label}
           </Link>
         );
       })}

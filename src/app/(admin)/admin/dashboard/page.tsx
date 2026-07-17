@@ -34,13 +34,13 @@ export default async function AdminDashboardPage() {
         title={isSubAdmin ? "서브관리자 대시보드" : "관리자 대시보드"}
         description={
           isSubAdmin
-            ? "담당 학생들의 학습 현황을 확인합니다."
-            : "학생들의 학습 현황과 복습 이행률을 확인합니다."
+            ? "담당 학생 학습 현황"
+            : "학습 현황과 복습 이행률"
         }
       />
 
       <div
-        className={`grid gap-4 ${isSubAdmin ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}
+        className={`grid gap-2.5 sm:gap-3 ${isSubAdmin ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4"}`}
       >
         <AdminStatCard
           label={isSubAdmin ? "담당 학생" : "전체 학생"}
@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
           />
         ) : null}
         <AdminStatCard
-          label="오늘 학습한 학생"
+          label="오늘 학습"
           value={`${data.activeToday}명`}
           hint="오늘 1회 이상 다시 푼 학생"
         />
@@ -69,7 +69,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {!isSubAdmin ? (
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-2.5 grid gap-2.5 sm:mt-3 sm:gap-3 lg:grid-cols-3">
           <AdminStatCard
             label="중·장기 이행률"
             value={pct(data.mediumLongFulfillmentPct)}
@@ -78,7 +78,7 @@ export default async function AdminDashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <StudentOverviewCharts
           students={data.students}
           title={isSubAdmin ? "담당 학생 인원 차트" : "전체 학생 인원 차트"}
@@ -89,14 +89,14 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      <section className="mt-6">
-        <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+      <section className="mt-4">
+        <h2 className="mb-2 text-base font-semibold text-zinc-900">
           {isSubAdmin ? "담당 학생" : "학생 요약"}
         </h2>
         {data.students.length === 0 && isSubAdmin ? (
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-8 text-center text-sm text-amber-950">
+          <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-6 text-center text-sm text-amber-950">
             <p className="font-medium">담당 학생이 아직 없어요</p>
-            <p className="mt-2 text-amber-900">
+            <p className="mt-1.5 text-amber-900">
               원장님이 <strong>반 관리</strong>에서 반 담당으로 지정해 주면
               여기에 보입니다.
             </p>

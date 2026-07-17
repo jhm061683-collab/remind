@@ -12,15 +12,17 @@ export function WeeklyActivityChart({
   const max = Math.max(1, ...data.map((d) => d.count));
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="font-semibold text-zinc-900">{title}</h2>
-      <div className="mt-6 flex h-48 items-end justify-between gap-2">
+    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-zinc-900 sm:text-base">
+        {title}
+      </h2>
+      <div className="mt-4 flex h-40 items-end justify-between gap-1.5 sm:h-48 sm:gap-2">
         {data.map((day) => (
           <div
             key={day.date}
-            className="flex flex-1 flex-col items-center gap-2"
+            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
           >
-            <span className="text-xs font-medium text-zinc-600">
+            <span className="text-[10px] font-medium tabular-nums text-zinc-600 sm:text-xs">
               {day.count > 0 ? day.count : ""}
             </span>
             <div
@@ -31,7 +33,9 @@ export function WeeklyActivityChart({
               }}
               title={`${day.label}: ${day.count}회`}
             />
-            <span className="text-[10px] text-zinc-400">{day.label}</span>
+            <span className="whitespace-nowrap text-[10px] text-zinc-400">
+              {day.label}
+            </span>
           </div>
         ))}
       </div>

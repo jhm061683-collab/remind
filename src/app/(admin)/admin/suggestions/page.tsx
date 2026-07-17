@@ -14,7 +14,7 @@ export default async function AdminSuggestionsPage() {
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="건의사항"
-        description="학생들이 보낸 건의예요. 나중에는 원장을 관리하는 메인 계정에서만 보이게 옮길 예정이에요."
+        description="학생이 보낸 건의 목록"
       />
       <AdminSuggestionsList />
     </div>

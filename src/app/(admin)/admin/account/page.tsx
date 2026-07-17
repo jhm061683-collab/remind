@@ -19,7 +19,7 @@ export default async function AdminAccountPage() {
     <>
       <PageHeader
         title="계정 설정"
-        description="표시 이름과 비밀번호를 바꿀 수 있어요."
+        description="표시 이름 · 비밀번호"
       />
 
       <div className="mx-auto max-w-lg space-y-4">

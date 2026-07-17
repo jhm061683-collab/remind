@@ -125,7 +125,7 @@ export function AdminStudentsTable({
 
   if (students.length === 0) {
     return (
-      <p className="rounded-2xl border border-zinc-200 bg-white px-5 py-10 text-center text-sm text-zinc-500 shadow-sm">
+      <p className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-500 shadow-sm">
         등록된 학생이 없습니다.
       </p>
     );
@@ -168,12 +168,12 @@ export function AdminStudentsTable({
           placeholder="이름/아이디/반/담당선생님 검색"
           className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {classNameFilters.length > 0 ? (
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 반</option>
               {classNameFilters.map((name) => (
@@ -187,7 +187,7 @@ export function AdminStudentsTable({
             <select
               value={gradeFilter}
               onChange={(e) => setGradeFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 학년</option>
               {gradeOptions.map((label) => (
@@ -201,7 +201,7 @@ export function AdminStudentsTable({
             <select
               value={teacherFilter}
               onChange={(e) => setTeacherFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 담당</option>
               {teacherOptions.map((name) => (
@@ -214,12 +214,12 @@ export function AdminStudentsTable({
           <select
             value={activityFilter}
             onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
           >
             <option value="all">전체 활동</option>
-            <option value="due_today">오늘 볼 문제 있음</option>
-            <option value="inactive_7">7일 이상 미접속</option>
-            <option value="never_login">로그인 이력 없음</option>
+            <option value="due_today">오늘 할 것</option>
+            <option value="inactive_7">7일+ 미접속</option>
+            <option value="never_login">미로그인</option>
           </select>
         </div>
         {filtered.length !== students.length ? (
@@ -239,7 +239,7 @@ export function AdminStudentsTable({
                   onChange={(e) => setClassRoomId(e.target.value)}
                   className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
                 >
-                  <option value="">일괄 배정할 반 선택</option>
+                  <option value="">반 선택</option>
                   {classOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {opt.displayLabel}
@@ -249,7 +249,7 @@ export function AdminStudentsTable({
                 <button
                   type="button"
                   disabled={pending || selected.length === 0 || !classRoomId}
-                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                   onClick={() => {
                     startTransition(async () => {
                       const result = await bulkAssignClassAction(
@@ -266,7 +266,7 @@ export function AdminStudentsTable({
             ) : (
               <Link
                 href="/admin/classes"
-                className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800"
+                className="whitespace-nowrap rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 sm:text-sm"
               >
                 먼저 반 만들기
               </Link>
@@ -274,7 +274,7 @@ export function AdminStudentsTable({
             <button
               type="button"
               disabled={pending || selected.length === 0}
-              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+              className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 sm:text-sm"
               onClick={() => setShowDeleteConfirm(true)}
             >
               계정 삭제
@@ -291,12 +291,12 @@ export function AdminStudentsTable({
         <p className="text-xs text-zinc-500">{selected.length}명 선택됨</p>
       ) : null}
 
-      <div className="hidden overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm md:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm md:block">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
             <tr>
               {canManage ? (
-                <th className="px-4 py-3 font-medium">
+                <th className="whitespace-nowrap px-3 py-2 font-medium">
                   <input
                     type="checkbox"
                     checked={
@@ -310,25 +310,25 @@ export function AdminStudentsTable({
                   />
                 </th>
               ) : null}
-              <th className="px-4 py-3 font-medium">이름</th>
-              <th className="px-4 py-3 font-medium">아이디</th>
-              <th className="px-4 py-3 font-medium">비밀번호</th>
-              <th className="px-4 py-3 font-medium">학년</th>
-              <th className="px-4 py-3 font-medium">반</th>
-              <th className="px-4 py-3 font-medium">담당 선생님</th>
-              <th className="px-4 py-3 font-medium">마지막 로그인</th>
-              <th className="px-4 py-3 font-medium">등록</th>
-              <th className="px-4 py-3 font-medium">오늘 볼 것</th>
-              <th className="px-4 py-3 font-medium">오늘 푼 것</th>
-              <th className="px-4 py-3 font-medium">접속 연속</th>
-              <th className="px-4 py-3 font-medium">미접속</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">이름</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">아이디</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">비번</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">학년</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">반</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">담당</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">최근 로그인</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">등록</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">오늘 할 것</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">오늘 품</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">연속</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">미접속</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {filtered.map((student) => (
               <tr key={student.id} className="text-zinc-800">
                 {canManage ? (
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <input
                       type="checkbox"
                       checked={selected.includes(student.id)}
@@ -342,7 +342,7 @@ export function AdminStudentsTable({
                     />
                   </td>
                 ) : null}
-                <td className="px-4 py-3 font-medium">
+                <td className="whitespace-nowrap px-3 py-2 font-medium">
                   <Link
                     href={`/admin/students/${student.id}`}
                     className="text-blue-700 hover:underline"
@@ -350,30 +350,34 @@ export function AdminStudentsTable({
                     {student.displayName}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-zinc-600">{student.username}</td>
-                <td className="px-4 py-3 font-mono text-xs text-zinc-700">
+                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                  {student.username}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-zinc-700">
                   {student.passwordPlain ?? (
-                    <span className="text-zinc-400">미기록</span>
+                    <span className="text-zinc-400">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
                   {student.gradeLabel ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-zinc-600">
+                <td className="max-w-[8rem] truncate px-3 py-2 text-zinc-600">
                   {formatClassDisplay(student)}
                 </td>
-                <td className="px-4 py-3 text-zinc-600">
+                <td className="max-w-[7rem] truncate px-3 py-2 text-zinc-600">
                   {student.teacherNames.length > 0 ? (
                     student.teacherNames.join(", ")
                   ) : (
                     <span className="text-zinc-400">미배정</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
                   {formatLastLogin(student.lastLoginAt)}
                 </td>
-                <td className="px-4 py-3">{student.totalRegistered}개</td>
-                <td className="px-4 py-3">
+                <td className="whitespace-nowrap px-3 py-2">
+                  {student.totalRegistered}개
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
                   {student.dueToday > 0 ? (
                     <span className="font-medium text-amber-600">
                       {student.dueToday}개
@@ -382,7 +386,7 @@ export function AdminStudentsTable({
                     <span className="text-zinc-400">없음</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="whitespace-nowrap px-3 py-2">
                   {student.reviewedToday > 0 ? (
                     <span className="font-medium text-emerald-600">
                       {student.reviewedToday}회
@@ -391,14 +395,14 @@ export function AdminStudentsTable({
                     <span className="text-zinc-400">0회</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="whitespace-nowrap px-3 py-2">
                   {student.loginStreakDays > 0
                     ? `${student.loginStreakDays}일`
                     : "0일"}
                 </td>
-                <td className="px-4 py-3">
+                <td className="whitespace-nowrap px-3 py-2">
                   {student.inactiveDays >= 999
-                    ? "로그인 이력 없음"
+                    ? "미로그인"
                     : `${student.inactiveDays}일`}
                 </td>
               </tr>
@@ -438,19 +442,29 @@ export function AdminStudentsTable({
               ) : null}
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-600">
-              <p>학년: {student.gradeLabel ?? "—"}</p>
-              <p>반: {formatClassDisplay(student)}</p>
-              <p>비밀번호: {student.passwordPlain ?? "미기록"}</p>
-              <p>담당: {student.teacherNames.join(", ") || "미배정"}</p>
-              <p>마지막 로그인: {formatLastLogin(student.lastLoginAt)}</p>
+              <p className="min-w-0 truncate">
+                학년: {student.gradeLabel ?? "—"}
+              </p>
+              <p className="min-w-0 truncate">
+                반: {formatClassDisplay(student)}
+              </p>
+              <p className="min-w-0 truncate">
+                비번: {student.passwordPlain ?? "—"}
+              </p>
+              <p className="min-w-0 truncate">
+                담당: {student.teacherNames.join(", ") || "미배정"}
+              </p>
+              <p className="min-w-0 truncate">
+                최근: {formatLastLogin(student.lastLoginAt)}
+              </p>
               <p>등록: {student.totalRegistered}개</p>
-              <p>오늘 볼 것: {student.dueToday}개</p>
-              <p>오늘 푼 것: {student.reviewedToday}회</p>
-              <p>연속 접속: {student.loginStreakDays}일</p>
+              <p>오늘 할 것: {student.dueToday}개</p>
+              <p>오늘 품: {student.reviewedToday}회</p>
+              <p>연속: {student.loginStreakDays}일</p>
               <p>
                 미접속:{" "}
                 {student.inactiveDays >= 999
-                  ? "없음"
+                  ? "미로그인"
                   : `${student.inactiveDays}일`}
               </p>
             </div>

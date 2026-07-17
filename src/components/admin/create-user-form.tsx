@@ -28,7 +28,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
   const [fileName, setFileName] = useState<string | null>(null);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       <h2 className="font-semibold text-zinc-900">{title}</h2>
       <p className="mt-1 text-sm text-zinc-500">
         아이디는 이름으로 자동 생성되고, 초기 비밀번호는 휴대폰 뒤 4자리입니다.

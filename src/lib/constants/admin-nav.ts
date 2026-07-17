@@ -26,18 +26,30 @@ export function canAccessAdminPath(role: UserRole, pathname: string): boolean {
 export type AdminNavItem = {
   href: string;
   label: string;
+  /** 모바일 가로 탭용 짧은 라벨 */
+  shortLabel?: string;
   adminOnly?: boolean;
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
-  { href: "/admin/dashboard", label: "대시보드" },
-  { href: "/admin/students", label: "학생 관리" },
-  { href: "/admin/classes", label: "반 관리", adminOnly: true },
-  { href: "/admin/sub-admins", label: "서브관리자", adminOnly: true },
-  { href: "/admin/notifications", label: "알림 발송" },
+  { href: "/admin/dashboard", label: "대시보드", shortLabel: "홈" },
+  { href: "/admin/students", label: "학생 관리", shortLabel: "학생" },
+  { href: "/admin/classes", label: "반 관리", shortLabel: "반", adminOnly: true },
+  {
+    href: "/admin/sub-admins",
+    label: "서브관리자",
+    shortLabel: "서브",
+    adminOnly: true,
+  },
+  { href: "/admin/notifications", label: "알림 발송", shortLabel: "알림" },
   // 지금은 원장(admin)만. 추후 platform_admin 전용으로 이전 예정.
-  { href: "/admin/suggestions", label: "건의사항", adminOnly: true },
-  { href: "/admin/account", label: "계정 설정" },
+  {
+    href: "/admin/suggestions",
+    label: "건의사항",
+    shortLabel: "건의",
+    adminOnly: true,
+  },
+  { href: "/admin/account", label: "계정 설정", shortLabel: "계정" },
 ];
 
 export function navItemsForRole(role: UserRole): AdminNavItem[] {

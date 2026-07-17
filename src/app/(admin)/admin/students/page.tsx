@@ -34,7 +34,7 @@ export default async function AdminStudentsPage() {
       />
 
       {isAdmin ? (
-        <div className="mb-6 space-y-4">
+        <div className="mb-4 space-y-3">
           <CreateUserForm
             role="student"
             title="학생 계정 추가"
