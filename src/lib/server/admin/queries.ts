@@ -3,6 +3,7 @@ import type { ActivityEvent } from "@/lib/types/activity";
 import { toGradeLabel } from "@/lib/admin/grade";
 import { computePromotedGrade } from "@/lib/admin/grade";
 import { formatClassLabel } from "@/lib/admin/class-label";
+import { formatStaffLabel } from "@/lib/admin/staff-label";
 import type { StoredQuestion } from "@/lib/storage/questions";
 import { computeUserStats } from "@/lib/stats/compute";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
@@ -32,6 +33,7 @@ type ProfileRow = {
   school_level: "elementary" | "middle" | "high" | "adult" | null;
   grade_number: number | null;
   is_director?: boolean | null;
+  nickname?: string | null;
 };
 
 type AssignmentRow = {
@@ -399,6 +401,25 @@ async function fetchDashboardForStudentIds(
         ).data ?? []
       : [];
 
+  const missingTeacherIds = Array.from(
+    new Set(
+      classTeachers
+        .map((ct) => ct.teacher_id)
+        .filter((id) => !profileMap.has(id)),
+    ),
+  );
+  if (missingTeacherIds.length > 0) {
+    const { data: teacherProfiles } = await supabase
+      .from("profiles")
+      .select(
+        "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname",
+      )
+      .in("id", missingTeacherIds);
+    for (const row of (teacherProfiles ?? []) as ProfileRow[]) {
+      profileMap.set(row.id, row);
+    }
+  }
+
   const loggedInToday = new Set(
     allLogins.filter((l) => isToday(l.logged_in_at)).map((l) => l.user_id),
   ).size;
@@ -450,8 +471,14 @@ async function fetchDashboardForStudentIds(
   }
   const teacherNamesByClass = new Map<string, string[]>();
   for (const ct of classTeachers) {
-    const name = profileMap.get(ct.teacher_id)?.display_name;
-    if (!name) continue;
+    const teacher = profileMap.get(ct.teacher_id);
+    if (!teacher) continue;
+    const name = formatStaffLabel({
+      displayName: teacher.display_name,
+      nickname: teacher.nickname,
+      role: teacher.role,
+      isDirector: teacher.is_director,
+    });
     const arr = teacherNamesByClass.get(ct.class_room_id) ?? [];
     arr.push(name);
     teacherNamesByClass.set(ct.class_room_id, arr);
@@ -492,8 +519,15 @@ async function fetchDashboardForStudentIds(
       }
     }
     const teacherNames = [...teacherNameSet];
-    if (subAdmin?.display_name && teacherNames.length === 0) {
-      teacherNames.push(subAdmin.display_name);
+    if (subAdmin && teacherNames.length === 0) {
+      teacherNames.push(
+        formatStaffLabel({
+          displayName: subAdmin.display_name,
+          nickname: subAdmin.nickname,
+          role: subAdmin.role,
+          isDirector: subAdmin.is_director,
+        }),
+      );
     }
 
     const profile = profileMap.get(id)!;
@@ -531,7 +565,12 @@ async function fetchDashboardForStudentIds(
 
   const subAdmins: SubAdminRow[] = subAdminProfiles.map((p) => ({
     id: p.id,
-    displayName: p.display_name,
+    displayName: formatStaffLabel({
+      displayName: p.display_name,
+      nickname: p.nickname,
+      role: p.role,
+      isDirector: p.is_director,
+    }),
     username: p.username ?? "—",
     assignedCount: assignments.filter((a) => a.sub_admin_id === p.id).length,
     isDirector: Boolean(p.is_director),
@@ -562,8 +601,8 @@ export async function getAdminDashboard(
 
   const { data: rawProfiles } = await supabase
     .from("profiles")
-    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director")
-    .in("role", ["student", "sub_admin"]);
+    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname")
+    .in("role", ["student", "sub_admin", "admin"]);
 
   const allProfiles = ((rawProfiles ?? []) as ProfileRow[]).filter(
     (p) => !academyId || !p.academy_id || p.academy_id === academyId,
@@ -646,7 +685,7 @@ export async function getSubAdminDashboard(
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director")
+    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname")
     .in("id", [...studentIds, subAdminId]);
 
   const { data: subAdminProfile } = await supabase
@@ -775,12 +814,12 @@ export async function getClassManagementData(
       .order("name", { ascending: true }),
     supabase
       .from("profiles")
-      .select("id, display_name, username, role, school_level, grade_number, is_director")
+      .select("id, display_name, username, role, school_level, grade_number, is_director, nickname")
       .eq("academy_id", academyId)
       .in("role", ["student", "sub_admin", "admin"]),
     supabase
       .from("profiles")
-      .select("id, display_name, username, role, school_level, grade_number, is_director")
+      .select("id, display_name, username, role, school_level, grade_number, is_director, nickname")
       .eq("id", adminId)
       .maybeSingle(),
   ]);
@@ -813,12 +852,17 @@ export async function getClassManagementData(
   const teachersByClass = new Map<string, string[]>();
   const teacherIdsByClass = new Map<string, string[]>();
   for (const row of teacherRows ?? []) {
-    const name = profileMap.get(row.teacher_id)?.display_name;
-    if (name) {
-      const names = teachersByClass.get(row.class_room_id) ?? [];
-      names.push(name);
-      teachersByClass.set(row.class_room_id, names);
-    }
+    const teacher = profileMap.get(row.teacher_id);
+    if (!teacher) continue;
+    const name = formatStaffLabel({
+      displayName: teacher.display_name,
+      nickname: teacher.nickname,
+      role: teacher.role,
+      isDirector: teacher.is_director,
+    });
+    const names = teachersByClass.get(row.class_room_id) ?? [];
+    names.push(name);
+    teachersByClass.set(row.class_room_id, names);
     const ids = teacherIdsByClass.get(row.class_room_id) ?? [];
     ids.push(row.teacher_id);
     teacherIdsByClass.set(row.class_room_id, ids);
@@ -900,11 +944,15 @@ export async function getClassManagementData(
     .filter((p) => p.role === "sub_admin" || p.role === "admin")
     .map((p) => ({
       id: p.id,
-      displayName: p.display_name,
+      displayName: formatStaffLabel({
+        displayName: p.display_name,
+        nickname: p.nickname,
+        role: p.role,
+        isDirector: p.is_director || p.role === "admin",
+      }),
       isDirector: p.role === "admin" || Boolean(p.is_director),
     }))
     .sort((a, b) => {
-      // 원장 먼저, 그다음 이름
       if (a.isDirector !== b.isDirector) return a.isDirector ? -1 : 1;
       return a.displayName.localeCompare(b.displayName, "ko");
     });

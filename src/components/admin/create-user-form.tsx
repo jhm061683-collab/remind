@@ -39,15 +39,43 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700">
-            이름
+            {role === "sub_admin" ? "이름" : "이름"}
           </label>
           <input
             name="displayName"
             required
-            placeholder="예: 김민수"
+            placeholder={role === "sub_admin" ? "예: 김민수" : "예: 김민수"}
             className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
           />
         </div>
+
+        {role === "sub_admin" ? (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">
+                닉네임 (선택)
+              </label>
+              <input
+                name="nickname"
+                placeholder="예: 민수쌤 · 비우면 이름 사용"
+                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+              />
+              <p className="mt-1 text-xs text-zinc-400">
+                원장으로 지정하면 화면에 「닉네임원장」처럼 보여요.
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">
+                로그인 아이디 (선택)
+              </label>
+              <input
+                name="username"
+                placeholder="비우면 닉네임 또는 이름으로 생성"
+                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+              />
+            </div>
+          </>
+        ) : null}
 
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700">

@@ -36,7 +36,8 @@ alter table public.profiles
   add column if not exists grade_number int,
   add column if not exists auto_promote_enabled boolean not null default true,
   add column if not exists auth_email text,
-  add column if not exists is_director boolean not null default false;
+  add column if not exists is_director boolean not null default false,
+  add column if not exists nickname text;
 
 -- school_level / grade_number 제약은 기존 DB와 충돌할 수 있어 별도 강제하지 않음
 

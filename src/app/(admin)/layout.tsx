@@ -32,7 +32,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-[var(--rm-bg-base,#f4f7fb)]">
-      <header className="rm-header sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur">
+      <header className="rm-header sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="md:hidden">
@@ -59,10 +59,10 @@ export default async function AdminLayout({
           </div>
         </div>
       </header>
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
         <AdminSidebar role={navRole} />
-        <div className="flex flex-1 flex-col">
-          <div className="border-b border-slate-200/80 bg-white px-4 py-3 md:hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="sticky top-[3.25rem] z-30 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
             <div className="mb-2 flex justify-end">
               {canSwitch ? <StaffModeSwitch currentMode={staffMode} /> : null}
             </div>

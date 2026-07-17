@@ -11,6 +11,8 @@ export type CreateAcademyUserInput = {
   username?: string;
   password?: string;
   displayName: string;
+  /** 표시용 닉네임 (없으면 이름 사용) */
+  nickname?: string;
   phone: string;
   schoolLevel?: SchoolLevel;
   gradeNumber?: number;
@@ -70,7 +72,9 @@ export async function createAcademyUser(
     };
   }
 
-  const requestedUsername = normalizeUsername(input.username ?? input.displayName);
+  const requestedUsername = normalizeUsername(
+    input.username?.trim() || input.nickname?.trim() || input.displayName,
+  );
   const password = (input.password?.trim() || defaultPasswordFromPhone(input.phone)).trim();
   if (password.length < 4) {
     return { error: "비밀번호 자동 생성에 실패했습니다. 휴대폰 번호를 확인해 주세요." };
@@ -133,6 +137,10 @@ export async function createAcademyUser(
         grade_number: input.role === "student" ? input.gradeNumber : null,
         is_director:
           input.role === "sub_admin" ? Boolean(input.isDirector) : false,
+        nickname:
+          input.role === "sub_admin"
+            ? input.nickname?.trim() || null
+            : null,
       })
       .eq("id", data.user.id);
   }

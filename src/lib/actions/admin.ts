@@ -43,9 +43,10 @@ export async function createAcademyUserAction(
   }
 
   const result = await createAcademyUser(session.id, {
-    username: String(formData.get("displayName") ?? ""),
+    username: String(formData.get("username") ?? ""),
     password: String(formData.get("password") ?? ""),
     displayName: String(formData.get("displayName") ?? ""),
+    nickname: String(formData.get("nickname") ?? ""),
     phone: String(formData.get("phone") ?? ""),
     schoolLevel:
       role === "student"
