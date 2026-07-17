@@ -20,6 +20,7 @@ export function SubAdminsList({ subAdmins }: Props) {
           <tr>
             <th className="px-4 py-3 font-medium">이름</th>
             <th className="px-4 py-3 font-medium">아이디</th>
+            <th className="px-4 py-3 font-medium">권한</th>
             <th className="px-4 py-3 font-medium">담당 학생</th>
           </tr>
         </thead>
@@ -30,6 +31,15 @@ export function SubAdminsList({ subAdmins }: Props) {
                 {row.displayName}
               </td>
               <td className="px-4 py-3 text-zinc-600">{row.username}</td>
+              <td className="px-4 py-3 text-zinc-700">
+                {row.isDirector ? (
+                  <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                    원장
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-400">선생님</span>
+                )}
+              </td>
               <td className="px-4 py-3 text-zinc-800">{row.assignedCount}명</td>
             </tr>
           ))}

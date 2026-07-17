@@ -1,10 +1,15 @@
 import { cookies } from "next/headers";
 import type { UserRole } from "@/types/user";
+import type { StaffMode } from "@/lib/auth/staff-mode";
 
 export type SessionUser = {
   id: string;
   name: string;
   role: UserRole;
+  /** 원장 권한 — 관리자 모드 전환 가능 */
+  isDirector?: boolean;
+  /** 관리자 모드 | 선생님(원장반) 모드 */
+  staffMode?: StaffMode;
 };
 
 const SESSION_COOKIE = "wrong-note-session";

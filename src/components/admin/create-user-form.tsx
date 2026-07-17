@@ -131,6 +131,23 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
           </p>
         ) : null}
 
+        {role === "sub_admin" ? (
+          <label className="flex items-start gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+            <input
+              type="checkbox"
+              name="isDirector"
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-semibold">원장으로 지정</span>
+              <span className="mt-0.5 block text-xs text-violet-800/90">
+                이 계정은 선생님 모드로 쓰고, 필요할 때 관리자 모드로 전환할 수
+                있어요. (학원·반·계정 관리)
+              </span>
+            </span>
+          </label>
+        ) : null}
+
         {state.error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {state.error}

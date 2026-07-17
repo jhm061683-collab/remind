@@ -58,6 +58,8 @@ export async function createAcademyUserAction(
     gradeNumber:
       role === "student" ? Number(formData.get("gradeNumber") ?? 1) : undefined,
     role,
+    isDirector:
+      role === "sub_admin" && String(formData.get("isDirector") ?? "") === "on",
   });
 
   if (result.error) return { error: result.error };
@@ -351,27 +353,69 @@ export async function saveStudentDetailAction(
 
 export async function createClassRoomAction(payload: {
   name: string;
-  schoolLevel: "elementary" | "middle" | "high" | "adult";
-  gradeNumber: number;
+  schoolLevel: "elementary" | "middle" | "high" | "adult" | null;
+  gradeNumber: number | null;
   teacherIds: string[];
+  isDirectorClass?: boolean;
 }): Promise<{ error?: string; success?: string }> {
   const session = await requireAdmin();
-  if (!payload.name.trim()) return { error: "반 이름을 입력해 주세요." };
+  const isDirectorClass = Boolean(payload.isDirectorClass);
+  const name = (payload.name.trim() || (isDirectorClass ? "원장반" : "")).trim();
+  if (!name) return { error: "반 이름을 입력해 주세요." };
 
   const academyId = await getAcademyIdForAdmin(session.id);
   if (!academyId) return { error: "학원 정보가 없습니다." };
 
+  const supabase = createServiceClient();
+
+  if (isDirectorClass) {
+    const { data: room, error: roomError } = await supabase
+      .from("class_rooms")
+      .insert({
+        academy_id: academyId,
+        name,
+        school_level: null,
+        grade_number: null,
+        is_director_class: true,
+        created_by: session.id,
+      })
+      .select("id, name")
+      .single();
+    if (roomError || !room) {
+      if (roomError?.message.includes("class_rooms_academy")) {
+        return { error: "같은 이름의 원장반이 이미 있어요." };
+      }
+      return { error: roomError?.message ?? "원장반 생성 실패" };
+    }
+
+    const teacherIds = Array.from(new Set([session.id, ...payload.teacherIds]));
+    const { error: teacherError } = await supabase.from("class_room_teachers").upsert(
+      teacherIds.map((teacherId) => ({
+        class_room_id: room.id,
+        teacher_id: teacherId,
+      })),
+      { onConflict: "class_room_id,teacher_id" },
+    );
+    if (teacherError) return { error: teacherError.message };
+
+    revalidatePath("/admin/classes");
+    revalidatePath("/admin/dashboard");
+    return { success: `「${room.name}」 원장반을 만들었습니다.` };
+  }
+
+  if (!payload.schoolLevel || !payload.gradeNumber) {
+    return { error: "학교급과 학년을 입력해 주세요." };
+  }
+
   const { room, error } = await findOrCreateClassRoom({
     academyId,
     createdBy: session.id,
-    name: payload.name,
+    name,
     schoolLevel: payload.schoolLevel,
     gradeNumber: payload.gradeNumber,
   });
   if (error || !room) return { error: error ?? "반 생성 실패" };
 
-  // 이미 있던 반이면 안내, 담당만 추가로 지정
-  const supabase = createServiceClient();
   if (payload.teacherIds.length > 0) {
     const { error: teacherError } = await supabase
       .from("class_room_teachers")

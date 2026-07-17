@@ -15,6 +15,8 @@ export type CreateAcademyUserInput = {
   schoolLevel?: SchoolLevel;
   gradeNumber?: number;
   role: Extract<UserRole, "student" | "sub_admin">;
+  /** 서브관리자 원장 지정 — 관리자 모드 전환 가능 */
+  isDirector?: boolean;
 };
 
 function normalizeUsername(raw: string): string {
@@ -111,6 +113,7 @@ export async function createAcademyUser(
       role: input.role,
       display_name: input.displayName.trim(),
       username,
+      is_director: input.role === "sub_admin" && Boolean(input.isDirector),
     },
   });
 
@@ -128,6 +131,8 @@ export async function createAcademyUser(
         phone: normalizePhone(input.phone),
         school_level: input.role === "student" ? input.schoolLevel : null,
         grade_number: input.role === "student" ? input.gradeNumber : null,
+        is_director:
+          input.role === "sub_admin" ? Boolean(input.isDirector) : false,
       })
       .eq("id", data.user.id);
   }

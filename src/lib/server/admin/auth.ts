@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession, type SessionUser } from "@/lib/auth/session";
+import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 import { isAdminOnlyPath } from "@/lib/constants/admin-nav";
 import type { UserRole } from "@/types/user";
 
@@ -24,7 +25,7 @@ export async function requireStaff(): Promise<SessionUser> {
 
 export async function requireAdmin(): Promise<SessionUser> {
   const session = await requireSession();
-  if (session.role !== "admin") {
+  if (getEffectiveStaffRole(session) !== "admin") {
     redirect(staffHome(session.role));
   }
   return session;
@@ -37,7 +38,10 @@ export async function requireAdminPage(): Promise<SessionUser> {
 
 export async function requireStaffAdminPath(pathname: string): Promise<SessionUser> {
   const session = await requireStaff();
-  if (session.role === "sub_admin" && isAdminOnlyPath(pathname)) {
+  if (
+    getEffectiveStaffRole(session) === "sub_admin" &&
+    isAdminOnlyPath(pathname)
+  ) {
     redirect("/admin/dashboard");
   }
   return session;

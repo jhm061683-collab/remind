@@ -8,11 +8,12 @@ import {
   getClassManagementData,
   getPromotionRule,
 } from "@/lib/server/admin/queries";
+import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 
 export default async function AdminStudentsPage() {
   const session = await requireStaff();
   const data = await getStaffDashboard(session);
-  const isAdmin = session.role === "admin";
+  const isAdmin = getEffectiveStaffRole(session) === "admin";
   const promotionRule = isAdmin ? await getPromotionRule(session.id) : null;
   const classData = isAdmin ? await getClassManagementData(session.id) : null;
   const classOptions =

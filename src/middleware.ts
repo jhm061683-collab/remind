@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getHomePathForRole } from "@/lib/auth/users";
 import { parseSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth/session";
+import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 import { canAccessAdminPath } from "@/lib/constants/admin-nav";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
 import { updateSession } from "@/lib/supabase/middleware";
@@ -96,7 +97,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES)) {
-    if (!canAccessAdminPath(session.role, pathname)) {
+    const effectiveRole =
+      session.role === "admin" || session.role === "sub_admin"
+        ? getEffectiveStaffRole(session)
+        : session.role;
+    if (!canAccessAdminPath(effectiveRole, pathname)) {
       return NextResponse.redirect(
         new URL(getHomePathForRole(session.role), request.url),
       );

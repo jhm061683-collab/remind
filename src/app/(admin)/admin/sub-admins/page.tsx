@@ -12,7 +12,7 @@ export default async function SubAdminsPage() {
     <>
       <PageHeader
         title="서브관리자 관리"
-        description="부담당 선생님 계정을 만들고 담당 학생 수를 확인합니다."
+        description="선생님 계정을 만들고, 필요하면 원장으로 지정해 관리자 모드 전환을 열어 줍니다."
       />
 
       <div className="mb-6">

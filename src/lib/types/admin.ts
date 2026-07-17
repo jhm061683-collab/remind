@@ -35,6 +35,7 @@ export type SubAdminRow = {
   displayName: string;
   username: string;
   assignedCount: number;
+  isDirector: boolean;
 };
 
 export type DailyActivity = {
@@ -84,6 +85,7 @@ export type ClassRoomSummary = {
   gradeNumber: number | null;
   gradeLabel: string | null;
   displayLabel: string;
+  isDirectorClass: boolean;
   teacherIds: string[];
   teacherNames: string[];
   studentIds: string[];

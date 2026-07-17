@@ -16,13 +16,14 @@ export type LoginState = {
 type LoginProfile = {
   name: string;
   role: UserRole;
+  isDirector: boolean;
 };
 
 async function getProfileFromSupabase(userId: string): Promise<LoginProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, role")
+    .select("display_name, role, is_director")
     .eq("id", userId)
     .single();
 
@@ -30,6 +31,7 @@ async function getProfileFromSupabase(userId: string): Promise<LoginProfile | nu
   return {
     name: data.display_name as string,
     role: data.role as UserRole,
+    isDirector: Boolean(data.is_director) || data.role === "admin",
   };
 }
 
@@ -41,7 +43,11 @@ function profileFromUserMetadata(metadata: Record<string, unknown> | undefined):
     typeof name === "string" &&
     (role === "student" || role === "admin" || role === "sub_admin")
   ) {
-    return { name, role };
+    return {
+      name,
+      role,
+      isDirector: role === "admin" || metadata?.is_director === true,
+    };
   }
   return null;
 }
@@ -84,7 +90,7 @@ export async function loginAction(
       const service = createServiceClient();
       const { data: profile } = await service
         .from("profiles")
-        .select("auth_email, display_name, role")
+        .select("auth_email, display_name, role, is_director")
         .eq("username", trimmed)
         .maybeSingle();
       mark("lookupLoginEmail");
@@ -94,6 +100,8 @@ export async function loginAction(
         cachedProfile = {
           name: profile.display_name as string,
           role: profile.role as UserRole,
+          isDirector:
+            Boolean(profile.is_director) || profile.role === "admin",
         };
       }
     }
@@ -160,6 +168,8 @@ export async function loginAction(
       id: userId,
       name: profile.name,
       role: profile.role,
+      isDirector: profile.isDirector || profile.role === "admin",
+      staffMode: profile.role === "admin" ? "admin" : "teacher",
     });
     mark("setSession");
 
@@ -178,11 +188,35 @@ export async function loginAction(
     id: user.id,
     name: user.name,
     role: user.role,
+    isDirector: user.role === "admin",
+    staffMode: user.role === "admin" ? "admin" : "teacher",
   });
   mark("setSessionLocal");
 
   flushTiming("ok");
   redirect(getHomePathForRole(user.role));
+}
+
+export async function switchStaffModeAction(
+  mode: "admin" | "teacher",
+): Promise<{ error?: string }> {
+  const { getSession, setSession } = await import("@/lib/auth/session");
+  const { canSwitchStaffMode } = await import("@/lib/auth/staff-mode");
+  const { revalidatePath } = await import("next/cache");
+
+  const session = await getSession();
+  if (!session) return { error: "로그인이 필요합니다." };
+  if (!canSwitchStaffMode(session)) {
+    return { error: "모드를 바꿀 권한이 없습니다." };
+  }
+
+  await setSession({
+    ...session,
+    isDirector: session.isDirector || session.role === "admin",
+    staffMode: mode,
+  });
+  revalidatePath("/admin", "layout");
+  redirect("/admin/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {

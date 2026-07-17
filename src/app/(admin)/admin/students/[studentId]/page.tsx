@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { StudentDetailPanel } from "@/components/admin/student-detail-panel";
 import { PageHeader } from "@/components/ui/page-header";
+import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { getStudentDetailForStaff } from "@/lib/server/admin/queries";
 
@@ -13,7 +14,7 @@ export default async function AdminStudentDetailPage({ params }: Props) {
   const { studentId } = await params;
   const detail = await getStudentDetailForStaff(
     session.id,
-    session.role === "sub_admin" ? "sub_admin" : "admin",
+    getEffectiveStaffRole(session),
     studentId,
   );
   if (!detail) notFound();

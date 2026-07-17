@@ -26,6 +26,7 @@ create table if not exists public.profiles (
   role text not null check (role in ('student', 'admin', 'sub_admin')),
   display_name text not null,
   username text unique,
+  is_director boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -34,7 +35,8 @@ alter table public.profiles
   add column if not exists school_level text,
   add column if not exists grade_number int,
   add column if not exists auto_promote_enabled boolean not null default true,
-  add column if not exists auth_email text;
+  add column if not exists auth_email text,
+  add column if not exists is_director boolean not null default false;
 
 -- school_level / grade_number 제약은 기존 DB와 충돌할 수 있어 별도 강제하지 않음
 
@@ -147,6 +149,7 @@ create table if not exists public.class_rooms (
     check (school_level in ('elementary', 'middle', 'high', 'adult')),
   grade_number int
     check (grade_number >= 1 and grade_number <= 20),
+  is_director_class boolean not null default false,
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -158,6 +161,11 @@ create unique index if not exists class_rooms_academy_grade_name_uidx
     coalesce(grade_number, 0),
     name
   );
+
+alter table public.class_rooms
+  add column if not exists school_level text,
+  add column if not exists grade_number int,
+  add column if not exists is_director_class boolean not null default false;
 
 create table if not exists public.class_room_students (
   id uuid primary key default gen_random_uuid(),

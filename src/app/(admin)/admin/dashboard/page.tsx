@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { getStaffDashboard } from "@/lib/server/admin/dashboard";
 import { getClassManagementData } from "@/lib/server/admin/queries";
+import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 
 function pct(value: number | null): string {
   if (value === null) return "—";
@@ -14,7 +15,7 @@ function pct(value: number | null): string {
 export default async function AdminDashboardPage() {
   const session = await requireStaff();
   const data = await getStaffDashboard(session);
-  const isSubAdmin = session.role === "sub_admin";
+  const isSubAdmin = getEffectiveStaffRole(session) === "sub_admin";
   const classData =
     !isSubAdmin ? await getClassManagementData(session.id) : null;
   const classOptions =

@@ -31,6 +31,7 @@ type ProfileRow = {
   phone: string | null;
   school_level: "elementary" | "middle" | "high" | "adult" | null;
   grade_number: number | null;
+  is_director?: boolean | null;
 };
 
 type AssignmentRow = {
@@ -53,6 +54,7 @@ type ClassRoomRow = {
   name: string;
   school_level: "elementary" | "middle" | "high" | "adult" | null;
   grade_number: number | null;
+  is_director_class?: boolean;
 };
 
 type ClassTeacherRow = {
@@ -272,6 +274,7 @@ function demoDashboard(): AdminDashboardData {
         displayName: teacher.name,
         username: teacher.username,
         assignedCount: 1,
+        isDirector: false,
       },
     ],
   };
@@ -532,6 +535,7 @@ async function fetchDashboardForStudentIds(
     displayName: p.display_name,
     username: p.username ?? "—",
     assignedCount: assignments.filter((a) => a.sub_admin_id === p.id).length,
+    isDirector: Boolean(p.is_director),
   }));
 
   return {
@@ -559,7 +563,7 @@ export async function getAdminDashboard(
 
   const { data: rawProfiles } = await supabase
     .from("profiles")
-    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number")
+    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director")
     .in("role", ["student", "sub_admin"]);
 
   const allProfiles = ((rawProfiles ?? []) as ProfileRow[]).filter(
@@ -643,7 +647,7 @@ export async function getSubAdminDashboard(
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number")
+    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director")
     .in("id", [...studentIds, subAdminId]);
 
   const { data: subAdminProfile } = await supabase
@@ -764,14 +768,14 @@ export async function getClassManagementData(
   const [{ data: classRows }, { data: profiles }] = await Promise.all([
     supabase
       .from("class_rooms")
-      .select("id, name, school_level, grade_number")
+      .select("id, name, school_level, grade_number, is_director_class")
       .eq("academy_id", academyId)
       .order("school_level", { ascending: true })
       .order("grade_number", { ascending: true })
       .order("name", { ascending: true }),
     supabase
       .from("profiles")
-      .select("id, display_name, username, role, school_level, grade_number")
+      .select("id, display_name, username, role, school_level, grade_number, is_director")
       .eq("academy_id", academyId)
       .in("role", ["student", "sub_admin"]),
   ]);
@@ -839,8 +843,13 @@ export async function getClassManagementData(
       name: room.name,
       schoolLevel: room.school_level,
       gradeNumber: room.grade_number,
-      gradeLabel: toGradeLabel(room.school_level, room.grade_number),
-      displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
+      gradeLabel: room.is_director_class
+        ? "원장반"
+        : toGradeLabel(room.school_level, room.grade_number),
+      displayLabel: room.is_director_class
+        ? room.name?.trim() || "원장반"
+        : formatClassLabel(room.name, room.school_level, room.grade_number),
+      isDirectorClass: Boolean(room.is_director_class),
       teacherIds: teacherIdsByClass.get(room.id) ?? [],
       teacherNames: teachersByClass.get(room.id) ?? [],
       studentIds,
