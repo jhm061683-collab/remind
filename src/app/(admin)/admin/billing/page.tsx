@@ -1,4 +1,5 @@
 import { BillingPanel } from "@/components/admin/billing-panel";
+import { PlanCards } from "@/components/billing/plan-cards";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   getTossClientKey,
@@ -10,6 +11,7 @@ import {
   ensureCustomerKey,
   getAcademyBillingSummary,
   getAcademyIdForAdmin,
+  listActivePlans,
   listRecentCharges,
 } from "@/lib/server/billing/queries";
 import { getSiteUrl } from "@/lib/site-url";
@@ -23,7 +25,10 @@ export default async function AdminBillingPage() {
   }
 
   await ensureCustomerKey(academyId);
-  const summary = await getAcademyBillingSummary(academyId);
+  const [summary, plans] = await Promise.all([
+    getAcademyBillingSummary(academyId),
+    listActivePlans(),
+  ]);
   if (!summary) redirect("/admin/dashboard");
 
   const charges = (await listRecentCharges(academyId)) as Array<{
@@ -44,12 +49,26 @@ export default async function AdminBillingPage() {
     <>
       <PageHeader
         title="결제 · 구독"
-        description={
-          mockMode
-            ? "지금은 목 결제입니다. 학생 수 × 단가 계산·등록 흐름만 시험합니다."
-            : "학생 수에 따라 월 요금이 달라집니다. 카드는 토스페이먼츠에만 등록됩니다."
-        }
+        description="요금제는 ChatGPT처럼 Basic / Pro / Premium 입니다. 변경은 플랫폼(owner)에서 합니다."
       />
+
+      <section className="mb-6">
+        <h2 className="mb-3 text-sm font-semibold">요금제</h2>
+        <PlanCards
+          plans={plans.map((p) => ({
+            code: p.code,
+            name: p.name,
+            pricePerStudentKrw: p.pricePerStudentKrw,
+            ocrDailyLimit: p.ocrDailyLimit,
+            description: p.description,
+            highlight: p.highlight,
+          }))}
+          currentPlanCode={summary.planCode}
+          studentCount={summary.studentCount}
+          footnote="지금은 owner가 요금제를 바꿉니다. OCR을 실제로 열면 신청 시 자동 변경 + 일할계산으로 이어집니다."
+        />
+      </section>
+
       <BillingPanel
         summary={summary}
         clientKey={getTossClientKey()}

@@ -30,8 +30,7 @@ export async function createAcademyAction(
   const result = await createAcademyRecord({
     name: String(formData.get("name") ?? ""),
     code: String(formData.get("code") ?? ""),
-    planCode: String(formData.get("planCode") ?? "trial"),
-    pricePerStudentKrw: Number(formData.get("pricePerStudentKrw") ?? 3000),
+    planCode: String(formData.get("planCode") ?? "basic"),
   });
 
   if (result.error) return { error: result.error };
@@ -60,7 +59,7 @@ export async function createInviteAction(
   const result = await createAcademyInvite({
     academyCode: String(formData.get("academyCode") ?? ""),
     academyNameHint: String(formData.get("academyNameHint") ?? ""),
-    pricePerStudentKrw: Number(formData.get("pricePerStudentKrw") ?? 3000),
+    planCode: String(formData.get("planCode") ?? "basic"),
     trialDays: Number(formData.get("trialDays") ?? 14),
     expiresInDays: Number(formData.get("expiresInDays") ?? 14),
     createdBy: session.id,
@@ -75,6 +74,25 @@ export async function createInviteAction(
     ok: "초대 링크를 만들었습니다. 아래 주소를 원장에게 보내 주세요.",
     inviteUrl: `/join/${result.token}`,
   };
+}
+
+export async function changeAcademyPlanAction(
+  academyId: string,
+  planCode: import("@/lib/billing/plans").PlanCode,
+): Promise<PlatformActionState> {
+  const session = await requirePlatformAdmin();
+  const { setAcademyPlanByOwner } = await import(
+    "@/lib/server/platform/queries"
+  );
+  const result = await setAcademyPlanByOwner({
+    academyId,
+    planCode,
+    createdBy: session.id,
+  });
+  if (result.error) return { error: result.error };
+  revalidatePath("/platform");
+  revalidatePath("/admin/billing");
+  return { ok: result.ok };
 }
 
 export async function revokeInviteAction(

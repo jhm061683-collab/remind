@@ -1,8 +1,12 @@
 import { randomBytes } from "node:crypto";
 import {
   estimateMonthlyPriceKrw,
+  isPlanCode,
   normalizeAcademyCode,
+  validateAcademyCode,
+  type PlanCode,
 } from "@/lib/billing/pricing";
+import { changeAcademyPlan } from "@/lib/server/billing/queries";
 import { toAuthEmail } from "@/lib/supabase/config";
 import { createServiceClient } from "@/lib/supabase/service";
 import { PLATFORM_LOGIN_CODE } from "@/types/user";
@@ -23,6 +27,7 @@ export type PlatformAcademyRow = {
   estimatedMonthlyKrw: number;
   hasBillingKey: boolean;
   cardNumberMasked: string | null;
+  planCode: string | null;
 };
 
 export type SubscriptionPlanRow = {
@@ -32,7 +37,10 @@ export type SubscriptionPlanRow = {
   maxStudents: number | null;
   priceKrw: number;
   pricePerStudentKrw: number;
+  ocrDailyLimit: number;
   billingInterval: string;
+  description: string | null;
+  highlight: boolean;
 };
 
 export type AcademyInviteRow = {
@@ -41,6 +49,7 @@ export type AcademyInviteRow = {
   academyCode: string;
   academyNameHint: string | null;
   pricePerStudentKrw: number;
+  planCode: string;
   trialDays: number;
   status: "pending" | "accepted" | "revoked" | "expired";
   expiresAt: string | null;
@@ -53,6 +62,7 @@ export type PublicInviteInfo = {
   academyCode: string;
   academyNameHint: string | null;
   pricePerStudentKrw: number;
+  planCode: string;
   trialDays: number;
   expiresAt: string | null;
 };
@@ -88,7 +98,7 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
         .in("academy_id", academyIds),
       supabase
         .from("subscription_plans")
-        .select("id, name, price_per_student_krw"),
+        .select("id, name, code, price_per_student_krw"),
     ]);
 
   const planById = new Map(
@@ -96,7 +106,8 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
       p.id as string,
       {
         name: p.name as string,
-        unit: Number(p.price_per_student_krw ?? 3000),
+        code: p.code as string,
+        unit: Number(p.price_per_student_krw ?? 9900),
       },
     ]),
   );
@@ -127,6 +138,7 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
       studentCount,
       adminName: (admin?.display_name as string | null) ?? null,
       planName: plan?.name ?? null,
+      planCode: plan?.code ?? null,
       subscriptionStatus: (sub?.status as string | null) ?? null,
       periodEnd: (sub?.current_period_end as string | null) ?? null,
       pricePerStudentKrw,
@@ -145,10 +157,11 @@ export async function listSubscriptionPlans(): Promise<SubscriptionPlanRow[]> {
   const { data } = await supabase
     .from("subscription_plans")
     .select(
-      "id, code, name, max_students, price_krw, price_per_student_krw, billing_interval",
+      "id, code, name, max_students, price_krw, price_per_student_krw, ocr_daily_limit, billing_interval, description, highlight, sort_order",
     )
     .eq("is_active", true)
-    .order("price_krw", { ascending: true });
+    .in("code", ["basic", "pro", "premium"])
+    .order("sort_order", { ascending: true });
 
   return (data ?? []).map((p) => ({
     id: p.id as string,
@@ -156,8 +169,11 @@ export async function listSubscriptionPlans(): Promise<SubscriptionPlanRow[]> {
     name: p.name as string,
     maxStudents: (p.max_students as number | null) ?? null,
     priceKrw: Number(p.price_krw ?? 0),
-    pricePerStudentKrw: Number(p.price_per_student_krw ?? 3000),
+    pricePerStudentKrw: Number(p.price_per_student_krw ?? 9900),
+    ocrDailyLimit: Number(p.ocr_daily_limit ?? 0),
     billingInterval: p.billing_interval as string,
+    description: (p.description as string | null) ?? null,
+    highlight: Boolean(p.highlight),
   }));
 }
 
@@ -166,7 +182,7 @@ export async function listAcademyInvites(): Promise<AcademyInviteRow[]> {
   const { data } = await supabase
     .from("academy_invites")
     .select(
-      "id, token, academy_code, academy_name_hint, price_per_student_krw, trial_days, status, expires_at, created_at, accepted_academy_id",
+      "id, token, academy_code, academy_name_hint, price_per_student_krw, plan_code, trial_days, status, expires_at, created_at, accepted_academy_id",
     )
     .order("created_at", { ascending: false })
     .limit(50);
@@ -176,7 +192,8 @@ export async function listAcademyInvites(): Promise<AcademyInviteRow[]> {
     token: row.token as string,
     academyCode: row.academy_code as string,
     academyNameHint: (row.academy_name_hint as string | null) ?? null,
-    pricePerStudentKrw: Number(row.price_per_student_krw ?? 3000),
+    pricePerStudentKrw: Number(row.price_per_student_krw ?? 9900),
+    planCode: (row.plan_code as string | null) || "basic",
     trialDays: Number(row.trial_days ?? 14),
     status: row.status as AcademyInviteRow["status"],
     expiresAt: (row.expires_at as string | null) ?? null,
@@ -188,26 +205,31 @@ export async function listAcademyInvites(): Promise<AcademyInviteRow[]> {
 export async function createAcademyInvite(input: {
   academyCode: string;
   academyNameHint?: string;
-  pricePerStudentKrw: number;
+  planCode?: string;
   trialDays?: number;
   expiresInDays?: number;
   createdBy?: string;
 }): Promise<{ error?: string; token?: string; inviteId?: string }> {
+  const codeError = validateAcademyCode(input.academyCode);
+  if (codeError) return { error: codeError };
   const code = normalizeAcademyCode(input.academyCode);
-  const unit = Math.floor(input.pricePerStudentKrw);
+  const planCode = isPlanCode(input.planCode ?? "basic")
+    ? (input.planCode as PlanCode)
+    : "basic";
   const trialDays = Math.floor(input.trialDays ?? 14);
   const expiresInDays = Math.floor(input.expiresInDays ?? 14);
   const hint = input.academyNameHint?.trim() || null;
 
-  if (code.length < 2) return { error: "학원 코드는 2자 이상으로 입력해 주세요." };
-  if (code === PLATFORM_LOGIN_CODE) {
-    return { error: "PLATFORM은 예약된 코드입니다." };
-  }
-  if (!Number.isFinite(unit) || unit < 0) {
-    return { error: "학생 1명당 단가를 확인해 주세요." };
-  }
-
   const supabase = createServiceClient();
+
+  const { data: plan } = await supabase
+    .from("subscription_plans")
+    .select("id, price_per_student_krw")
+    .eq("code", planCode)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!plan) return { error: "요금제를 찾을 수 없습니다." };
+  const unit = Number(plan.price_per_student_krw ?? 9900);
 
   const { data: existingAcademy } = await supabase
     .from("academies")
@@ -241,6 +263,7 @@ export async function createAcademyInvite(input: {
       academy_code: code,
       academy_name_hint: hint,
       price_per_student_krw: unit,
+      plan_code: planCode,
       trial_days: trialDays,
       status: "pending",
       expires_at: expiresAt,
@@ -276,7 +299,7 @@ export async function getPublicInvite(
   const { data, error } = await supabase
     .from("academy_invites")
     .select(
-      "token, academy_code, academy_name_hint, price_per_student_krw, trial_days, status, expires_at",
+      "token, academy_code, academy_name_hint, price_per_student_krw, plan_code, trial_days, status, expires_at",
     )
     .eq("token", token)
     .maybeSingle();
@@ -299,7 +322,8 @@ export async function getPublicInvite(
       token: data.token as string,
       academyCode: data.academy_code as string,
       academyNameHint: (data.academy_name_hint as string | null) ?? null,
-      pricePerStudentKrw: Number(data.price_per_student_krw ?? 3000),
+      pricePerStudentKrw: Number(data.price_per_student_krw ?? 9900),
+      planCode: (data.plan_code as string | null) || "basic",
       trialDays: Number(data.trial_days ?? 14),
       expiresAt: (data.expires_at as string | null) ?? null,
     },
@@ -416,8 +440,11 @@ export async function acceptAcademyInvite(input: {
 
   const { data: plan } = await supabase
     .from("subscription_plans")
-    .select("id")
-    .eq("code", "trial")
+    .select("id, price_per_student_krw")
+    .eq(
+      "code",
+      isPlanCode(invite.planCode) ? invite.planCode : "basic",
+    )
     .maybeSingle();
 
   await supabase.from("academy_subscriptions").upsert(
@@ -425,7 +452,9 @@ export async function acceptAcademyInvite(input: {
       academy_id: academyId,
       plan_id: plan?.id ?? null,
       status: "trial",
-      price_per_student_krw: invite.pricePerStudentKrw,
+      price_per_student_krw: Number(
+        plan?.price_per_student_krw ?? invite.pricePerStudentKrw ?? 9900,
+      ),
       current_period_start: new Date().toISOString(),
       current_period_end: periodEnd,
       updated_at: new Date().toISOString(),
@@ -462,12 +491,10 @@ export async function createAcademyRecord(input: {
   pricePerStudentKrw?: number;
 }): Promise<{ error?: string; academyId?: string }> {
   const name = input.name.trim();
-  const code = normalizeAcademyCode(input.code);
   if (name.length < 2) return { error: "학원 이름은 2자 이상으로 입력해 주세요." };
-  if (code.length < 2) return { error: "학원 코드는 2자 이상으로 입력해 주세요." };
-  if (code === PLATFORM_LOGIN_CODE) {
-    return { error: "PLATFORM은 예약된 코드입니다." };
-  }
+  const codeError = validateAcademyCode(input.code);
+  if (codeError) return { error: codeError };
+  const code = normalizeAcademyCode(input.code);
 
   const supabase = createServiceClient();
   const { data: existing } = await supabase
@@ -487,7 +514,9 @@ export async function createAcademyRecord(input: {
     return { error: error?.message ?? "학원 생성에 실패했습니다." };
   }
 
-  const planCode = input.planCode?.trim() || "trial";
+  const planCode = isPlanCode(input.planCode ?? "basic")
+    ? (input.planCode as PlanCode)
+    : "basic";
   const { data: plan } = await supabase
     .from("subscription_plans")
     .select("id, price_per_student_krw")
@@ -495,7 +524,7 @@ export async function createAcademyRecord(input: {
     .maybeSingle();
 
   const unit = Math.floor(
-    input.pricePerStudentKrw ?? Number(plan?.price_per_student_krw ?? 3000),
+    input.pricePerStudentKrw ?? Number(plan?.price_per_student_krw ?? 9900),
   );
 
   if (plan?.id) {
@@ -516,6 +545,33 @@ export async function createAcademyRecord(input: {
   }
 
   return { academyId: academy.id as string };
+}
+
+export async function setAcademyPlanByOwner(input: {
+  academyId: string;
+  planCode: PlanCode;
+  createdBy: string;
+}): Promise<{ error?: string; ok?: string }> {
+  const result = await changeAcademyPlan({
+    academyId: input.academyId,
+    planCode: input.planCode,
+    reason: "owner",
+    createdBy: input.createdBy,
+  });
+  if (result.error) return { error: result.error };
+  const prorate = result.prorationKrw ?? 0;
+  const days = result.daysRemaining ?? 0;
+  if (prorate === 0) {
+    return { ok: "요금제를 바꿨습니다." };
+  }
+  if (prorate > 0) {
+    return {
+      ok: `요금제 변경 · 남은 ${days}일 일할 청구 ${prorate.toLocaleString("ko-KR")}원`,
+    };
+  }
+  return {
+    ok: `요금제 변경 · 남은 ${days}일 일할 환급 ${Math.abs(prorate).toLocaleString("ko-KR")}원`,
+  };
 }
 
 export async function setAcademyStatus(

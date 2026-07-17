@@ -44,7 +44,8 @@ export function LoginForm({
           required
         />
         <p className="mt-1 text-xs text-slate-500">
-          데모는 <span className="font-mono">{DEMO_ACADEMY_CODE}</span>, 플랫폼 관리자는{" "}
+          영문·숫자 4~12자 · 데모{" "}
+          <span className="font-mono">{DEMO_ACADEMY_CODE}</span> · 플랫폼{" "}
           <span className="font-mono">{PLATFORM_LOGIN_CODE}</span>
         </p>
       </div>

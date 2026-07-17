@@ -1,4 +1,8 @@
-import { estimateMonthlyPriceKrw } from "@/lib/billing/pricing";
+import {
+  calcProrationKrw,
+  estimateMonthlyPriceKrw,
+  type PlanCode,
+} from "@/lib/billing/plans";
 import { tossCustomerKeyForAcademy } from "@/lib/billing/toss";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -10,12 +14,27 @@ export type AcademyBillingSummary = {
   pricePerStudentKrw: number;
   estimatedMonthlyKrw: number;
   subscriptionStatus: string;
+  periodStart: string | null;
   periodEnd: string | null;
   customerKey: string;
   hasBillingKey: boolean;
   cardCompany: string | null;
   cardNumberMasked: string | null;
   billingRegisteredAt: string | null;
+  planCode: PlanCode | string | null;
+  planName: string | null;
+  ocrDailyLimit: number;
+};
+
+export type PublicPlanRow = {
+  id: string;
+  code: string;
+  name: string;
+  pricePerStudentKrw: number;
+  ocrDailyLimit: number;
+  description: string | null;
+  highlight: boolean;
+  sortOrder: number;
 };
 
 export async function getAcademyIdForAdmin(
@@ -46,7 +65,7 @@ export async function getAcademyBillingSummary(
       supabase
         .from("academy_subscriptions")
         .select(
-          "status, current_period_end, price_per_student_krw, customer_key, billing_key, card_company, card_number_masked, billing_registered_at, plan_id",
+          "status, current_period_start, current_period_end, price_per_student_krw, customer_key, billing_key, card_company, card_number_masked, billing_registered_at, plan_id",
         )
         .eq("academy_id", academyId)
         .maybeSingle(),
@@ -59,16 +78,26 @@ export async function getAcademyBillingSummary(
 
   if (!academy) return null;
 
+  let planCode: string | null = null;
+  let planName: string | null = null;
+  let ocrDailyLimit = 0;
   let unit = Number(sub?.price_per_student_krw ?? 0);
-  if (!unit && sub?.plan_id) {
+
+  if (sub?.plan_id) {
     const { data: plan } = await supabase
       .from("subscription_plans")
-      .select("price_per_student_krw")
+      .select("code, name, price_per_student_krw, ocr_daily_limit")
       .eq("id", sub.plan_id)
       .maybeSingle();
-    unit = Number(plan?.price_per_student_krw ?? 3000);
+    if (plan) {
+      planCode = (plan.code as string) ?? null;
+      planName = (plan.name as string) ?? null;
+      ocrDailyLimit = Number(plan.ocr_daily_limit ?? 0);
+      if (!unit) unit = Number(plan.price_per_student_krw ?? 0);
+    }
   }
-  if (!unit) unit = 3000;
+
+  if (!unit) unit = 9900;
 
   const studentCount = studentCountResult.count ?? 0;
   const customerKey =
@@ -83,13 +112,204 @@ export async function getAcademyBillingSummary(
     pricePerStudentKrw: unit,
     estimatedMonthlyKrw: estimateMonthlyPriceKrw(studentCount, unit),
     subscriptionStatus: (sub?.status as string | null) ?? "none",
+    periodStart: (sub?.current_period_start as string | null) ?? null,
     periodEnd: (sub?.current_period_end as string | null) ?? null,
     customerKey,
     hasBillingKey: Boolean(sub?.billing_key),
     cardCompany: (sub?.card_company as string | null) ?? null,
     cardNumberMasked: (sub?.card_number_masked as string | null) ?? null,
     billingRegisteredAt: (sub?.billing_registered_at as string | null) ?? null,
+    planCode,
+    planName,
+    ocrDailyLimit,
   };
+}
+
+export async function listActivePlans(): Promise<PublicPlanRow[]> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("subscription_plans")
+    .select(
+      "id, code, name, price_per_student_krw, ocr_daily_limit, description, highlight, sort_order",
+    )
+    .eq("is_active", true)
+    .in("code", ["basic", "pro", "premium"])
+    .order("sort_order", { ascending: true });
+
+  return (data ?? []).map((p) => ({
+    id: p.id as string,
+    code: p.code as string,
+    name: p.name as string,
+    pricePerStudentKrw: Number(p.price_per_student_krw ?? 0),
+    ocrDailyLimit: Number(p.ocr_daily_limit ?? 0),
+    description: (p.description as string | null) ?? null,
+    highlight: Boolean(p.highlight),
+    sortOrder: Number(p.sort_order ?? 0),
+  }));
+}
+
+export async function changeAcademyPlan(input: {
+  academyId: string;
+  planCode: PlanCode;
+  reason?: "owner" | "ocr_apply" | "system";
+  createdBy?: string;
+}): Promise<{
+  error?: string;
+  prorationKrw?: number;
+  daysRemaining?: number;
+}> {
+  const supabase = createServiceClient();
+
+  const [{ data: plan }, summary] = await Promise.all([
+    supabase
+      .from("subscription_plans")
+      .select("id, code, price_per_student_krw, ocr_daily_limit")
+      .eq("code", input.planCode)
+      .eq("is_active", true)
+      .maybeSingle(),
+    getAcademyBillingSummary(input.academyId),
+  ]);
+
+  if (!plan) return { error: "요금제를 찾을 수 없습니다." };
+  if (!summary) return { error: "학원 구독 정보가 없습니다." };
+  if (summary.planCode === input.planCode) {
+    return { error: "이미 같은 요금제입니다." };
+  }
+
+  const { data: sub } = await supabase
+    .from("academy_subscriptions")
+    .select("plan_id, current_period_start, current_period_end")
+    .eq("academy_id", input.academyId)
+    .maybeSingle();
+
+  const periodStart = sub?.current_period_start
+    ? new Date(sub.current_period_start as string)
+    : new Date();
+  const periodEnd = sub?.current_period_end
+    ? new Date(sub.current_period_end as string)
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  const proration = calcProrationKrw({
+    oldUnitKrw: summary.pricePerStudentKrw,
+    newUnitKrw: Number(plan.price_per_student_krw ?? 0),
+    studentCount: summary.studentCount,
+    periodStart,
+    periodEnd,
+  });
+
+  const { error: updateError } = await supabase
+    .from("academy_subscriptions")
+    .upsert(
+      {
+        academy_id: input.academyId,
+        plan_id: plan.id,
+        price_per_student_krw: Number(plan.price_per_student_krw ?? 0),
+        status: summary.subscriptionStatus === "none" ? "trial" : summary.subscriptionStatus,
+        plan_changed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        current_period_start: periodStart.toISOString(),
+        current_period_end: periodEnd.toISOString(),
+      },
+      { onConflict: "academy_id" },
+    );
+
+  if (updateError) return { error: updateError.message };
+
+  await supabase.from("plan_change_events").insert({
+    academy_id: input.academyId,
+    from_plan_id: sub?.plan_id ?? null,
+    to_plan_id: plan.id,
+    student_count: summary.studentCount,
+    old_unit_krw: summary.pricePerStudentKrw,
+    new_unit_krw: Number(plan.price_per_student_krw ?? 0),
+    days_in_period: proration.daysInPeriod,
+    days_remaining: proration.daysRemaining,
+    proration_krw: proration.prorationKrw,
+    reason: input.reason ?? "owner",
+    created_by: input.createdBy ?? null,
+  });
+
+  if (proration.prorationKrw !== 0) {
+    const orderId = `prorate_${Date.now()}_${input.academyId.replace(/-/g, "").slice(0, 8)}`;
+    await supabase.from("billing_charges").insert({
+      academy_id: input.academyId,
+      order_id: orderId,
+      amount_krw: Math.abs(proration.prorationKrw),
+      student_count: summary.studentCount,
+      price_per_student_krw: Number(plan.price_per_student_krw ?? 0),
+      status: "done",
+      payment_key: `proration_${input.reason ?? "owner"}`,
+      approved_at: new Date().toISOString(),
+      failure_message:
+        proration.prorationKrw < 0
+          ? `다운그레이드 일할 환급 예정 ${Math.abs(proration.prorationKrw)}원`
+          : `업그레이드 일할 청구 ${proration.prorationKrw}원`,
+    });
+  }
+
+  return {
+    prorationKrw: proration.prorationKrw,
+    daysRemaining: proration.daysRemaining,
+  };
+}
+
+/** Asia/Seoul 기준 오늘 OCR 사용량 확인·증가 */
+export async function consumeOcrQuota(input: {
+  userId: string;
+  academyId: string | null;
+}): Promise<{ error?: string; used?: number; limit?: number }> {
+  const supabase = createServiceClient();
+
+  let limit = 0;
+  if (input.academyId) {
+    const summary = await getAcademyBillingSummary(input.academyId);
+    limit = summary?.ocrDailyLimit ?? 0;
+  }
+
+  if (limit <= 0) {
+    return {
+      error:
+        "현재 요금제에서는 AI로 읽기(OCR)를 쓸 수 없습니다. Pro 또는 Premium으로 바꿔 주세요.",
+      limit: 0,
+      used: 0,
+    };
+  }
+
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const { data: row } = await supabase
+    .from("ocr_daily_usage")
+    .select("used_count")
+    .eq("user_id", input.userId)
+    .eq("usage_date", today)
+    .maybeSingle();
+
+  const used = Number(row?.used_count ?? 0);
+  if (used >= limit) {
+    return {
+      error: `오늘 OCR 한도(${limit}회)를 모두 썼습니다. 내일 다시 시도해 주세요.`,
+      used,
+      limit,
+    };
+  }
+
+  const next = used + 1;
+  const { error } = await supabase.from("ocr_daily_usage").upsert(
+    {
+      user_id: input.userId,
+      usage_date: today,
+      used_count: next,
+    },
+    { onConflict: "user_id,usage_date" },
+  );
+  if (error) return { error: error.message, used, limit };
+
+  return { used: next, limit };
 }
 
 export async function ensureCustomerKey(
@@ -123,7 +343,7 @@ export async function ensureCustomerKey(
   const { data: plan } = await supabase
     .from("subscription_plans")
     .select("id, price_per_student_krw")
-    .eq("code", "trial")
+    .eq("code", "basic")
     .maybeSingle();
 
   const { error } = await supabase.from("academy_subscriptions").insert({
@@ -131,7 +351,7 @@ export async function ensureCustomerKey(
     plan_id: plan?.id ?? null,
     status: "trial",
     customer_key: customerKey,
-    price_per_student_krw: Number(plan?.price_per_student_krw ?? 3000),
+    price_per_student_krw: Number(plan?.price_per_student_krw ?? 9900),
     current_period_start: new Date().toISOString(),
     current_period_end: new Date(
       Date.now() + 14 * 24 * 60 * 60 * 1000,

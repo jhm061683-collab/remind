@@ -51,17 +51,23 @@ export function CreateAcademyForm({ plans }: { plans: PlanOption[] }) {
           <input
             name="code"
             required
-            placeholder="예: GANGNAM"
+            minLength={4}
+            maxLength={12}
+            pattern="[A-Za-z0-9]+"
+            placeholder="예: 2401 또는 GANGNAM"
             className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm uppercase outline-none focus:border-blue-500"
           />
+          <span className="mt-1 block text-[11px] text-[var(--rm-text-faint)]">
+            영문·숫자 4~12자 (숫자만 OK)
+          </span>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[var(--rm-text)]">
-            시작 플랜
+            시작 요금제
           </span>
           <select
             name="planCode"
-            defaultValue="trial"
+            defaultValue="basic"
             className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm outline-none focus:border-blue-500"
           >
             {plans.map((plan) => (

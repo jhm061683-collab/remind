@@ -6,7 +6,7 @@ import {
   type JoinActionState,
 } from "@/lib/actions/platform";
 import type { PublicInviteInfo } from "@/lib/server/platform/queries";
-import { formatKrw } from "@/lib/billing/pricing";
+import { formatKrw, getPlanDefinition } from "@/lib/billing/pricing";
 
 const initialState: JoinActionState = {};
 
@@ -15,6 +15,7 @@ export function DirectorJoinForm({ invite }: { invite: PublicInviteInfo }) {
     acceptInviteAction,
     initialState,
   );
+  const plan = getPlanDefinition(invite.planCode);
 
   return (
     <form action={formAction} className="remind-card space-y-3 p-4 md:p-6">
@@ -32,9 +33,15 @@ export function DirectorJoinForm({ invite }: { invite: PublicInviteInfo }) {
           <span className="font-mono font-semibold">{invite.academyCode}</span>
         </p>
         <p className="mt-1">
-          요금: 학생 1명당{" "}
-          <strong>{formatKrw(invite.pricePerStudentKrw)}</strong> / 월
+          요금제:{" "}
+          <strong>{plan?.name ?? invite.planCode ?? "Basic"}</strong>
+          {" · "}
+          학생 1명당 <strong>{formatKrw(invite.pricePerStudentKrw)}</strong> /
+          월
         </p>
+        {plan ? (
+          <p className="mt-1 text-xs text-slate-500">{plan.description}</p>
+        ) : null}
         <p className="mt-1 text-xs text-slate-500">
           예) 학생 20명이면 이번 달{" "}
           {formatKrw(20 * invite.pricePerStudentKrw)} · 학생 수가 바뀌면 월

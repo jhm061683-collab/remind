@@ -60,7 +60,7 @@ export function InviteList({ invites }: { invites: AcademyInviteRow[] }) {
         <thead className="border-b border-[var(--rm-border)] text-xs text-[var(--rm-text-muted)]">
           <tr>
             <th className="px-4 py-3 font-medium">코드</th>
-            <th className="px-4 py-3 font-medium">단가</th>
+            <th className="px-4 py-3 font-medium">요금제</th>
             <th className="px-4 py-3 font-medium">상태</th>
             <th className="px-4 py-3 font-medium">링크</th>
             <th className="px-4 py-3 font-medium">관리</th>
@@ -81,7 +81,12 @@ export function InviteList({ invites }: { invites: AcademyInviteRow[] }) {
                 ) : null}
               </td>
               <td className="px-4 py-3 text-xs">
-                {formatKrw(invite.pricePerStudentKrw)}/명
+                <span className="font-medium uppercase">
+                  {invite.planCode || "basic"}
+                </span>
+                <span className="block text-[var(--rm-text-faint)]">
+                  {formatKrw(invite.pricePerStudentKrw)}/명
+                </span>
               </td>
               <td className="px-4 py-3 text-xs">
                 {STATUS_LABEL[invite.status]}

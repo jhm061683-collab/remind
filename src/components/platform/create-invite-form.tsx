@@ -5,6 +5,7 @@ import {
   createInviteAction,
   type PlatformActionState,
 } from "@/lib/actions/platform";
+import { PLAN_DEFINITIONS } from "@/lib/billing/plans";
 
 const initialState: PlatformActionState = {};
 
@@ -65,14 +66,20 @@ export function CreateInviteForm() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[var(--rm-text)]">
-            학원 코드 (미리 지정)
+            학원 코드
           </span>
           <input
             name="academyCode"
             required
-            placeholder="예: GANGNAM01"
+            minLength={4}
+            maxLength={12}
+            pattern="[A-Za-z0-9]+"
+            placeholder="예: 2401 또는 GANGNAM"
             className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm uppercase outline-none focus:border-blue-500"
           />
+          <span className="mt-1 block text-[11px] text-[var(--rm-text-faint)]">
+            영문·숫자 4~12자 (숫자만 OK)
+          </span>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[var(--rm-text)]">
@@ -86,17 +93,20 @@ export function CreateInviteForm() {
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[var(--rm-text)]">
-            학생 1명당 월 단가 (원)
+            시작 요금제
           </span>
-          <input
-            name="pricePerStudentKrw"
-            type="number"
-            min={0}
-            step={100}
-            defaultValue={3000}
-            required
+          <select
+            name="planCode"
+            defaultValue="basic"
             className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm outline-none focus:border-blue-500"
-          />
+          >
+            {PLAN_DEFINITIONS.map((plan) => (
+              <option key={plan.code} value={plan.code}>
+                {plan.name} · {plan.pricePerStudentKrw.toLocaleString("ko-KR")}
+                원/학생
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[var(--rm-text)]">
@@ -127,9 +137,7 @@ export function CreateInviteForm() {
       </div>
 
       <p className="text-xs text-[var(--rm-text-muted)]">
-        카드 정보는 받지 않습니다. 원장이 링크에서 정보만 입력하면 학원·원장
-        계정이 만들어지고, 월 요금은{" "}
-        <strong>학생 수 × 단가</strong>로 나중에 달라집니다.
+        카드는 받지 않습니다. 월 요금 = 학생 수 × 요금제 단가.
       </p>
 
       <button

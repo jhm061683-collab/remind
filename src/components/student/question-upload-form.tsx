@@ -124,11 +124,15 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         });
         setShowExtras(true);
       }
+      const quotaHint =
+        result.limit != null && result.used != null
+          ? ` (오늘 ${result.used}/${result.limit})`
+          : "";
       setOcrNote(
-        data.note ||
+        (data.note ||
           (result.mock
             ? "목 OCR입니다. Vision 키를 넣으면 실제로 읽습니다."
-            : "인식 결과를 확인해 주세요."),
+            : "인식 결과를 확인해 주세요.")) + quotaHint,
       );
     });
   }
