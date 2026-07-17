@@ -106,7 +106,7 @@ export function StudentDetailPanel({ detail }: Props) {
         <button
           type="button"
           disabled={pending}
-          className="mt-3 rounded-xl bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-3 rounded-xl rm-fill-brand px-4 py-2 text-sm font-semibold disabled:opacity-50"
           onClick={() =>
             startTransition(async () => {
               const res = await saveStudentDetailAction(student.id, {

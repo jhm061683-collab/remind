@@ -173,7 +173,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-[var(--rm-brand)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-xl rm-fill-brand px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
         >
           {pending ? "만드는 중…" : "+ 계정 만들기"}
         </button>

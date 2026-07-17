@@ -274,7 +274,7 @@ export function ClassManagementBoard({ data }: Props) {
             <button
               type="button"
               disabled={pending || !transferStudentId || !transferToId}
-              className="rounded-xl bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-xl rm-fill-brand px-4 py-2 text-sm font-semibold disabled:opacity-50"
               onClick={() => {
                 startTransition(async () => {
                   const res = await transferStudentClassAction({
@@ -338,7 +338,7 @@ export function ClassManagementBoard({ data }: Props) {
           <button
             type="button"
             disabled={pending || !newName.trim()}
-            className="whitespace-nowrap rounded-lg bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rm-fill-brand whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
             onClick={() => {
               startTransition(async () => {
                 const res = await createClassRoomAction({
@@ -393,7 +393,7 @@ export function ClassManagementBoard({ data }: Props) {
             onClick={() => setView("by_class")}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               view === "by_class"
-                ? "bg-[var(--rm-brand)] text-white"
+                ? "rm-fill-brand text-white"
                 : "bg-[var(--rm-accent-muted)] text-[var(--rm-text)]"
             }`}
           >
@@ -404,7 +404,7 @@ export function ClassManagementBoard({ data }: Props) {
             onClick={() => setView("by_teacher")}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               view === "by_teacher"
-                ? "bg-[var(--rm-brand)] text-white"
+                ? "rm-fill-brand text-white"
                 : "bg-[var(--rm-accent-muted)] text-[var(--rm-text)]"
             }`}
           >

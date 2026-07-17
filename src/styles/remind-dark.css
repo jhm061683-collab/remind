@@ -199,21 +199,33 @@
   justify-content: center;
   gap: 0.5rem;
   border-radius: var(--rm-radius-md);
-  background: linear-gradient(135deg, var(--rm-brand) 0%, var(--rm-brand-dark) 100%);
+  background-image: var(--rm-logo-gradient);
+  background-color: var(--rm-brand-violet);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--rm-text-on-accent);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-  box-shadow: 0 4px 18px color-mix(in srgb, var(--rm-brand) 35%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--rm-brand-violet) 32%, transparent);
 }
 
 [data-theme] .rm-btn-primary:hover {
-  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--rm-brand) 40%, transparent);
 }
 
 [data-theme] .rm-btn-primary:active {
   transform: scale(0.98);
+}
+
+/* 인라인 액션 버튼 (표/툴바) — 로고 바이올렛→블루 */
+[data-theme] .rm-fill-brand {
+  background-image: var(--rm-logo-gradient);
+  background-color: var(--rm-brand-violet);
+  color: #fff;
+}
+
+[data-theme] .rm-fill-brand:hover:not(:disabled) {
+  opacity: 0.92;
 }
 
 [data-theme] .rm-btn-ghost {
@@ -696,6 +708,25 @@
 [data-theme] .remind-card-hover:hover {
   border-color: var(--rm-border-glow);
   background: var(--rm-info-bg);
+}
+
+/* Native <select> — 다크에서 흰 팝업 + 흰 글자 방지 */
+[data-theme] select {
+  color: var(--rm-text);
+  background-color: var(--rm-surface);
+}
+
+[data-theme] select option,
+[data-theme] select optgroup {
+  background-color: var(--rm-surface);
+  color: var(--rm-text);
+}
+
+/* Windows 등 시스템 팝업이 밝은 배경을 쓸 때 대비 확보 */
+[data-theme="remind-dark"] select option,
+[data-theme="remind-dark"] select optgroup {
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 [data-theme="remind-dark"] .bg-blue-50 {

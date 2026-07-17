@@ -86,7 +86,7 @@ export function NotificationComposer({ students }: Props) {
             setMessage(res.error ?? res.success ?? null);
           })
         }
-        className="rounded-xl bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-xl rm-fill-brand px-4 py-2 text-sm font-semibold disabled:opacity-50"
       >
         선택 학생 일괄 알림 등록
       </button>

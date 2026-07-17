@@ -237,7 +237,7 @@ export function AdminStudentsTable({
                 <select
                   value={classRoomId}
                   onChange={(e) => setClassRoomId(e.target.value)}
-                  className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
+                  className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm text-[var(--rm-text)]"
                 >
                   <option value="">반 선택</option>
                   {classOptions.map((opt) => (
@@ -249,7 +249,7 @@ export function AdminStudentsTable({
                 <button
                   type="button"
                   disabled={pending || selected.length === 0 || !classRoomId}
-                  className="whitespace-nowrap rounded-lg bg-[var(--rm-brand)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
+                  className="rm-fill-brand whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50 sm:text-sm"
                   onClick={() => {
                     startTransition(async () => {
                       const result = await bulkAssignClassAction(
