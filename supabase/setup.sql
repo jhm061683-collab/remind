@@ -143,6 +143,10 @@ create table if not exists public.class_rooms (
   id uuid primary key default gen_random_uuid(),
   academy_id uuid not null references public.academies (id) on delete cascade,
   name text not null,
+  school_level text
+    check (school_level in ('elementary', 'middle', 'high', 'adult')),
+  grade_number int
+    check (grade_number >= 1 and grade_number <= 20),
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
   unique (academy_id, name)
@@ -153,7 +157,7 @@ create table if not exists public.class_room_students (
   class_room_id uuid not null references public.class_rooms (id) on delete cascade,
   student_id uuid not null references public.profiles (id) on delete cascade,
   created_at timestamptz not null default now(),
-  unique (student_id)
+  unique (class_room_id, student_id)
 );
 
 create table if not exists public.class_room_teachers (

@@ -13,7 +13,9 @@ export type AdminStudentRow = {
   schoolLevel: "elementary" | "middle" | "high" | "adult" | null;
   gradeNumber: number | null;
   gradeLabel: string | null;
+  /** 표시용 (여러 반이면 쉼표로 연결) */
   className: string | null;
+  classNames: string[];
   teacherNames: string[];
   subAdminName: string | null;
   subAdminId: string | null;
@@ -64,4 +66,22 @@ export type StudentDetailData = {
   student: AdminStudentRow;
   weeklyReviews: DailyActivity[];
   topWeaknesses: { reason: string; count: number }[];
+};
+
+export type ClassRoomSummary = {
+  id: string;
+  name: string;
+  schoolLevel: "elementary" | "middle" | "high" | "adult" | null;
+  gradeNumber: number | null;
+  gradeLabel: string | null;
+  displayLabel: string;
+  teacherIds: string[];
+  teacherNames: string[];
+  studentIds: string[];
+};
+
+export type ClassManagementData = {
+  classes: ClassRoomSummary[];
+  students: { id: string; displayName: string; username: string; gradeLabel: string | null }[];
+  teachers: { id: string; displayName: string }[];
 };

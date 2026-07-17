@@ -258,15 +258,16 @@ export async function bulkAssignClassAction(
     .single();
   if (roomError || !room) return { error: roomError?.message ?? "반 생성 실패" };
 
-  await supabase.from("class_room_students").delete().in("student_id", studentIds);
-  const { error } = await supabase.from("class_room_students").insert(
-    studentIds.map((studentId) => ({
-      class_room_id: room.id,
-      student_id: studentId,
-    })),
-  );
+  const rows = studentIds.map((studentId) => ({
+    class_room_id: room.id,
+    student_id: studentId,
+  }));
+  const { error } = await supabase
+    .from("class_room_students")
+    .upsert(rows, { onConflict: "class_room_id,student_id" });
   if (error) return { error: error.message };
   revalidatePath("/admin/students");
+  revalidatePath("/admin/classes");
   revalidatePath("/admin/dashboard");
   return { success: `${studentIds.length}명을 ${className} 반에 배정했습니다.` };
 }
@@ -303,8 +304,6 @@ export async function savePromotionRuleAction(
 export async function saveStudentDetailAction(
   studentId: string,
   payload: {
-    className: string;
-    teacherIds: string[];
     schoolLevel: "elementary" | "middle" | "high" | "adult";
     gradeNumber: number;
     phone: string;
@@ -312,12 +311,6 @@ export async function saveStudentDetailAction(
 ): Promise<{ error?: string; success?: string }> {
   const session = await requireAdmin();
   const supabase = createServiceClient();
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("academy_id")
-    .eq("id", session.id)
-    .single();
-  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -329,45 +322,186 @@ export async function saveStudentDetailAction(
     .eq("id", studentId);
   if (profileError) return { error: profileError.message };
 
-  let classId: string | null = null;
-  if (payload.className.trim()) {
-    const { data: room, error: roomError } = await supabase
-      .from("class_rooms")
-      .upsert(
-        {
-          academy_id: me.academy_id,
-          name: payload.className.trim(),
-          created_by: session.id,
-        },
-        { onConflict: "academy_id,name" },
-      )
-      .select("id")
-      .single();
-    if (roomError || !room) return { error: roomError?.message ?? "반 생성 실패" };
-    classId = room.id;
-  }
-
-  await supabase.from("class_room_students").delete().eq("student_id", studentId);
-  if (classId) {
-    const { error: insertStudentError } = await supabase
-      .from("class_room_students")
-      .insert({ class_room_id: classId, student_id: studentId });
-    if (insertStudentError) return { error: insertStudentError.message };
-
-    await supabase.from("class_room_teachers").delete().eq("class_room_id", classId);
-    if (payload.teacherIds.length > 0) {
-      const { error: teacherError } = await supabase.from("class_room_teachers").insert(
-        payload.teacherIds.map((teacherId) => ({
-          class_room_id: classId as string,
-          teacher_id: teacherId,
-        })),
-      );
-      if (teacherError) return { error: teacherError.message };
-    }
-  }
-
   revalidatePath("/admin/students");
   revalidatePath(`/admin/students/${studentId}`);
   revalidatePath("/admin/dashboard");
   return { success: "학생 정보를 저장했습니다." };
+}
+
+export async function createClassRoomAction(payload: {
+  name: string;
+  schoolLevel: "elementary" | "middle" | "high" | "adult";
+  gradeNumber: number;
+  teacherIds: string[];
+}): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  if (!payload.name.trim()) return { error: "반 이름을 입력해 주세요." };
+
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+
+  const { data: room, error: roomError } = await supabase
+    .from("class_rooms")
+    .insert({
+      academy_id: me.academy_id,
+      name: payload.name.trim(),
+      school_level: payload.schoolLevel,
+      grade_number: payload.gradeNumber,
+      created_by: session.id,
+    })
+    .select("id")
+    .single();
+  if (roomError || !room) return { error: roomError?.message ?? "반 생성 실패" };
+
+  if (payload.teacherIds.length > 0) {
+    const { error: teacherError } = await supabase.from("class_room_teachers").insert(
+      payload.teacherIds.map((teacherId) => ({
+        class_room_id: room.id,
+        teacher_id: teacherId,
+      })),
+    );
+    if (teacherError) return { error: teacherError.message };
+  }
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/dashboard");
+  return { success: "반을 만들었습니다." };
+}
+
+export async function updateClassTeachersAction(
+  classRoomId: string,
+  teacherIds: string[],
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+
+  const { data: room } = await supabase
+    .from("class_rooms")
+    .select("id")
+    .eq("id", classRoomId)
+    .eq("academy_id", me.academy_id)
+    .maybeSingle();
+  if (!room) return { error: "반을 찾을 수 없습니다." };
+
+  await supabase.from("class_room_teachers").delete().eq("class_room_id", classRoomId);
+  if (teacherIds.length > 0) {
+    const { error } = await supabase.from("class_room_teachers").insert(
+      teacherIds.map((teacherId) => ({
+        class_room_id: classRoomId,
+        teacher_id: teacherId,
+      })),
+    );
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/dashboard");
+  return { success: "담당 선생님을 저장했습니다." };
+}
+
+export async function assignStudentsToClassAction(
+  classRoomId: string,
+  studentIds: string[],
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  if (studentIds.length === 0) return { error: "학생을 선택해 주세요." };
+
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+
+  const { data: room } = await supabase
+    .from("class_rooms")
+    .select("id")
+    .eq("id", classRoomId)
+    .eq("academy_id", me.academy_id)
+    .maybeSingle();
+  if (!room) return { error: "반을 찾을 수 없습니다." };
+
+  const rows = studentIds.map((studentId) => ({
+    class_room_id: classRoomId,
+    student_id: studentId,
+  }));
+  const { error } = await supabase
+    .from("class_room_students")
+    .upsert(rows, { onConflict: "class_room_id,student_id" });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  return { success: `${studentIds.length}명을 반에 추가했습니다.` };
+}
+
+export async function removeStudentFromClassAction(
+  classRoomId: string,
+  studentId: string,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+
+  const { data: room } = await supabase
+    .from("class_rooms")
+    .select("id")
+    .eq("id", classRoomId)
+    .eq("academy_id", me.academy_id)
+    .maybeSingle();
+  if (!room) return { error: "반을 찾을 수 없습니다." };
+
+  const { error } = await supabase
+    .from("class_room_students")
+    .delete()
+    .eq("class_room_id", classRoomId)
+    .eq("student_id", studentId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  return { success: "반에서 학생을 제외했습니다." };
+}
+
+export async function deleteClassRoomAction(
+  classRoomId: string,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+
+  const { error } = await supabase
+    .from("class_rooms")
+    .delete()
+    .eq("id", classRoomId)
+    .eq("academy_id", me.academy_id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/dashboard");
+  return { success: "반을 삭제했습니다." };
 }

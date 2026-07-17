@@ -36,24 +36,80 @@ type Props = {
   canManage?: boolean;
 };
 
+type ActivityFilter = "all" | "due_today" | "inactive_7" | "never_login";
+
+function formatClassDisplay(student: AdminStudentRow): string {
+  if (student.classNames.length > 0) return student.classNames.join(", ");
+  return student.className ?? "—";
+}
+
 export function AdminStudentsTable({ students, canManage = false }: Props) {
   const [query, setQuery] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("all");
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [className, setClassName] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const classOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const student of students) {
+      for (const name of student.classNames) names.add(name);
+      if (student.className && student.classNames.length === 0) {
+        names.add(student.className);
+      }
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ko"));
+  }, [students]);
+
+  const gradeOptions = useMemo(() => {
+    const labels = new Set(
+      students.map((s) => s.gradeLabel).filter((l): l is string => Boolean(l)),
+    );
+    return Array.from(labels).sort((a, b) => a.localeCompare(b, "ko"));
+  }, [students]);
+
+  const teacherOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const student of students) {
+      for (const name of student.teacherNames) names.add(name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ko"));
+  }, [students]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter((s) =>
-      [s.displayName, s.username, s.className ?? "", ...s.teacherNames]
+    return students.filter((s) => {
+      if (classFilter !== "all") {
+        const inClass =
+          s.classNames.includes(classFilter) || s.className === classFilter;
+        if (!inClass) return false;
+      }
+      if (gradeFilter !== "all" && s.gradeLabel !== gradeFilter) return false;
+      if (teacherFilter !== "all" && !s.teacherNames.includes(teacherFilter)) {
+        return false;
+      }
+      if (activityFilter === "due_today" && s.dueToday <= 0) return false;
+      if (activityFilter === "inactive_7" && s.inactiveDays < 7) return false;
+      if (activityFilter === "never_login" && s.lastLoginAt !== null) return false;
+      if (!q) return true;
+      return [
+        s.displayName,
+        s.username,
+        s.gradeLabel ?? "",
+        s.className ?? "",
+        ...s.classNames,
+        ...s.teacherNames,
+      ]
         .join(" ")
         .toLowerCase()
-        .includes(q),
-    );
-  }, [students, query]);
+        .includes(q);
+    });
+  }, [students, query, classFilter, gradeFilter, teacherFilter, activityFilter]);
 
   const selectedNames = useMemo(() => {
     const nameById = new Map(students.map((s) => [s.id, s.displayName]));
@@ -100,19 +156,81 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
         }}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="이름/아이디/반/담당선생님 검색"
-          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm sm:max-w-sm"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
         />
+        <div className="flex flex-wrap gap-2">
+          {classOptions.length > 0 ? (
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="all">전체 반</option>
+              {classOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {gradeOptions.length > 0 ? (
+            <select
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="all">전체 학년</option>
+              {gradeOptions.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {teacherOptions.length > 0 ? (
+            <select
+              value={teacherFilter}
+              onChange={(e) => setTeacherFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="all">전체 담당</option>
+              {teacherOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <select
+            value={activityFilter}
+            onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">전체 활동</option>
+            <option value="due_today">오늘 볼 문제 있음</option>
+            <option value="inactive_7">7일 이상 미접속</option>
+            <option value="never_login">로그인 이력 없음</option>
+          </select>
+        </div>
+        {filtered.length !== students.length ? (
+          <p className="text-xs text-zinc-500">
+            {students.length}명 중 {filtered.length}명 표시
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         {canManage ? (
           <div className="flex flex-wrap gap-2">
             <input
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              placeholder="반명 입력 (예: 중2A)"
+              placeholder="반명 (기존 반에 추가)"
               className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
             />
             <button
@@ -170,6 +288,7 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
               <th className="px-4 py-3 font-medium">이름</th>
               <th className="px-4 py-3 font-medium">아이디</th>
               <th className="px-4 py-3 font-medium">비밀번호</th>
+              <th className="px-4 py-3 font-medium">학년</th>
               <th className="px-4 py-3 font-medium">반</th>
               <th className="px-4 py-3 font-medium">담당 선생님</th>
               <th className="px-4 py-3 font-medium">마지막 로그인</th>
@@ -213,7 +332,10 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-zinc-600">
-                  {student.className ?? "—"}
+                  {student.gradeLabel ?? "—"}
+                </td>
+                <td className="px-4 py-3 text-zinc-600">
+                  {formatClassDisplay(student)}
                 </td>
                 <td className="px-4 py-3 text-zinc-600">
                   {student.teacherNames.length > 0 ? (
@@ -291,7 +413,8 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
               ) : null}
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-600">
-              <p>반: {student.className ?? "—"}</p>
+              <p>학년: {student.gradeLabel ?? "—"}</p>
+              <p>반: {formatClassDisplay(student)}</p>
               <p>비밀번호: {student.passwordPlain ?? "미기록"}</p>
               <p>담당: {student.teacherNames.join(", ") || "미배정"}</p>
               <p>마지막 로그인: {formatLastLogin(student.lastLoginAt)}</p>

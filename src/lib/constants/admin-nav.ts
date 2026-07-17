@@ -4,6 +4,7 @@ import type { UserRole } from "@/types/user";
 export const ADMIN_ONLY_PATHS = [
   "/admin/sub-admins",
   "/admin/assignments",
+  "/admin/classes",
   "/admin/suggestions",
 ] as const;
 
@@ -32,6 +33,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "대시보드" },
   { href: "/admin/students", label: "학생 관리" },
+  { href: "/admin/classes", label: "반 관리", adminOnly: true },
   { href: "/admin/sub-admins", label: "서브관리자", adminOnly: true },
   { href: "/admin/assignments", label: "담당 배정", adminOnly: true },
   { href: "/admin/notifications", label: "알림 발송" },

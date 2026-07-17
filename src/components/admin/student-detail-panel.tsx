@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   deleteStudentsAction,
@@ -11,25 +12,25 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { StudentDetailData } from "@/lib/types/admin";
 import { useRouter } from "next/navigation";
 
-type TeacherOption = { id: string; displayName: string };
-
 type Props = {
   detail: StudentDetailData;
-  teacherOptions: TeacherOption[];
 };
 
-export function StudentDetailPanel({ detail, teacherOptions }: Props) {
+export function StudentDetailPanel({ detail }: Props) {
   const router = useRouter();
   const student = detail.student;
-  const [className, setClassName] = useState(student.className ?? "");
   const [phone, setPhone] = useState(student.phone ?? "");
   const [schoolLevel, setSchoolLevel] = useState(student.schoolLevel ?? "middle");
   const [gradeNumber, setGradeNumber] = useState(student.gradeNumber ?? 1);
-  const [teacherIds, setTeacherIds] = useState<string[]>([]);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  const classDisplay =
+    student.classNames.length > 0
+      ? student.classNames.join(", ")
+      : student.className ?? "없음";
 
   return (
     <div className="space-y-4">
@@ -61,17 +62,26 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
         <p className="text-sm text-zinc-500">
           아이디 {student.username} · 마지막 로그인 {student.lastLoginAt ?? "없음"}
         </p>
+        <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <p>
+            <span className="font-medium">소속 반:</span> {classDisplay}
+          </p>
+          <p className="mt-1">
+            <span className="font-medium">담당 선생님:</span>{" "}
+            {student.teacherNames.join(", ") || "미배정"}
+          </p>
+          <Link
+            href="/admin/classes"
+            className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline"
+          >
+            반 관리에서 배정 변경 →
+          </Link>
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="휴대폰"
-            className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
-          />
-          <input
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-            placeholder="반명"
             className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
           />
           <select
@@ -93,27 +103,6 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
             className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
           />
         </div>
-        <div className="mt-3">
-          <p className="mb-1 text-xs font-semibold text-zinc-600">담당 선생님(복수 가능)</p>
-          <div className="grid gap-1 sm:grid-cols-2">
-            {teacherOptions.map((teacher) => (
-              <label key={teacher.id} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-zinc-50">
-                <input
-                  type="checkbox"
-                  checked={teacherIds.includes(teacher.id)}
-                  onChange={(e) =>
-                    setTeacherIds((prev) =>
-                      e.target.checked
-                        ? [...prev, teacher.id]
-                        : prev.filter((id) => id !== teacher.id),
-                    )
-                  }
-                />
-                <span className="text-sm">{teacher.displayName}</span>
-              </label>
-            ))}
-          </div>
-        </div>
         <button
           type="button"
           disabled={pending}
@@ -121,8 +110,6 @@ export function StudentDetailPanel({ detail, teacherOptions }: Props) {
           onClick={() =>
             startTransition(async () => {
               const res = await saveStudentDetailAction(student.id, {
-                className,
-                teacherIds,
                 schoolLevel,
                 gradeNumber,
                 phone,

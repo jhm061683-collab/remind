@@ -2,6 +2,7 @@ import type { ReviewPhase } from "@/types/subject";
 import type { ActivityEvent } from "@/lib/types/activity";
 import { toGradeLabel } from "@/lib/admin/grade";
 import { computePromotedGrade } from "@/lib/admin/grade";
+import { formatClassLabel } from "@/lib/admin/class-label";
 import type { StoredQuestion } from "@/lib/storage/questions";
 import { computeUserStats } from "@/lib/stats/compute";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
@@ -11,6 +12,8 @@ import { getAdminVisiblePasswords } from "@/lib/server/admin/password-notes";
 import type {
   AdminDashboardData,
   AdminStudentRow,
+  ClassManagementData,
+  ClassRoomSummary,
   DailyActivity,
   PromotionRule,
   StudentDetailData,
@@ -36,7 +39,18 @@ type AssignmentRow = {
 type ClassStudentRow = {
   student_id: string;
   class_room_id: string;
-  class_rooms: { name: string } | null;
+  class_rooms: {
+    name: string;
+    school_level: "elementary" | "middle" | "high" | "adult" | null;
+    grade_number: number | null;
+  } | null;
+};
+
+type ClassRoomRow = {
+  id: string;
+  name: string;
+  school_level: "elementary" | "middle" | "high" | "adult" | null;
+  grade_number: number | null;
 };
 
 type ClassTeacherRow = {
@@ -218,6 +232,7 @@ function demoDashboard(): AdminDashboardData {
     gradeNumber: null,
     gradeLabel: null,
     className: null,
+    classNames: [],
     teacherNames: [teacher.name],
     subAdminName: teacher.name,
     subAdminId: teacher.id,
@@ -358,7 +373,7 @@ async function fetchDashboardForStudentIds(
     studentIds.length > 0
       ? supabase
           .from("class_room_students")
-          .select("student_id, class_room_id, class_rooms(name)")
+          .select("student_id, class_room_id, class_rooms(name, school_level, grade_number)")
           .in("student_id", studentIds)
       : Promise.resolve({ data: [] as ClassStudentRow[] }),
   ]);
@@ -423,7 +438,12 @@ async function fetchDashboardForStudentIds(
     activityByUser.set(a.user_id, arr);
   }
 
-  const classByStudent = new Map(classStudents.map((row) => [row.student_id, row]));
+  const classByStudent = new Map<string, ClassStudentRow[]>();
+  for (const row of classStudents) {
+    const arr = classByStudent.get(row.student_id) ?? [];
+    arr.push(row);
+    classByStudent.set(row.student_id, arr);
+  }
   const teacherNamesByClass = new Map<string, string[]>();
   for (const ct of classTeachers) {
     const name = profileMap.get(ct.teacher_id)?.display_name;
@@ -449,11 +469,25 @@ async function fetchDashboardForStudentIds(
     ).length;
     const subAdminId = assignmentByStudent.get(id) ?? null;
     const subAdmin = subAdminId ? profileMap.get(subAdminId) : null;
-    const classRow = classByStudent.get(id);
-    const className = classRow?.class_rooms?.name ?? null;
-    const teacherNames = classRow
-      ? [...(teacherNamesByClass.get(classRow.class_room_id) ?? [])]
-      : [];
+    const classRows = classByStudent.get(id) ?? [];
+    const classNames = classRows
+      .map((row) => {
+        if (!row.class_rooms?.name) return null;
+        return formatClassLabel(
+          row.class_rooms.name,
+          row.class_rooms.school_level,
+          row.class_rooms.grade_number,
+        );
+      })
+      .filter((name): name is string => Boolean(name));
+    const className = classNames.length > 0 ? classNames.join(", ") : null;
+    const teacherNameSet = new Set<string>();
+    for (const classRow of classRows) {
+      for (const name of teacherNamesByClass.get(classRow.class_room_id) ?? []) {
+        teacherNameSet.add(name);
+      }
+    }
+    const teacherNames = [...teacherNameSet];
     if (subAdmin?.display_name && teacherNames.length === 0) {
       teacherNames.push(subAdmin.display_name);
     }
@@ -471,6 +505,7 @@ async function fetchDashboardForStudentIds(
       gradeNumber: profile.grade_number,
       gradeLabel: toGradeLabel(profile.school_level, profile.grade_number),
       className,
+      classNames,
       teacherNames,
       subAdminName: subAdmin?.display_name ?? null,
       subAdminId,
@@ -565,13 +600,32 @@ export async function getSubAdminDashboard(
   }
 
   const supabase = createServiceClient();
-  const { data: assignmentRows } = await supabase
-    .from("student_assignments")
-    .select("sub_admin_id, student_id")
-    .eq("sub_admin_id", subAdminId);
+  const [{ data: assignmentRows }, { data: classTeacherRows }] = await Promise.all([
+    supabase
+      .from("student_assignments")
+      .select("sub_admin_id, student_id")
+      .eq("sub_admin_id", subAdminId),
+    supabase
+      .from("class_room_teachers")
+      .select("class_room_id")
+      .eq("teacher_id", subAdminId),
+  ]);
 
   const assignments = (assignmentRows ?? []) as AssignmentRow[];
-  const studentIds = assignments.map((a) => a.student_id);
+  const classRoomIds = (classTeacherRows ?? []).map((row) => row.class_room_id);
+
+  let classStudentIds: string[] = [];
+  if (classRoomIds.length > 0) {
+    const { data: classStudentRows } = await supabase
+      .from("class_room_students")
+      .select("student_id")
+      .in("class_room_id", classRoomIds);
+    classStudentIds = (classStudentRows ?? []).map((row) => row.student_id);
+  }
+
+  const studentIds = Array.from(
+    new Set([...assignments.map((a) => a.student_id), ...classStudentIds]),
+  );
   if (studentIds.length === 0) {
     return {
       totalStudents: 0,
@@ -692,4 +746,100 @@ export async function getStudentDetailForStaff(
     weeklyReviews: weekly,
     topWeaknesses,
   };
+}
+
+export async function getClassManagementData(
+  adminId: string,
+): Promise<ClassManagementData> {
+  if (!isSupabaseEnabled() || !isServiceRoleConfigured() || !isSupabaseUserId(adminId)) {
+    return { classes: [], students: [], teachers: [] };
+  }
+
+  const academyId = await getAdminAcademyId(adminId);
+  if (!academyId) return { classes: [], students: [], teachers: [] };
+
+  const supabase = createServiceClient();
+  const [{ data: classRows }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("class_rooms")
+      .select("id, name, school_level, grade_number")
+      .eq("academy_id", academyId)
+      .order("school_level", { ascending: true })
+      .order("grade_number", { ascending: true })
+      .order("name", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, display_name, username, role, school_level, grade_number")
+      .eq("academy_id", academyId)
+      .in("role", ["student", "sub_admin"]),
+  ]);
+
+  const rooms = (classRows ?? []) as ClassRoomRow[];
+  const classIds = rooms.map((room) => room.id);
+  const profileList = (profiles ?? []) as ProfileRow[];
+
+  const [{ data: teacherRows }, { data: studentRows }] =
+    classIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("class_room_teachers")
+            .select("class_room_id, teacher_id")
+            .in("class_room_id", classIds),
+          supabase
+            .from("class_room_students")
+            .select("class_room_id, student_id")
+            .in("class_room_id", classIds),
+        ])
+      : [{ data: [] }, { data: [] }];
+
+  const profileMap = new Map(profileList.map((p) => [p.id, p]));
+  const teachersByClass = new Map<string, string[]>();
+  const teacherIdsByClass = new Map<string, string[]>();
+  for (const row of teacherRows ?? []) {
+    const name = profileMap.get(row.teacher_id)?.display_name;
+    if (name) {
+      const names = teachersByClass.get(row.class_room_id) ?? [];
+      names.push(name);
+      teachersByClass.set(row.class_room_id, names);
+    }
+    const ids = teacherIdsByClass.get(row.class_room_id) ?? [];
+    ids.push(row.teacher_id);
+    teacherIdsByClass.set(row.class_room_id, ids);
+  }
+
+  const studentsByClass = new Map<string, string[]>();
+  for (const row of studentRows ?? []) {
+    const ids = studentsByClass.get(row.class_room_id) ?? [];
+    ids.push(row.student_id);
+    studentsByClass.set(row.class_room_id, ids);
+  }
+
+  const classes: ClassRoomSummary[] = rooms.map((room) => ({
+    id: room.id,
+    name: room.name,
+    schoolLevel: room.school_level,
+    gradeNumber: room.grade_number,
+    gradeLabel: toGradeLabel(room.school_level, room.grade_number),
+    displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
+    teacherIds: teacherIdsByClass.get(room.id) ?? [],
+    teacherNames: teachersByClass.get(room.id) ?? [],
+    studentIds: studentsByClass.get(room.id) ?? [],
+  }));
+
+  const students = profileList
+    .filter((p) => p.role === "student")
+    .map((p) => ({
+      id: p.id,
+      displayName: p.display_name,
+      username: p.username ?? "—",
+      gradeLabel: toGradeLabel(p.school_level, p.grade_number),
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+
+  const teachers = profileList
+    .filter((p) => p.role === "sub_admin")
+    .map((p) => ({ id: p.id, displayName: p.display_name }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+
+  return { classes, students, teachers };
 }
