@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RemindLogo } from "@/components/brand/remind-logo";
 import { navItemsForRole } from "@/lib/constants/admin-nav";
 import type { UserRole } from "@/types/user";
 
@@ -13,17 +12,10 @@ type Props = {
 export function AdminSidebar({ role }: Props) {
   const pathname = usePathname();
   const links = navItemsForRole(role);
-  const roleLabel = role === "sub_admin" ? "서브관리자" : "관리자";
 
   return (
-    <aside className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-52 shrink-0 self-start overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 p-3 md:block">
-      <div className="mb-3 px-1">
-        <RemindLogo href="/admin/dashboard" size="sm" />
-        <p className="mt-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
-          {roleLabel}
-        </p>
-      </div>
-      <ul className="space-y-0.5">
+    <aside className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-48 shrink-0 self-start overflow-y-auto border-r border-slate-200/70 bg-white/80 p-2.5 backdrop-blur-sm md:block">
+      <ul className="space-y-0.5 pt-1">
         {links.map((link) => {
           const active =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -34,8 +26,8 @@ export function AdminSidebar({ role }: Props) {
                 prefetch={false}
                 className={`block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                    : "text-slate-700 hover:bg-slate-100"
+                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 {link.label}

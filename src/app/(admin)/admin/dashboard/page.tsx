@@ -31,11 +31,9 @@ export default async function AdminDashboardPage() {
   return (
     <>
       <PageHeader
-        title={isSubAdmin ? "서브관리자 대시보드" : "관리자 대시보드"}
+        title={isSubAdmin ? "대시보드" : "대시보드"}
         description={
-          isSubAdmin
-            ? "담당 학생 학습 현황"
-            : "학습 현황과 복습 이행률"
+          isSubAdmin ? "담당 학생 학습 현황" : "학습 현황 · 복습 이행률"
         }
       />
 
