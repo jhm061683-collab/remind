@@ -13,6 +13,9 @@ type Props = {
   revalidatePath?: string;
 };
 
+const inputClass =
+  "w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2.5 text-sm text-[var(--rm-text)] outline-none focus:border-[var(--rm-border-glow)]";
+
 export function ChangePasswordForm({
   successHint,
   revalidatePath = "/account",
@@ -32,7 +35,7 @@ export function ChangePasswordForm({
       <div>
         <label
           htmlFor="currentPassword"
-          className="mb-1 block text-sm font-medium text-slate-700"
+          className="mb-1 block text-sm font-medium text-[var(--rm-text)]"
         >
           현재 비밀번호
         </label>
@@ -42,13 +45,13 @@ export function ChangePasswordForm({
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+          className={inputClass}
         />
       </div>
       <div>
         <label
           htmlFor="nextPassword"
-          className="mb-1 block text-sm font-medium text-slate-700"
+          className="mb-1 block text-sm font-medium text-[var(--rm-text)]"
         >
           새 비밀번호
         </label>
@@ -59,13 +62,13 @@ export function ChangePasswordForm({
           autoComplete="new-password"
           required
           minLength={4}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+          className={inputClass}
         />
       </div>
       <div>
         <label
           htmlFor="confirmPassword"
-          className="mb-1 block text-sm font-medium text-slate-700"
+          className="mb-1 block text-sm font-medium text-[var(--rm-text)]"
         >
           새 비밀번호 확인
         </label>
@@ -76,17 +79,17 @@ export function ChangePasswordForm({
           autoComplete="new-password"
           required
           minLength={4}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+          className={inputClass}
         />
       </div>
 
       {state.error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-3 py-2 text-sm text-[var(--rm-text-on-error)]">
           {state.error}
         </p>
       ) : null}
       {state.success ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <p className="rounded-xl border border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] px-3 py-2 text-sm text-[var(--rm-text-on-success)]">
           {state.success}
         </p>
       ) : null}
@@ -94,7 +97,7 @@ export function ChangePasswordForm({
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+        className="w-full rounded-xl bg-[var(--rm-brand)] py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
       >
         {pending ? "변경 중…" : "비밀번호 변경"}
       </button>

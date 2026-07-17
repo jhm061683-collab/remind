@@ -73,8 +73,8 @@ export function WrongReasonFields({
         </label>
 
         {custom.length > 0 ? (
-          <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-            <p className="text-[11px] font-semibold text-slate-500">
+          <div className="rounded-xl border border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface-raised)_80%,transparent)] p-3">
+            <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
               내가 만든 틀린 이유 · 탭해서 선택
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -90,7 +90,7 @@ export function WrongReasonFields({
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
                       active
                         ? "border-rose-300 bg-rose-50 text-rose-800"
-                        : "border-slate-200 bg-white text-slate-700"
+                        : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
                     }`}
                   >
                     {reason}
@@ -105,7 +105,7 @@ export function WrongReasonFields({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="text-xs font-semibold text-blue-600 hover:underline"
+            className="text-xs font-semibold text-[var(--rm-nav-active)] hover:underline"
           >
             + 나만의 틀린 이유 추가
           </button>
@@ -128,7 +128,7 @@ export function WrongReasonFields({
               type="button"
               disabled={savingCustom || !draft.trim()}
               onClick={() => void handleAddCustom()}
-              className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-xl bg-[var(--rm-brand)] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
             >
               추가
             </button>
@@ -138,7 +138,7 @@ export function WrongReasonFields({
                 setAdding(false);
                 setDraft("");
               }}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600"
+              className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-xs text-[var(--rm-text-muted)]"
             >
               취소
             </button>

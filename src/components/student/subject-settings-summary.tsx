@@ -48,8 +48,8 @@ export function SubjectSettingsSummary({ subjectId, userId }: Props) {
   }, [refresh, subjectId]);
 
   return (
-    <p className="mb-4 rounded-xl bg-zinc-100 px-4 py-3 text-xs leading-relaxed text-zinc-600">
-      <span className="font-semibold text-zinc-800">현재 복습 규칙: </span>
+    <p className="mb-4 rounded-xl bg-[var(--rm-accent-muted)] px-4 py-3 text-xs leading-relaxed text-[var(--rm-text-muted)]">
+      <span className="font-semibold text-[var(--rm-text)]">현재 복습 규칙: </span>
       {summary}
     </p>
   );

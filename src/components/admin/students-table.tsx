@@ -125,7 +125,7 @@ export function AdminStudentsTable({
 
   if (students.length === 0) {
     return (
-      <p className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-500 shadow-sm">
+      <p className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
         등록된 학생이 없습니다.
       </p>
     );
@@ -166,14 +166,14 @@ export function AdminStudentsTable({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="이름/아이디/반/담당선생님 검색"
-          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm"
         />
         <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {classNameFilters.length > 0 ? (
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
-              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
+              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 반</option>
               {classNameFilters.map((name) => (
@@ -187,7 +187,7 @@ export function AdminStudentsTable({
             <select
               value={gradeFilter}
               onChange={(e) => setGradeFilter(e.target.value)}
-              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
+              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 학년</option>
               {gradeOptions.map((label) => (
@@ -201,7 +201,7 @@ export function AdminStudentsTable({
             <select
               value={teacherFilter}
               onChange={(e) => setTeacherFilter(e.target.value)}
-              className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
+              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 담당</option>
               {teacherOptions.map((name) => (
@@ -214,7 +214,7 @@ export function AdminStudentsTable({
           <select
             value={activityFilter}
             onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
-            className="shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs sm:text-sm"
+            className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
           >
             <option value="all">전체 활동</option>
             <option value="due_today">오늘 할 것</option>
@@ -223,7 +223,7 @@ export function AdminStudentsTable({
           </select>
         </div>
         {filtered.length !== students.length ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--rm-text-muted)]">
             {students.length}명 중 {filtered.length}명 표시
           </p>
         ) : null}
@@ -237,7 +237,7 @@ export function AdminStudentsTable({
                 <select
                   value={classRoomId}
                   onChange={(e) => setClassRoomId(e.target.value)}
-                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                  className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
                 >
                   <option value="">반 선택</option>
                   {classOptions.map((opt) => (
@@ -249,7 +249,7 @@ export function AdminStudentsTable({
                 <button
                   type="button"
                   disabled={pending || selected.length === 0 || !classRoomId}
-                  className="whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
+                  className="whitespace-nowrap rounded-lg bg-[var(--rm-brand)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:text-sm"
                   onClick={() => {
                     startTransition(async () => {
                       const result = await bulkAssignClassAction(
@@ -266,7 +266,7 @@ export function AdminStudentsTable({
             ) : (
               <Link
                 href="/admin/classes"
-                className="whitespace-nowrap rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 sm:text-sm"
+                className="whitespace-nowrap rounded-lg border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] px-3 py-2 text-xs font-semibold text-[var(--rm-text-on-info)] sm:text-sm"
               >
                 먼저 반 만들기
               </Link>
@@ -274,7 +274,7 @@ export function AdminStudentsTable({
             <button
               type="button"
               disabled={pending || selected.length === 0}
-              className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 sm:text-sm"
+              className="whitespace-nowrap rounded-lg border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-3 py-2 text-xs font-semibold text-[var(--rm-text-on-error)] disabled:opacity-50 sm:text-sm"
               onClick={() => setShowDeleteConfirm(true)}
             >
               계정 삭제
@@ -283,17 +283,17 @@ export function AdminStudentsTable({
         ) : null}
       </div>
       {feedback ? (
-        <p className="rounded-xl bg-zinc-100 px-3 py-2 text-xs whitespace-pre-line text-zinc-700">
+        <p className="rounded-xl bg-[var(--rm-accent-muted)] px-3 py-2 text-xs whitespace-pre-line text-[var(--rm-text)]">
           {feedback}
         </p>
       ) : null}
       {canManage && selected.length > 0 ? (
-        <p className="text-xs text-zinc-500">{selected.length}명 선택됨</p>
+        <p className="text-xs text-[var(--rm-text-muted)]">{selected.length}명 선택됨</p>
       ) : null}
 
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm md:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm md:block">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
+          <thead className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]">
             <tr>
               {canManage ? (
                 <th className="whitespace-nowrap px-3 py-2 font-medium">
@@ -324,9 +324,9 @@ export function AdminStudentsTable({
               <th className="whitespace-nowrap px-3 py-2 font-medium">미접속</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-[var(--rm-border)]">
             {filtered.map((student) => (
-              <tr key={student.id} className="text-zinc-800">
+              <tr key={student.id} className="text-[var(--rm-text)]">
                 {canManage ? (
                   <td className="px-3 py-2">
                     <input
@@ -345,33 +345,33 @@ export function AdminStudentsTable({
                 <td className="whitespace-nowrap px-3 py-2 font-medium">
                   <Link
                     href={`/admin/students/${student.id}`}
-                    className="text-blue-700 hover:underline"
+                    className="text-[var(--rm-text-on-info)] hover:underline"
                   >
                     {student.displayName}
                   </Link>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.username}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-zinc-700">
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-[var(--rm-text)]">
                   {student.passwordPlain ?? (
-                    <span className="text-zinc-400">—</span>
+                    <span className="text-[var(--rm-text-faint)]">—</span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.gradeLabel ?? "—"}
                 </td>
-                <td className="max-w-[8rem] truncate px-3 py-2 text-zinc-600">
+                <td className="max-w-[8rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
                   {formatClassDisplay(student)}
                 </td>
-                <td className="max-w-[7rem] truncate px-3 py-2 text-zinc-600">
+                <td className="max-w-[7rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.teacherNames.length > 0 ? (
                     student.teacherNames.join(", ")
                   ) : (
-                    <span className="text-zinc-400">미배정</span>
+                    <span className="text-[var(--rm-text-faint)]">미배정</span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {formatLastLogin(student.lastLoginAt)}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
@@ -379,20 +379,20 @@ export function AdminStudentsTable({
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
                   {student.dueToday > 0 ? (
-                    <span className="font-medium text-amber-600">
+                    <span className="font-medium text-[var(--rm-warning)]">
                       {student.dueToday}개
                     </span>
                   ) : (
-                    <span className="text-zinc-400">없음</span>
+                    <span className="text-[var(--rm-text-faint)]">없음</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
                   {student.reviewedToday > 0 ? (
-                    <span className="font-medium text-emerald-600">
+                    <span className="font-medium text-[var(--rm-success)]">
                       {student.reviewedToday}회
                     </span>
                   ) : (
-                    <span className="text-zinc-400">0회</span>
+                    <span className="text-[var(--rm-text-faint)]">0회</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
@@ -415,17 +415,17 @@ export function AdminStudentsTable({
         {filtered.map((student) => (
           <div
             key={student.id}
-            className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm"
+            className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 shadow-sm"
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <div>
                 <Link
                   href={`/admin/students/${student.id}`}
-                  className="font-semibold text-blue-700"
+                  className="font-semibold text-[var(--rm-text-on-info)]"
                 >
                   {student.displayName}
                 </Link>
-                <p className="text-xs text-zinc-500">{student.username}</p>
+                <p className="text-xs text-[var(--rm-text-muted)]">{student.username}</p>
               </div>
               {canManage ? (
                 <input
@@ -441,7 +441,7 @@ export function AdminStudentsTable({
                 />
               ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-600">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--rm-text-muted)]">
               <p className="min-w-0 truncate">
                 학년: {student.gradeLabel ?? "—"}
               </p>

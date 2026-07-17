@@ -16,6 +16,12 @@ import {
   resolveStaffMode,
 } from "@/lib/auth/staff-mode";
 import { canViewSuggestions } from "@/lib/constants/suggestions";
+import {
+  ADMIN_THEME_COOKIE,
+  parseAdminThemeCookie,
+} from "@/lib/theme/admin-theme";
+import { DEFAULT_STUDENT_THEME } from "@/lib/theme/student-theme";
+import { cookies } from "next/headers";
 
 export default async function AdminLayout({
   children,
@@ -28,9 +34,13 @@ export default async function AdminLayout({
   const staffMode = session ? resolveStaffMode(session) : "admin";
   const showSuggestions = canViewSuggestions(session?.role);
   const userId = session?.id ?? "guest";
+  const cookieStore = await cookies();
+  const initialTheme =
+    parseAdminThemeCookie(cookieStore.get(ADMIN_THEME_COOKIE)?.value) ??
+    DEFAULT_STUDENT_THEME;
 
   return (
-    <AdminThemeProvider userId={userId}>
+    <AdminThemeProvider userId={userId} initialTheme={initialTheme}>
       <div className="relative z-[1] flex min-h-full flex-1 flex-col bg-[var(--rm-bg-base)]">
         <header className="rm-header sticky top-0 z-40 border-b border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5">

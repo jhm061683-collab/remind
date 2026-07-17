@@ -70,7 +70,7 @@ export function ShareStatsCard({ summary }: Props) {
           <p className="text-lg font-bold tracking-tight">
             Re<span className="text-blue-400">:</span>mind
           </p>
-          <p className="text-xs font-medium text-slate-400">{summary.weekLabel}</p>
+          <p className="text-xs font-medium text-[var(--rm-text-faint)]">{summary.weekLabel}</p>
         </div>
 
         <p className="mt-6 text-sm font-medium text-blue-200">이번 주 학습 기록</p>
@@ -92,12 +92,12 @@ export function ShareStatsCard({ summary }: Props) {
 
         <div className="mt-5 flex items-end justify-between border-t border-white/10 pt-4">
           <div>
-            <p className="text-xs text-slate-400">누적 등록</p>
+            <p className="text-xs text-[var(--rm-text-faint)]">누적 등록</p>
             <p className="text-2xl font-bold">{summary.totalRegistered}</p>
           </div>
           {summary.studyStreak > 0 ? (
             <div className="text-right">
-              <p className="text-xs text-slate-400">연속 복습</p>
+              <p className="text-xs text-[var(--rm-text-faint)]">연속 복습</p>
               <p className="text-2xl font-bold text-blue-300">
                 {summary.studyStreak}
                 <span className="ml-0.5 text-sm font-semibold">일</span>
@@ -106,7 +106,7 @@ export function ShareStatsCard({ summary }: Props) {
           ) : null}
         </div>
 
-        <p className="mt-4 text-center text-[10px] text-slate-500">
+        <p className="mt-4 text-center text-[10px] text-[var(--rm-text-muted)]">
           {BRAND_SUBLINE}
         </p>
       </div>
@@ -115,13 +115,13 @@ export function ShareStatsCard({ summary }: Props) {
         type="button"
         onClick={() => void handleSave()}
         disabled={saving}
-        className="flex min-h-[48px] w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 touch-manipulation"
+        className="flex min-h-[48px] w-full items-center justify-center rounded-xl bg-[var(--rm-brand)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 touch-manipulation"
       >
         {saving ? "저장 중…" : "이미지 저장 · 공유"}
       </button>
 
       {message ? (
-        <p className="text-center text-xs text-slate-500">{message}</p>
+        <p className="text-center text-xs text-[var(--rm-text-muted)]">{message}</p>
       ) : null}
     </div>
   );

@@ -48,12 +48,7 @@
 }
 
 body {
-  background: linear-gradient(
-    180deg,
-    #eef2ff 0%,
-    #f4f7fb 8rem,
-    #f4f7fb 100%
-  );
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Pretendard", "Apple SD Gothic Neo",
     sans-serif;

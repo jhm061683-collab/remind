@@ -49,6 +49,7 @@
   --remind-primary: var(--rm-brand);
   --rm-brand-text: #0f172a;
 
+  color-scheme: light;
   background: linear-gradient(
     180deg,
     #eef2ff 0%,

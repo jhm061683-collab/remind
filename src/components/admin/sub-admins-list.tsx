@@ -21,7 +21,7 @@ export function SubAdminsList({ subAdmins }: Props) {
 
   if (subAdmins.length === 0) {
     return (
-      <p className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-500 shadow-sm">
+      <p className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
         등록된 선생님이 없습니다. 위에서 계정을 추가해 주세요.
       </p>
     );
@@ -29,9 +29,9 @@ export function SubAdminsList({ subAdmins }: Props) {
 
   return (
     <>
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
+          <thead className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]">
             <tr>
               <th className="whitespace-nowrap px-3 py-2 font-medium">이름</th>
               <th className="whitespace-nowrap px-3 py-2 font-medium">아이디</th>
@@ -40,27 +40,27 @@ export function SubAdminsList({ subAdmins }: Props) {
               <th className="whitespace-nowrap px-3 py-2 font-medium">관리</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-[var(--rm-border)]">
             {subAdmins.map((row) => (
               <tr key={row.id}>
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-zinc-900">
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-[var(--rm-text)]">
                   {row.displayName}
                   {row.isDirector ? (
-                    <span className="ml-1.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                    <span className="ml-1.5 rounded-full bg-[var(--rm-accent-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--rm-brand-violet)]">
                       팀장
                     </span>
                   ) : null}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {row.username}
                 </td>
                 <td className="px-3 py-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-zinc-700">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-[var(--rm-text)]">
                     <input
                       type="checkbox"
                       checked={row.isDirector}
                       disabled={pending}
-                      className="rounded border-zinc-300"
+                      className="rounded border-[var(--rm-border)]"
                       onChange={(e) => {
                         const next = e.target.checked;
                         startTransition(async () => {
@@ -76,7 +76,7 @@ export function SubAdminsList({ subAdmins }: Props) {
                     팀장
                   </label>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-800">
+                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text)]">
                   {row.assignedCount}명
                 </td>
                 <td className="px-3 py-2">
@@ -84,7 +84,7 @@ export function SubAdminsList({ subAdmins }: Props) {
                     type="button"
                     disabled={pending}
                     onClick={() => setDeleteTarget(row)}
-                    className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    className="whitespace-nowrap rounded-lg border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-text-on-error)] hover:bg-[var(--rm-error-bg)] disabled:opacity-50"
                   >
                     삭제
                   </button>
@@ -96,10 +96,10 @@ export function SubAdminsList({ subAdmins }: Props) {
       </div>
 
       {feedback ? (
-        <p className="mt-3 text-sm text-zinc-700">{feedback}</p>
+        <p className="mt-3 text-sm text-[var(--rm-text)]">{feedback}</p>
       ) : null}
 
-      <p className="mt-2 text-[11px] text-zinc-500">
+      <p className="mt-2 text-[11px] text-[var(--rm-text-muted)]">
         팀장은 여러 명 가능 · 관리자/선생님 모드 전환 · 삭제 시 반은 유지
       </p>
 

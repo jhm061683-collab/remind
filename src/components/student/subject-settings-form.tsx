@@ -303,18 +303,18 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         <div
           className={`rounded-xl px-4 py-3 text-sm font-medium ${
             messageType === "ok"
-              ? "bg-green-100 text-green-900"
+              ? "bg-[var(--rm-success-bg)] text-[var(--rm-text-on-success)]"
               : messageType === "err"
-                ? "bg-red-100 text-red-900"
-                : "bg-amber-100 text-amber-900"
+                ? "bg-[var(--rm-error-bg)] text-[var(--rm-text-on-error)]"
+                : "bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))] text-[var(--rm-text)]"
           }`}
         >
           {message}
         </div>
       ) : null}
 
-      <div className="rounded-xl bg-blue-600 px-4 py-3 text-white shadow-md">
-        <p className="text-xs text-blue-100">현재 선택 / 적용 예정</p>
+      <div className="rounded-xl bg-[var(--rm-brand)] px-4 py-3 text-white shadow-md">
+        <p className="text-xs text-white/80">현재 선택 / 적용 예정</p>
         <p className="text-lg font-bold">
           {activePreset?.name ?? "복습 설정"}
           {presetModified ? " · 수정 중" : ""}
@@ -332,11 +332,11 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         <span className="text-sm font-medium">
           모든 과목에 똑같이 적용
           {!applyToAll ? (
-            <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+            <span className="mt-0.5 block text-xs font-normal text-[var(--rm-text-muted)]">
               체크 안 하면 「{getSubjectName(subjectId)}」만 바뀝니다.
             </span>
           ) : (
-            <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+            <span className="mt-0.5 block text-xs font-normal text-[var(--rm-text-muted)]">
               수학·영어·국어 등 내 과목 전부에 같은 주기가 들어갑니다.
             </span>
           )}
@@ -345,7 +345,7 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
 
       <div>
         <p className="remind-section-title mb-1">시험 유형</p>
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-xs text-[var(--rm-text-muted)]">
           탭을 선택한 뒤 숫자를 바꾸고 「프리셋 기본값 저장」을 누르면
           수능·내신·공시·국가시험 기본값이 바뀝니다.
         </p>
@@ -367,7 +367,7 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
                 </span>
                 <span
                   className={`mt-1 block text-xs ${
-                    isSelected ? "text-blue-100" : "text-slate-500"
+                    isSelected ? "text-white/80" : "text-[var(--rm-text-muted)]"
                   }`}
                 >
                   {preset.description}
@@ -382,21 +382,21 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         <button
           type="button"
           onClick={() => void saveAsPresetDefault()}
-          className="rounded-xl border-2 border-violet-400 bg-violet-50 py-3 text-xs font-bold text-violet-800 touch-manipulation"
+          className="rounded-xl border-2 border-[var(--rm-brand-violet)] bg-[var(--rm-accent-muted)] py-3 text-xs font-bold text-[var(--rm-brand-violet)] touch-manipulation"
         >
           📝 프리셋 기본값 저장
         </button>
         <button
           type="button"
           onClick={() => void resetCurrentPreset()}
-          className="rounded-xl border-2 border-zinc-300 py-3 text-xs font-bold text-zinc-600 touch-manipulation"
+          className="rounded-xl border-2 border-[var(--rm-border)] py-3 text-xs font-bold text-[var(--rm-text-muted)] touch-manipulation"
         >
           ↩ 원래대로
         </button>
       </div>
 
-      <div className="space-y-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-        <p className="text-sm font-bold text-blue-900">① 단기</p>
+      <div className="space-y-3 rounded-xl border-2 border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-4">
+        <p className="text-sm font-bold text-[var(--rm-text-on-info)]">① 단기</p>
         <NumberField
           label="노출 간격 (일)"
           value={settings.shortIntervalDays}
@@ -413,8 +413,8 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-        <p className="text-sm font-bold text-amber-900">② 중기</p>
+      <div className="space-y-3 rounded-xl border-2 border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] p-4">
+        <p className="text-sm font-bold text-[var(--rm-text)]">② 중기</p>
         <NumberField
           label="노출 간격 (일)"
           value={settings.mediumIntervalDays}
@@ -431,7 +431,7 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border-2 border-green-200 bg-green-50 p-4">
+      <div className="space-y-3 rounded-xl border-2 border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] p-4">
         <p className="text-sm font-bold text-green-900">③ 장기</p>
         <NumberField
           label="노출 간격 (일)"
@@ -449,7 +449,7 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
         />
       </div>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-[var(--rm-text-muted)]">
         숫자는 자동으로 제한됩니다. 단기·중기·장기 노출 {REVIEW_SETTINGS_LIMITS.longIntervalDays.max}일,
         연속 정답 {REVIEW_SETTINGS_LIMITS.shortStreakRequired.max}회 이내로 설정해 주세요.
       </p>
@@ -497,13 +497,13 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
             showMsg("모든 프리셋을 공장 기본값으로 되돌렸습니다.", "ok");
           })();
         }}
-        className="w-full py-2 text-xs text-zinc-400 underline touch-manipulation"
+        className="w-full py-2 text-xs text-[var(--rm-text-faint)] underline touch-manipulation"
       >
         모든 프리셋 초기화
       </button>
 
       <p className="text-center text-sm">
-        <Link href={`/subjects/${subjectId}`} className="text-blue-600 underline">
+        <Link href={`/subjects/${subjectId}`} className="text-[var(--rm-nav-active)] underline">
           ← 과목으로
         </Link>
       </p>
@@ -548,7 +548,7 @@ function NumberField({
   return (
     <label className="block text-sm">
       {label}
-      <span className="ml-1 text-xs font-normal text-zinc-500">
+      <span className="ml-1 text-xs font-normal text-[var(--rm-text-muted)]">
         ({min}~{max})
       </span>
       <input
@@ -571,7 +571,7 @@ function NumberField({
             (e.target as HTMLInputElement).blur();
           }
         }}
-        className="mt-1 w-full rounded-lg border-2 border-zinc-300 bg-white px-3 py-3 text-lg font-bold"
+        className="mt-1 w-full rounded-lg border-2 border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-3 text-lg font-bold"
       />
     </label>
   );

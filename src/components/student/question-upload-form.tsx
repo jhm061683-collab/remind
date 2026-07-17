@@ -229,8 +229,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     return (
       <div className="remind-card space-y-4 p-8 text-center">
         <p className="text-4xl">✅</p>
-        <p className="text-xl font-bold text-green-800">등록 완료!</p>
-        <p className="text-sm text-green-700">
+        <p className="text-xl font-bold text-[var(--rm-text-on-success)]">등록 완료!</p>
+        <p className="text-sm text-[var(--rm-text-on-success)]">
           {getSubjectName(subjectId)}에 저장됐어요
           {registeredCount > 1 ? ` · 이번에 ${registeredCount}개` : ""}
         </p>
@@ -238,14 +238,14 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           <button
             type="button"
             onClick={handleContinue}
-            className="min-h-[48px] rounded-xl bg-blue-600 py-3 text-sm font-bold text-white"
+            className="min-h-[48px] rounded-xl bg-[var(--rm-brand)] py-3 text-sm font-bold text-white"
           >
             계속 등록
           </button>
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="min-h-[48px] rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-700"
+            className="min-h-[48px] rounded-xl border border-[var(--rm-border)] py-3 text-sm font-bold text-[var(--rm-text)]"
           >
             홈으로
           </button>
@@ -263,7 +263,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   return (
     <div className="remind-card space-y-4 p-5 md:p-6">
       {error ? (
-        <p className="rounded-xl bg-red-100 px-4 py-3 text-sm font-medium text-red-800">
+        <p className="rounded-xl bg-red-100 px-4 py-3 text-sm font-medium text-[var(--rm-text-on-error)]">
           {error}
         </p>
       ) : null}
@@ -271,9 +271,9 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       <label className="block">
         <span className="remind-field-label">과목</span>
         {subjectsLoading ? (
-          <p className="mt-1 text-sm text-slate-500">과목 불러오는 중...</p>
+          <p className="mt-1 text-sm text-[var(--rm-text-muted)]">과목 불러오는 중...</p>
         ) : subjects.length === 0 ? (
-          <p className="mt-1 text-sm text-red-600">
+          <p className="mt-1 text-sm text-[var(--rm-danger)]">
             과목이 없어요. 「과목 설정」에서 과목을 먼저 추가해 주세요.
           </p>
         ) : (
@@ -369,7 +369,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         onClick={handleSubmit}
         disabled={isSaving || !canSubmit}
         className={`min-h-[56px] w-full rounded-xl py-4 text-base font-bold text-white touch-manipulation ${
-          canSubmit ? "bg-blue-600" : "bg-zinc-400"
+          canSubmit ? "bg-[var(--rm-brand)]" : "bg-[var(--rm-text-faint)]"
         }`}
       >
         {isSaving

@@ -293,7 +293,7 @@ export function ArchiveList({ userId }: Props) {
         onConfirm={() => void handleBulkDeleteConfirm()}
         onCancel={() => setShowBulkDeleteConfirm(false)}
       />
-      <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-slate-100 p-1">
+      <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-[var(--rm-accent-muted)] p-1">
         {STATUS_TABS.map((tab) => {
           const active = statusFilter === tab.id;
           const count = counts[tab.id];
@@ -304,12 +304,12 @@ export function ArchiveList({ userId }: Props) {
               onClick={() => changeStatusFilter(tab.id)}
               className={`rounded-xl px-2 py-2.5 text-center text-xs font-semibold transition touch-manipulation sm:text-sm ${
                 active
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-[var(--rm-surface)] text-[var(--rm-text-on-info)] shadow-sm"
+                  : "text-[var(--rm-text-muted)] hover:text-[var(--rm-text)]"
               }`}
             >
               {tab.label}
-              <span className="mt-0.5 block text-[11px] font-medium text-slate-400">
+              <span className="mt-0.5 block text-[11px] font-medium text-[var(--rm-text-faint)]">
                 {count}개
               </span>
             </button>
@@ -318,7 +318,7 @@ export function ArchiveList({ userId }: Props) {
       </div>
 
       {statusFilter === "archived" ? (
-        <p className="mb-4 rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+        <p className="mb-4 rounded-xl border border-violet-100 bg-[var(--rm-accent-muted)] px-4 py-3 text-sm text-violet-900">
           복습을 끝내고 「보관함 저장」한 문제만 모아 둔 곳이에요.
         </p>
       ) : null}
@@ -326,7 +326,7 @@ export function ArchiveList({ userId }: Props) {
       <div className="remind-filter-panel space-y-4">
         <div>
           <p className="remind-section-title">검색 · 상세 필터</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
             틀린 이유는 여러 개 고를 수 있고, 고른 이유마다 아래 오답 키워드가
             나와요.
           </p>
@@ -346,7 +346,7 @@ export function ArchiveList({ userId }: Props) {
         <div className="space-y-2">
           <p className="remind-field-label">틀린 이유 (여러 개 선택 가능)</p>
           {wrongReasonOptions.length === 0 ? (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[var(--rm-text-faint)]">
               아직 틀린 이유를 적은 문제가 없어요.
             </p>
           ) : (
@@ -365,7 +365,7 @@ export function ArchiveList({ userId }: Props) {
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
                       active
                         ? "border-rose-300 bg-rose-50 text-rose-800"
-                        : "border-slate-200 bg-white text-slate-700"
+                        : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
                     }`}
                   >
                     {option.label}
@@ -388,7 +388,7 @@ export function ArchiveList({ userId }: Props) {
               >
                 <p className="remind-field-label">
                   오답 키워드
-                  <span className="ml-1 font-normal text-slate-500">
+                  <span className="ml-1 font-normal text-[var(--rm-text-muted)]">
                     · {group.reason}
                   </span>
                 </p>
@@ -406,8 +406,8 @@ export function ArchiveList({ userId }: Props) {
                         }
                         className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
                           active
-                            ? "border-blue-300 bg-blue-50 text-blue-800"
-                            : "border-slate-200 bg-white text-slate-700"
+                            ? "border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] text-[var(--rm-text-on-info)]"
+                            : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
                         }`}
                       >
                         #{option.label}
@@ -467,8 +467,8 @@ export function ArchiveList({ userId }: Props) {
         ) : null}
       </div>
 
-      <p className="mt-4 text-sm text-slate-600">
-        <span className="font-semibold text-slate-900">{filtered.length}건</span>
+      <p className="mt-4 text-sm text-[var(--rm-text-muted)]">
+        <span className="font-semibold text-[var(--rm-text)]">{filtered.length}건</span>
         {hasDetailFilters ? " · 검색/필터 적용" : null}
       </p>
 
@@ -476,7 +476,7 @@ export function ArchiveList({ userId }: Props) {
         <button
           type="button"
           onClick={() => setShowBulkDeleteConfirm(true)}
-          className="mt-3 w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-700 touch-manipulation hover:bg-red-100"
+          className="mt-3 w-full rounded-xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] py-3 text-sm font-semibold text-[var(--rm-text-on-error)] touch-manipulation hover:bg-[var(--rm-error-bg)]"
         >
           지금 목록 {filtered.length}개 전부 삭제
         </button>

@@ -138,7 +138,7 @@ export function QuestionArchiveCard({
       />
       <li className="remind-card overflow-hidden">
         {/* 썸네일: 문제 사진만 (여러 장이면 넘김) */}
-        <div className="relative h-48 bg-slate-100 sm:h-56">
+        <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
           <QuestionImages
             question={question}
             alt="문제"
@@ -150,19 +150,19 @@ export function QuestionArchiveCard({
 
         <div className="p-4 text-sm">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-semibold text-slate-900">{subjectName}</p>
+            <p className="font-semibold text-[var(--rm-text)]">{subjectName}</p>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 archived
-                  ? "bg-violet-100 text-violet-700"
-                  : "bg-emerald-100 text-emerald-700"
+                  ? "bg-violet-100 text-[var(--rm-brand-violet)]"
+                  : "bg-emerald-100 text-[var(--rm-text-on-success)]"
               }`}
             >
               {archived ? UI_LABELS.statusArchived : UI_LABELS.statusKeeping}
             </span>
           </div>
           {question.source ? (
-            <p className="mt-1 text-xs text-slate-500">출처: {question.source}</p>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">출처: {question.source}</p>
           ) : null}
           {question.wrongReason ? (
             <span className="mt-2 inline-block rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
@@ -177,39 +177,39 @@ export function QuestionArchiveCard({
                 </span>
               ))}
               {question.keywords.length > 4 ? (
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-[var(--rm-text-faint)]">
                   +{question.keywords.length - 4}
                 </span>
               ) : null}
             </div>
           ) : null}
-          <p className="mt-1 text-slate-500">등록: {formatDate(question.createdAt)}</p>
+          <p className="mt-1 text-[var(--rm-text-muted)]">등록: {formatDate(question.createdAt)}</p>
 
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-3 w-full rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-xs font-bold text-blue-700 touch-manipulation"
+            className="mt-3 w-full rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] py-2.5 text-xs font-bold text-[var(--rm-text-on-info)] touch-manipulation"
           >
             {expanded ? "접기 ↑" : "자세히 보기 · 정답·오답 분석 ↓"}
           </button>
         </div>
 
         {expanded ? (
-          <div className="space-y-4 border-t border-slate-100 px-4 pb-4">
+          <div className="space-y-4 border-t border-[var(--rm-border)] px-4 pb-4">
             {message ? (
-              <p className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-800">
+              <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
                 {message}
               </p>
             ) : null}
 
-            <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+            <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-blue-900">오답 분석</p>
+                <p className="text-sm font-bold text-[var(--rm-text-on-info)]">오답 분석</p>
                 {!editing ? (
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="text-xs font-semibold text-blue-700"
+                    className="text-xs font-semibold text-[var(--rm-text-on-info)]"
                   >
                     {hasReflection ? "수정" : "작성"}
                   </button>
@@ -219,7 +219,7 @@ export function QuestionArchiveCard({
               {editing ? (
                 <div className="mt-3 space-y-3">
                   <label className="block">
-                    <span className="text-xs font-medium text-slate-600">문제 출처</span>
+                    <span className="text-xs font-medium text-[var(--rm-text-muted)]">문제 출처</span>
                     <input
                       value={source}
                       onChange={(e) => setSource(e.target.value)}
@@ -246,7 +246,7 @@ export function QuestionArchiveCard({
                     inputClassName="remind-input mt-1 text-sm"
                   />
                   <label className="block">
-                    <span className="text-xs font-medium text-slate-600">
+                    <span className="text-xs font-medium text-[var(--rm-text-muted)]">
                       오답 분석 메모
                     </span>
                     <textarea
@@ -261,7 +261,7 @@ export function QuestionArchiveCard({
                     <button
                       type="button"
                       onClick={() => setEditing(false)}
-                      className="flex-1 rounded-xl border border-slate-200 py-2 text-sm text-slate-600"
+                      className="flex-1 rounded-xl border border-[var(--rm-border)] py-2 text-sm text-[var(--rm-text-muted)]"
                     >
                       취소
                     </button>
@@ -269,7 +269,7 @@ export function QuestionArchiveCard({
                       type="button"
                       disabled={saving}
                       onClick={() => void handleSaveReflection()}
-                      className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-[var(--rm-brand)] py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       {saving ? "저장 중..." : "저장"}
                     </button>
@@ -302,11 +302,11 @@ export function QuestionArchiveCard({
                     </div>
                   ) : null}
                   {question.reflectionMemo ? (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--rm-text)]">
                       {question.reflectionMemo}
                     </p>
                   ) : !question.wrongReason ? (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-[var(--rm-text-muted)]">
                       아직 적지 않았어요. 「작성」을 눌러 남겨 보세요.
                     </p>
                   ) : null}
@@ -314,16 +314,16 @@ export function QuestionArchiveCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-bold text-slate-900">정답 · 해설</p>
+            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-4">
+              <p className="text-sm font-bold text-[var(--rm-text)]">정답 · 해설</p>
               {!hasAnswer ? (
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
                   등록할 때 넣은 해설이 없어요.
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
                   {question.answerImageDataUrl ? (
-                    <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    <div className="relative overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)]">
                       <ZoomableQuestionImage
                         src={question.answerImageDataUrl}
                         alt="해설"
@@ -334,7 +334,7 @@ export function QuestionArchiveCard({
                     </div>
                   ) : null}
                   {question.answerText ? (
-                    <p className="whitespace-pre-wrap text-sm text-slate-700">
+                    <p className="whitespace-pre-wrap text-sm text-[var(--rm-text)]">
                       {question.answerText}
                     </p>
                   ) : null}
@@ -346,7 +346,7 @@ export function QuestionArchiveCard({
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
               disabled={deleting}
-              className="w-full rounded-xl border border-red-200 py-2.5 text-sm font-semibold text-red-600 touch-manipulation disabled:opacity-50"
+              className="w-full rounded-xl border border-[var(--rm-error-border)] py-2.5 text-sm font-semibold text-[var(--rm-danger)] touch-manipulation disabled:opacity-50"
             >
               이 문제 삭제
             </button>

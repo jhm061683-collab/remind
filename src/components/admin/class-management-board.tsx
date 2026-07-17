@@ -155,21 +155,21 @@ export function ClassManagementBoard({ data }: Props) {
   return (
     <div className="space-y-4">
       {message ? (
-        <p className="rounded-xl bg-blue-50 px-4 py-2 text-sm text-blue-800">{message}</p>
+        <p className="rounded-xl bg-[var(--rm-info-bg)] px-4 py-2 text-sm text-[var(--rm-text-on-info)]">{message}</p>
       ) : null}
 
       {unassignedCount > 0 ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">
+        <p className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-4 py-2 text-sm text-[var(--rm-text)]">
           아직 반에 안 들어간 학생 <strong>{unassignedCount}명</strong>이 있어요.
           반을 펼친 뒤 「미배정만」으로 골라 넣을 수 있습니다.
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900 sm:text-base">
+      <section className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--rm-text)] sm:text-base">
           학생 검색 · 반 이동
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
           이름/아이디로 찾아 반을 옮기거나 추가합니다.
         </p>
         <div className="mt-3 grid max-w-2xl gap-3 sm:grid-cols-2">
@@ -181,18 +181,18 @@ export function ClassManagementBoard({ data }: Props) {
                 setTransferStudentId("");
               }}
               placeholder="학생 이름 또는 아이디 검색"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
             />
             {transferQuery.trim() && !transferStudentId ? (
-              <ul className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-slate-100">
+              <ul className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-[var(--rm-border)]">
                 {transferMatches.length === 0 ? (
-                  <li className="px-3 py-2 text-xs text-slate-400">검색 결과 없음</li>
+                  <li className="px-3 py-2 text-xs text-[var(--rm-text-faint)]">검색 결과 없음</li>
                 ) : (
                   transferMatches.map((student) => (
                     <li key={student.id}>
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--rm-surface-raised)]"
                         onClick={() => {
                           setTransferStudentId(student.id);
                           setTransferFromId(student.classIds[0] ?? "");
@@ -201,11 +201,11 @@ export function ClassManagementBoard({ data }: Props) {
                       >
                         <span>
                           {student.displayName}{" "}
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-[var(--rm-text-faint)]">
                             ({student.username})
                           </span>
                         </span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-[var(--rm-text-faint)]">
                           {student.classLabels.join(", ") || "미배정"}
                         </span>
                       </button>
@@ -218,12 +218,12 @@ export function ClassManagementBoard({ data }: Props) {
 
           <div className="space-y-2">
             {selectedTransferStudent ? (
-              <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <p className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2 text-xs text-[var(--rm-text-muted)]">
                 선택: <strong>{selectedTransferStudent.displayName}</strong> · 현재{" "}
                 {selectedTransferStudent.classLabels.join(", ") || "미배정"}
               </p>
             ) : (
-              <p className="text-xs text-slate-400">위에서 학생을 선택하세요.</p>
+              <p className="text-xs text-[var(--rm-text-faint)]">위에서 학생을 선택하세요.</p>
             )}
             <div className="flex flex-wrap gap-2">
               <label className="inline-flex items-center gap-1.5 text-xs">
@@ -249,7 +249,7 @@ export function ClassManagementBoard({ data }: Props) {
               <select
                 value={transferFromId}
                 onChange={(e) => setTransferFromId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
               >
                 <option value="">모든 기존 반에서 빼고 이동</option>
                 {selectedTransferStudent.classIds.map((id, idx) => (
@@ -262,7 +262,7 @@ export function ClassManagementBoard({ data }: Props) {
             <select
               value={transferToId}
               onChange={(e) => setTransferToId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
             >
               <option value="">옮길 반 선택</option>
               {data.classes.map((room) => (
@@ -274,7 +274,7 @@ export function ClassManagementBoard({ data }: Props) {
             <button
               type="button"
               disabled={pending || !transferStudentId || !transferToId}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-xl bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               onClick={() => {
                 startTransition(async () => {
                   const res = await transferStudentClassAction({
@@ -299,11 +299,11 @@ export function ClassManagementBoard({ data }: Props) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-violet-50/50 p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900 sm:text-base">
+      <section className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-[var(--rm-text)] sm:text-base">
           새 반 만들기
         </h2>
-        <p className="mt-1 text-xs text-slate-600">
+        <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
           학년·반 이름·담당 선생님을 지정하세요.
         </p>
         <div className="mt-3 flex max-w-2xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -312,7 +312,7 @@ export function ClassManagementBoard({ data }: Props) {
             onChange={(e) =>
               setNewSchoolLevel(e.target.value as typeof newSchoolLevel)
             }
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:w-24"
+            className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm sm:w-24"
           >
             {SCHOOL_LEVELS.map((level) => (
               <option key={level.value} value={level.value}>
@@ -326,19 +326,19 @@ export function ClassManagementBoard({ data }: Props) {
             max={12}
             value={newGradeNumber}
             onChange={(e) => setNewGradeNumber(Number(e.target.value))}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:w-20"
+            className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm sm:w-20"
             placeholder="학년"
           />
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="반 이름 (예: A반)"
-            className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm"
           />
           <button
             type="button"
             disabled={pending || !newName.trim()}
-            className="whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="whitespace-nowrap rounded-lg bg-[var(--rm-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             onClick={() => {
               startTransition(async () => {
                 const res = await createClassRoomAction({
@@ -360,12 +360,12 @@ export function ClassManagementBoard({ data }: Props) {
         </div>
         {data.teachers.length > 0 ? (
           <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold text-slate-600">담당 선생님</p>
+            <p className="mb-1 text-xs font-semibold text-[var(--rm-text-muted)]">담당 선생님</p>
             <div className="flex flex-wrap gap-2">
               {data.teachers.map((teacher) => (
                 <label
                   key={teacher.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-1 text-xs"
                 >
                   <input
                     type="checkbox"
@@ -380,7 +380,7 @@ export function ClassManagementBoard({ data }: Props) {
             </div>
           </div>
         ) : (
-          <p className="mt-3 text-xs text-amber-700">
+          <p className="mt-3 text-xs text-[var(--rm-warning)]">
             원장 또는 서브관리자를 등록하면 반 담당으로 지정할 수 있어요.
           </p>
         )}
@@ -393,8 +393,8 @@ export function ClassManagementBoard({ data }: Props) {
             onClick={() => setView("by_class")}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               view === "by_class"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-700"
+                ? "bg-[var(--rm-brand)] text-white"
+                : "bg-[var(--rm-accent-muted)] text-[var(--rm-text)]"
             }`}
           >
             반별 보기
@@ -404,8 +404,8 @@ export function ClassManagementBoard({ data }: Props) {
             onClick={() => setView("by_teacher")}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               view === "by_teacher"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-700"
+                ? "bg-[var(--rm-brand)] text-white"
+                : "bg-[var(--rm-accent-muted)] text-[var(--rm-text)]"
             }`}
           >
             선생님별 보기
@@ -415,7 +415,7 @@ export function ClassManagementBoard({ data }: Props) {
           <select
             value={gradeFilter}
             onChange={(e) => setGradeFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
+            className="rounded-xl border border-[var(--rm-border)] px-3 py-1.5 text-sm"
           >
             <option value="all">전체 학년</option>
             {classGradeOptions.map((label) => (
@@ -429,19 +429,19 @@ export function ClassManagementBoard({ data }: Props) {
 
       {view === "by_class" ? (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-semibold text-[var(--rm-text)]">
             반 목록 ({filteredClasses.length})
           </h2>
           {filteredClasses.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)]">
               아직 만든 반이 없어요. 위에서 학년별 반을 만들어 보세요.
             </p>
           ) : (
             classesByGrade.map((group) => (
               <div key={group.gradeLabel} className="space-y-2">
-                <h3 className="sticky top-[calc(5.5rem+env(safe-area-inset-top))] z-10 rounded-lg bg-slate-100/95 px-3 py-2 text-sm font-bold text-slate-800 backdrop-blur md:top-[calc(2.75rem+env(safe-area-inset-top))]">
+                <h3 className="sticky top-[calc(5.5rem+env(safe-area-inset-top))] z-10 rounded-lg bg-[color-mix(in_srgb,var(--rm-accent-muted)_95%,transparent)] px-3 py-2 text-sm font-bold text-[var(--rm-text)] backdrop-blur md:top-[calc(2.75rem+env(safe-area-inset-top))]">
                   {group.gradeLabel}{" "}
-                  <span className="font-medium text-slate-500">
+                  <span className="font-medium text-[var(--rm-text-muted)]">
                     · {group.rooms.length}개 반 ·{" "}
                     {group.rooms.reduce((sum, r) => sum + r.studentCount, 0)}명
                   </span>
@@ -460,7 +460,7 @@ export function ClassManagementBoard({ data }: Props) {
               return (
                 <article
                   key={room.id}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm"
                 >
                   <button
                     type="button"
@@ -480,35 +480,35 @@ export function ClassManagementBoard({ data }: Props) {
                     }}
                   >
                     <div>
-                      <p className="font-semibold text-slate-900">
+                      <p className="font-semibold text-[var(--rm-text)]">
                         {room.displayLabel}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
                         담당: {room.teacherNames.join(", ") || "미지정"} · 인원{" "}
                         {room.studentCount}명
                       </p>
                       {room.students.length > 0 ? (
-                        <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                        <p className="mt-1 line-clamp-1 text-xs text-[var(--rm-text-faint)]">
                           {room.students.map((s) => s.displayName).join(", ")}
                         </p>
                       ) : null}
                     </div>
-                    <span className="text-xs text-blue-600">
+                    <span className="text-xs text-[var(--rm-nav-active)]">
                       {expanded ? "접기" : "명단·배정"}
                     </span>
                   </button>
 
                   {expanded ? (
-                    <div className="space-y-3 border-t border-slate-100 px-3 py-3">
+                    <div className="space-y-3 border-t border-[var(--rm-border)] px-3 py-3">
                       <div>
-                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                        <p className="mb-2 text-xs font-semibold text-[var(--rm-text-muted)]">
                           담당 선생님 (복수 가능)
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {data.teachers.map((teacher) => (
                             <label
                               key={teacher.id}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--rm-border)] px-3 py-1 text-xs"
                             >
                               <input
                                 type="checkbox"
@@ -535,11 +535,11 @@ export function ClassManagementBoard({ data }: Props) {
                       </div>
 
                       <div>
-                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                        <p className="mb-2 text-xs font-semibold text-[var(--rm-text-muted)]">
                           학생 명단 ({room.studentCount}명)
                         </p>
                         {room.students.length === 0 ? (
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-[var(--rm-text-faint)]">
                             아직 배정된 학생이 없어요.
                           </p>
                         ) : (
@@ -547,18 +547,18 @@ export function ClassManagementBoard({ data }: Props) {
                             {room.students.map((student) => (
                               <li
                                 key={student.id}
-                                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                                className="flex items-center justify-between rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2 text-sm"
                               >
                                 <span>
                                   {student.displayName}{" "}
-                                  <span className="text-xs text-slate-400">
+                                  <span className="text-xs text-[var(--rm-text-faint)]">
                                     ({student.username})
                                   </span>
                                 </span>
                                 <button
                                   type="button"
                                   disabled={pending}
-                                  className="text-xs text-red-600"
+                                  className="text-xs text-[var(--rm-danger)]"
                                   onClick={() => {
                                     startTransition(async () => {
                                       const res = await removeStudentFromClassAction(
@@ -578,7 +578,7 @@ export function ClassManagementBoard({ data }: Props) {
                       </div>
 
                       <div>
-                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                        <p className="mb-2 text-xs font-semibold text-[var(--rm-text-muted)]">
                           학생 반에 넣기
                         </p>
                         <div className="mb-2 flex flex-wrap gap-2">
@@ -590,7 +590,7 @@ export function ClassManagementBoard({ data }: Props) {
                                 [room.id]: e.target.value,
                               }))
                             }
-                            className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
+                            className="rounded-xl border border-[var(--rm-border)] px-3 py-1.5 text-sm"
                           >
                             <option value="all">전체 학년</option>
                             {studentGradeOptions.map((label) => (
@@ -599,7 +599,7 @@ export function ClassManagementBoard({ data }: Props) {
                               </option>
                             ))}
                           </select>
-                          <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs">
+                          <label className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--rm-border)] px-3 py-1.5 text-xs">
                             <input
                               type="checkbox"
                               checked={unassignedOnly}
@@ -621,19 +621,19 @@ export function ClassManagementBoard({ data }: Props) {
                               }))
                             }
                             placeholder="이름/아이디 검색"
-                            className="min-w-[10rem] flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
+                            className="min-w-[10rem] flex-1 rounded-xl border border-[var(--rm-border)] px-3 py-1.5 text-sm"
                           />
                         </div>
-                        <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-slate-100 p-2">
+                        <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-[var(--rm-border)] p-2">
                           {candidates.length === 0 ? (
-                            <p className="px-2 py-2 text-xs text-slate-400">
+                            <p className="px-2 py-2 text-xs text-[var(--rm-text-faint)]">
                               조건에 맞는 학생이 없어요.
                             </p>
                           ) : (
                             candidates.map((student) => (
                               <label
                                 key={student.id}
-                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-slate-50"
+                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-[var(--rm-surface-raised)]"
                               >
                                 <input
                                   type="checkbox"
@@ -651,12 +651,12 @@ export function ClassManagementBoard({ data }: Props) {
                                 <span className="flex-1">
                                   {student.displayName}
                                   {student.gradeLabel ? (
-                                    <span className="ml-1 text-xs text-slate-400">
+                                    <span className="ml-1 text-xs text-[var(--rm-text-faint)]">
                                       {student.gradeLabel}
                                     </span>
                                   ) : null}
                                 </span>
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-[11px] text-[var(--rm-text-faint)]">
                                   {student.classLabels.join(", ") || "미배정"}
                                 </span>
                               </label>
@@ -667,7 +667,7 @@ export function ClassManagementBoard({ data }: Props) {
                           <button
                             type="button"
                             disabled={pending || selectedToAdd.length === 0}
-                            className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            className="rounded-xl bg-[var(--rm-text)] px-3 py-2 text-xs font-semibold text-[var(--rm-surface)] disabled:opacity-50"
                             onClick={() => {
                               startTransition(async () => {
                                 const res = await assignStudentsToClassAction(
@@ -689,7 +689,7 @@ export function ClassManagementBoard({ data }: Props) {
                           <button
                             type="button"
                             disabled={pending || candidates.length === 0}
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                            className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-xs font-semibold text-[var(--rm-text)] disabled:opacity-50"
                             onClick={() => {
                               setAddStudentIds((prev) => ({
                                 ...prev,
@@ -705,7 +705,7 @@ export function ClassManagementBoard({ data }: Props) {
                       <button
                         type="button"
                         disabled={pending}
-                        className="text-xs text-red-600"
+                        className="text-xs text-[var(--rm-danger)]"
                         onClick={() => setDeleteTarget(room.id)}
                       >
                         이 반 삭제
@@ -721,11 +721,11 @@ export function ClassManagementBoard({ data }: Props) {
         </section>
       ) : (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-semibold text-[var(--rm-text)]">
             선생님별 담당 ({data.teacherOverviews.length})
           </h2>
           {data.teacherOverviews.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)]">
               서브관리자가 아직 없어요.
             </p>
           ) : (
@@ -734,7 +734,7 @@ export function ClassManagementBoard({ data }: Props) {
               return (
                 <article
                   key={teacher.id}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm"
                 >
                   <button
                     type="button"
@@ -744,39 +744,39 @@ export function ClassManagementBoard({ data }: Props) {
                     }
                   >
                     <div>
-                      <p className="font-semibold text-slate-900">
+                      <p className="font-semibold text-[var(--rm-text)]">
                         {teacher.displayName}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
                         담당 반 {teacher.classLabels.length}개 · 학생{" "}
                         {teacher.studentCount}명
                       </p>
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-[var(--rm-text-faint)]">
                         {teacher.classLabels.join(", ") || "담당 반 없음"}
                       </p>
                     </div>
-                    <span className="text-xs text-blue-600">
+                    <span className="text-xs text-[var(--rm-nav-active)]">
                       {expanded ? "접기" : "자세히"}
                     </span>
                   </button>
                   {expanded ? (
-                    <div className="space-y-3 border-t border-slate-100 px-3 py-3">
+                    <div className="space-y-3 border-t border-[var(--rm-border)] px-3 py-3">
                       <div>
-                        <p className="mb-1 text-xs font-semibold text-slate-600">
+                        <p className="mb-1 text-xs font-semibold text-[var(--rm-text-muted)]">
                           담당 반
                         </p>
                         {teacher.classLabels.length === 0 ? (
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-[var(--rm-text-faint)]">
                             아직 지정된 반이 없어요.
                           </p>
                         ) : (
-                          <ul className="space-y-1 text-sm text-slate-700">
+                          <ul className="space-y-1 text-sm text-[var(--rm-text)]">
                             {teacher.classIds.map((classId, idx) => {
                               const room = data.classes.find((c) => c.id === classId);
                               return (
                                 <li
                                   key={classId}
-                                  className="rounded-lg bg-slate-50 px-3 py-2"
+                                  className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2"
                                 >
                                   {teacher.classLabels[idx]} ·{" "}
                                   {room?.studentCount ?? 0}명
@@ -787,13 +787,13 @@ export function ClassManagementBoard({ data }: Props) {
                         )}
                       </div>
                       <div>
-                        <p className="mb-1 text-xs font-semibold text-slate-600">
+                        <p className="mb-1 text-xs font-semibold text-[var(--rm-text-muted)]">
                           담당 학생 명단
                         </p>
                         {teacher.studentNames.length === 0 ? (
-                          <p className="text-xs text-slate-400">학생이 없어요.</p>
+                          <p className="text-xs text-[var(--rm-text-faint)]">학생이 없어요.</p>
                         ) : (
-                          <p className="text-sm leading-relaxed text-slate-700">
+                          <p className="text-sm leading-relaxed text-[var(--rm-text)]">
                             {teacher.studentNames.join(", ")}
                           </p>
                         )}
@@ -807,9 +807,9 @@ export function ClassManagementBoard({ data }: Props) {
         </section>
       )}
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-[var(--rm-text-muted)]">
         학생 계정 등록은{" "}
-        <Link href="/admin/students" className="text-blue-600 underline">
+        <Link href="/admin/students" className="text-[var(--rm-nav-active)] underline">
           학생 관리
         </Link>
         에서 할 수 있어요.

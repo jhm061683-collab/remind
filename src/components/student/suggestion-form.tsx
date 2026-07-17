@@ -75,8 +75,8 @@ export function SuggestionForm({ userId, userName }: Props) {
           <p
             className={`rounded-xl px-3 py-2 text-sm ${
               message.type === "ok"
-                ? "bg-emerald-50 text-emerald-800"
-                : "bg-red-50 text-red-700"
+                ? "bg-[var(--rm-success-bg)] text-[var(--rm-text-on-success)]"
+                : "bg-[var(--rm-error-bg)] text-[var(--rm-text-on-error)]"
             }`}
           >
             {message.text}
@@ -85,7 +85,7 @@ export function SuggestionForm({ userId, userName }: Props) {
         <button
           type="submit"
           disabled={pending || body.trim().length < 2}
-          className="min-h-12 w-full rounded-xl bg-blue-600 text-sm font-bold text-white disabled:opacity-50"
+          className="min-h-12 w-full rounded-xl bg-[var(--rm-brand)] text-sm font-bold text-white disabled:opacity-50"
         >
           {pending ? "보내는 중..." : "건의 보내기"}
         </button>
@@ -93,17 +93,17 @@ export function SuggestionForm({ userId, userName }: Props) {
 
       {mine.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-700">
+          <p className="text-sm font-semibold text-[var(--rm-text)]">
             이 기기에 남긴 건의
           </p>
           <ul className="space-y-2">
             {mine.map((item) => (
               <li
                 key={item.id}
-                className="rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-700"
+                className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-3 text-sm text-[var(--rm-text)]"
               >
                 <p className="whitespace-pre-wrap">{item.body}</p>
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-[var(--rm-text-faint)]">
                   {formatDate(item.createdAt)}
                 </p>
               </li>

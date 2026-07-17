@@ -150,7 +150,7 @@ export function TodayStudySession({ userId }: Props) {
 
   if (!isReady) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 shadow-sm">
+      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-8 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
         불러오는 중...
       </div>
     );
@@ -158,13 +158,13 @@ export function TodayStudySession({ userId }: Props) {
 
   if (isEmpty) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
-        <p className="text-zinc-500">{UI_LABELS.todayQueueEmpty}</p>
-        <p className="mt-2 text-sm text-zinc-400">
+      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-6 text-center shadow-sm">
+        <p className="text-[var(--rm-text-muted)]">{UI_LABELS.todayQueueEmpty}</p>
+        <p className="mt-2 text-sm text-[var(--rm-text-faint)]">
           문제를 업로드하면 보통 다음 날부터 여기에 나타납니다.
         </p>
         {upcomingCount > 0 ? (
-          <div className="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
+          <div className="mt-4 rounded-xl bg-[var(--rm-info-bg)] p-4 text-sm text-[var(--rm-text-on-info)]">
             <p>
               내일부터 복습 예정인 문제가{" "}
               <strong>{upcomingCount}개</strong> 있습니다.
@@ -174,7 +174,7 @@ export function TodayStudySession({ userId }: Props) {
               onClick={() => {
                 void bringAllReviewsToToday(userId).then(() => loadQuestions());
               }}
-              className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              className="mt-3 rounded-lg bg-[var(--rm-brand)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
             >
               테스트: 지금 바로 복습하기
             </button>
@@ -182,7 +182,7 @@ export function TodayStudySession({ userId }: Props) {
         ) : null}
         <Link
           href="/upload"
-          className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline"
+          className="mt-4 inline-block text-sm font-medium text-[var(--rm-nav-active)] hover:underline"
         >
           문제 등록하기 →
         </Link>
@@ -192,11 +192,11 @@ export function TodayStudySession({ userId }: Props) {
 
   if (isFinished) {
     return (
-      <div className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center shadow-sm">
-        <p className="text-lg font-semibold text-green-800">
+      <div className="rounded-2xl border border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] p-8 text-center shadow-sm">
+        <p className="text-lg font-semibold text-[var(--rm-text-on-success)]">
           오늘의 학습을 완료했어요!
         </p>
-        <p className="mt-2 text-sm text-green-700">
+        <p className="mt-2 text-sm text-[var(--rm-text-on-success)]">
           {total}문제를 모두 풀었습니다.
         </p>
         <Link
@@ -228,11 +228,11 @@ export function TodayStudySession({ userId }: Props) {
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-      <div className="flex items-center justify-between text-sm text-zinc-500">
+      <div className="flex items-center justify-between text-sm text-[var(--rm-text-muted)]">
         <span>
           {currentIndex + 1} / {total}
         </span>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+        <span className="rounded-full bg-[var(--rm-info-bg)] px-3 py-1 text-xs font-medium text-[var(--rm-text-on-info)]">
           {getSubjectName(current.subjectId)} · {getPhaseLabel(current.phase)}
           {streakTarget > 0
             ? ` ${current.streakCount}/${streakTarget}`
@@ -241,13 +241,13 @@ export function TodayStudySession({ userId }: Props) {
       </div>
 
       {feedback ? (
-        <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800">
+        <p className="rounded-lg bg-[var(--rm-info-bg)] px-3 py-2 text-sm text-[var(--rm-text-on-info)]">
           {feedback}
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="relative bg-zinc-50">
+      <div className="overflow-hidden rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm">
+        <div className="relative bg-[var(--rm-surface-raised)]">
           <QuestionImages
             question={current}
             alt="문제"
@@ -261,7 +261,7 @@ export function TodayStudySession({ userId }: Props) {
               {current.keywords.map((keyword) => (
                 <span
                   key={keyword}
-                  className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600"
+                  className="rounded-full bg-[var(--rm-accent-muted)] px-2 py-0.5 text-xs text-[var(--rm-text-muted)]"
                 >
                   #{keyword}
                 </span>
@@ -270,8 +270,8 @@ export function TodayStudySession({ userId }: Props) {
           ) : null}
 
           {current.reflectionMemo || current.wrongReason ? (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
-              <p className="text-xs font-bold text-blue-900">
+            <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-3">
+              <p className="text-xs font-bold text-[var(--rm-text-on-info)]">
                 왜 틀렸는지 · 모르는 개념
               </p>
               {current.wrongReason ? (
@@ -280,7 +280,7 @@ export function TodayStudySession({ userId }: Props) {
                 </span>
               ) : null}
               {current.reflectionMemo ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--rm-text)]">
                   {current.reflectionMemo}
                 </p>
               ) : null}
@@ -292,14 +292,14 @@ export function TodayStudySession({ userId }: Props) {
               <button
                 type="button"
                 onClick={() => setShowAnswer((prev) => !prev)}
-                className="text-sm font-medium text-blue-600 hover:underline"
+                className="text-sm font-medium text-[var(--rm-nav-active)] hover:underline"
               >
                 {showAnswer ? "해설 숨기기" : "정답 / 해설 보기"}
               </button>
               {showAnswer ? (
                 <div className="space-y-2">
                   {current.answerImageDataUrl ? (
-                    <div className="relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+                    <div className="relative overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface-raised)]">
                       <ZoomableQuestionImage
                         src={current.answerImageDataUrl}
                         alt="해설 사진"
@@ -310,7 +310,7 @@ export function TodayStudySession({ userId }: Props) {
                     </div>
                   ) : null}
                   {current.answerText ? (
-                    <p className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-700 whitespace-pre-wrap">
+                    <p className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2 text-sm text-[var(--rm-text)] whitespace-pre-wrap">
                       {current.answerText}
                     </p>
                   ) : null}
@@ -318,38 +318,38 @@ export function TodayStudySession({ userId }: Props) {
               ) : null}
             </>
           ) : (
-            <p className="text-xs text-zinc-400">등록된 해설이 없습니다.</p>
+            <p className="text-xs text-[var(--rm-text-faint)]">등록된 해설이 없습니다.</p>
           )}
         </div>
       </div>
 
       {pendingCompletion ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-          <p className="font-semibold text-amber-900">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] p-5 shadow-sm">
+          <p className="font-semibold text-[var(--rm-text)]">
             장기 복습을 완료했어요!
           </p>
-          <p className="mt-1 text-sm text-amber-800">
+          <p className="mt-1 text-sm text-[var(--rm-text)]">
             이 문제를 어떻게 할까요?
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => void handleCompletedAction("delete")}
-              className="rounded-xl border border-amber-300 bg-white py-3 text-sm font-medium text-zinc-800 hover:bg-amber-100"
+              className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-sm font-medium text-[var(--rm-text)] hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
             >
               삭제
             </button>
             <button
               type="button"
               onClick={() => void handleCompletedAction("archive")}
-              className="rounded-xl border border-amber-300 bg-white py-3 text-sm font-medium text-zinc-800 hover:bg-amber-100"
+              className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-sm font-medium text-[var(--rm-text)] hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
             >
               보관함 저장
             </button>
             <button
               type="button"
               onClick={() => void handleCompletedAction("review_once_more")}
-              className="rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+              className="rounded-xl bg-[var(--rm-warning)] py-3 text-sm font-semibold text-white hover:opacity-90"
             >
               한 번 더 복습
             </button>
@@ -360,7 +360,7 @@ export function TodayStudySession({ userId }: Props) {
           <button
             type="button"
             onClick={() => void handleAnswer("incorrect")}
-            className="rounded-xl bg-red-600 py-4 text-sm font-semibold text-white hover:bg-red-700"
+            className="rounded-xl bg-[var(--rm-danger)] py-4 text-sm font-semibold text-white hover:opacity-90"
           >
             틀렸어요
           </button>

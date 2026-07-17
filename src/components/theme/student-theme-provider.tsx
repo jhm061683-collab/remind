@@ -12,7 +12,6 @@ import {
 import { saveStudentThemeAction } from "@/lib/actions/student-theme";
 import {
   DEFAULT_STUDENT_THEME,
-  isStudentTheme,
   themeStorageKey,
   type StudentTheme,
 } from "@/lib/theme/student-theme";
@@ -38,11 +37,8 @@ export function StudentThemeProvider({
   const [theme, setTheme] = useState<StudentTheme>(initialTheme);
 
   useEffect(() => {
-    const saved = localStorage.getItem(themeStorageKey(userId));
-    if (isStudentTheme(saved)) {
-      setTheme(saved);
-      return;
-    }
+    // 서버 테마를 우선해 깜빡임을 줄이고, 로컬 캐시만 맞춘다.
+    localStorage.setItem(themeStorageKey(userId), initialTheme);
     setTheme(initialTheme);
   }, [userId, initialTheme]);
 

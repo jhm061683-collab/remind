@@ -10,6 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ADMIN_THEME_COOKIE,
+  adminThemeStorageKey,
+} from "@/lib/theme/admin-theme";
+import {
   DEFAULT_STUDENT_THEME,
   isStudentTheme,
   type StudentTheme,
@@ -22,32 +26,41 @@ type AdminThemeContextValue = {
 
 const AdminThemeContext = createContext<AdminThemeContextValue | null>(null);
 
-function adminThemeKey(userId: string) {
-  return `remind-admin-theme:${userId}`;
+function persistTheme(userId: string, theme: StudentTheme) {
+  localStorage.setItem(adminThemeStorageKey(userId), theme);
+  document.cookie = `${ADMIN_THEME_COOKIE}=${theme}; path=/; max-age=31536000; samesite=lax`;
 }
 
 type Props = {
   userId: string;
+  initialTheme?: StudentTheme;
   children: ReactNode;
 };
 
-export function AdminThemeProvider({ userId, children }: Props) {
-  const [theme, setTheme] = useState<StudentTheme>(DEFAULT_STUDENT_THEME);
+export function AdminThemeProvider({
+  userId,
+  initialTheme = DEFAULT_STUDENT_THEME,
+  children,
+}: Props) {
+  const [theme, setTheme] = useState<StudentTheme>(initialTheme);
 
   useEffect(() => {
-    const saved = localStorage.getItem(adminThemeKey(userId));
+    const saved = localStorage.getItem(adminThemeStorageKey(userId));
     if (isStudentTheme(saved)) {
-      setTheme(saved);
+      if (saved !== initialTheme) {
+        setTheme(saved);
+      }
+      persistTheme(userId, saved);
       return;
     }
-    setTheme(DEFAULT_STUDENT_THEME);
-  }, [userId]);
+    persistTheme(userId, initialTheme);
+  }, [userId, initialTheme]);
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => {
       const next: StudentTheme =
         current === "remind-dark" ? "remind-light" : "remind-dark";
-      localStorage.setItem(adminThemeKey(userId), next);
+      persistTheme(userId, next);
       return next;
     });
   }, [userId]);

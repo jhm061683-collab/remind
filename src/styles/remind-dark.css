@@ -10,6 +10,20 @@
   --rm-radius-lg: 22px;
   --rm-radius-xl: 28px;
   --rm-stack: 0.75rem;
+  --rm-chart-1: #2563eb;
+  --rm-chart-2: #936dff;
+  --rm-chart-3: #3b82f6;
+  --rm-chart-4: #7c3aed;
+  --rm-chart-5: #0ea5e9;
+  --rm-chart-6: #6366f1;
+  --rm-chart-7: #a78bfa;
+  --rm-chart-8: #1d4ed8;
+  --rm-chart-9: #8b5cf6;
+  --rm-chart-10: #38bdf8;
+  --rm-chart-muted: #94a3b8;
+  --rm-chart-zero: #a1a1aa;
+  --rm-chart-mid: #0891b2;
+  --rm-chart-hot: #db2777;
 }
 
 [data-theme="remind-dark"] {
@@ -64,7 +78,10 @@
   --border: var(--rm-border);
   --remind-primary: var(--rm-brand);
   --rm-brand-text: var(--rm-text);
+  --rm-chart-muted: #8b92a5;
+  --rm-chart-zero: #6b7280;
 
+  color-scheme: dark;
   background: var(--rm-bg-base);
   color: var(--rm-text);
   min-height: 100%;
@@ -106,13 +123,21 @@
   border: 1px solid var(--rm-border);
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--rm-surface) 96%, white) 0%,
+    color-mix(in srgb, var(--rm-surface) 88%, var(--rm-surface-raised)) 0%,
     var(--rm-surface) 100%
   );
   backdrop-filter: blur(16px);
   box-shadow: var(--rm-shadow-soft);
   padding: 0.875rem;
   color: var(--rm-text-on-surface);
+}
+
+[data-theme="remind-dark"] .rm-glass {
+  background: linear-gradient(
+    145deg,
+    var(--rm-surface-raised) 0%,
+    var(--rm-surface) 100%
+  );
 }
 
 [data-theme] .rm-glass--compact {
@@ -608,6 +633,69 @@
 [data-theme] .remind-input:focus {
   border-color: var(--rm-accent);
   box-shadow: 0 0 0 3px var(--rm-accent-muted);
+}
+
+[data-theme] .remind-preset-tab--active {
+  border-color: var(--rm-brand-dark);
+  background: var(--rm-brand);
+  color: var(--rm-text-on-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--rm-brand) 28%, transparent);
+}
+
+[data-theme] .remind-preset-tab--idle {
+  border-color: var(--rm-border);
+  background: var(--rm-surface);
+  color: var(--rm-text);
+}
+
+[data-theme] .remind-preset-tab--idle:hover {
+  border-color: var(--rm-border-glow);
+  background: var(--rm-info-bg);
+}
+
+[data-theme] .remind-tag {
+  background: var(--rm-info-bg);
+  color: var(--rm-text-on-info);
+}
+
+[data-theme] .remind-link-btn {
+  color: var(--rm-nav-active);
+}
+
+[data-theme] .remind-icon-badge--slate {
+  background: var(--rm-accent-muted);
+  color: var(--rm-text-muted);
+}
+
+[data-theme] .remind-icon-badge--blue {
+  background: var(--rm-info-bg);
+  color: var(--rm-nav-active);
+}
+
+[data-theme] .remind-icon-badge--emerald {
+  background: var(--rm-success-bg);
+  color: var(--rm-success);
+}
+
+[data-theme] .remind-icon-badge--amber {
+  background: color-mix(in srgb, var(--rm-warning) 14%, var(--rm-surface));
+  color: var(--rm-warning);
+}
+
+[data-theme] .remind-icon-badge--rose {
+  background: var(--rm-error-bg);
+  color: var(--rm-danger);
+}
+
+[data-theme] .remind-icon-badge--violet {
+  background: color-mix(in srgb, var(--rm-brand-violet) 14%, var(--rm-surface));
+  color: var(--rm-brand-violet);
+}
+
+[data-theme] .remind-row-link:hover,
+[data-theme] .remind-card-hover:hover {
+  border-color: var(--rm-border-glow);
+  background: var(--rm-info-bg);
 }
 
 [data-theme="remind-dark"] .bg-blue-50 {

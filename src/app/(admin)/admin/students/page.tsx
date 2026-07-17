@@ -54,7 +54,7 @@ export default async function AdminStudentsPage() {
       />
 
       {!isAdmin && data.students.length === 0 ? (
-        <p className="mt-4 text-center text-sm text-zinc-500">
+        <p className="mt-4 text-center text-sm text-[var(--rm-text-muted)]">
           원장님이 반 관리에서 반 담당으로 지정해 주면 학생 목록이 표시됩니다.
         </p>
       ) : null}

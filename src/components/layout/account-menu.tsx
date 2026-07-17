@@ -101,7 +101,7 @@ export function AccountMenu({ userName }: Props) {
             <button
               type="submit"
               role="menuitem"
-              className="w-full px-3.5 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+              className="w-full px-3.5 py-2.5 text-left text-sm font-medium text-[var(--rm-danger)] hover:bg-[var(--rm-error-bg)]"
             >
               로그아웃
             </button>

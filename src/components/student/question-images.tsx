@@ -128,7 +128,7 @@ export function QuestionImages({
                   <span
                     key={i}
                     className={`h-1.5 w-1.5 rounded-full ${
-                      i === safeIndex ? "bg-white" : "bg-white/40"
+                      i === safeIndex ? "bg-[var(--rm-surface)]" : "bg-[color-mix(in_srgb,var(--rm-surface)_40%,transparent)]"
                     }`}
                   />
                 ))}

@@ -109,8 +109,8 @@ export function KeywordPicker({
   return (
     <div className="space-y-2">
       <div>
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        {hint ? <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p> : null}
+        <p className="text-sm font-medium text-[var(--rm-text)]">{label}</p>
+        {hint ? <p className="mt-0.5 text-[11px] text-[var(--rm-text-muted)]">{hint}</p> : null}
       </div>
 
       <div className="flex gap-2">
@@ -132,15 +132,15 @@ export function KeywordPicker({
           type="button"
           disabled={busy || !draft.trim()}
           onClick={() => void handleAdd()}
-          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+          className="rounded-xl bg-[var(--rm-text)] px-3 py-2 text-xs font-bold text-[var(--rm-surface)] disabled:opacity-50"
         >
           추가
         </button>
       </div>
 
       {sorted.length > 0 ? (
-        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-          <p className="text-[11px] font-semibold text-slate-500">
+        <div className="rounded-xl border border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface-raised)_80%,transparent)] p-3">
+          <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
             {listTitle} · 탭해서 선택
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -151,10 +151,10 @@ export function KeywordPicker({
                   key={entry.label}
                   className={`inline-flex max-w-full items-center gap-0.5 rounded-full border pl-2.5 pr-1 py-1 text-xs transition ${
                     active
-                      ? "border-blue-300 bg-blue-50 text-blue-800"
+                      ? "border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] text-[var(--rm-text-on-info)]"
                       : entry.favorite
-                        ? "border-amber-200 bg-amber-50 text-amber-900"
-                        : "border-slate-200 bg-white text-slate-700"
+                        ? "border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] text-[var(--rm-text)]"
+                        : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
                   }`}
                 >
                   <button
@@ -176,7 +176,7 @@ export function KeywordPicker({
                     disabled={busy}
                     onClick={(e) => void handleFavorite(entry.label, e)}
                     className={`rounded-full px-1.5 py-0.5 ${
-                      entry.favorite ? "text-amber-500" : "text-slate-400"
+                      entry.favorite ? "text-amber-500" : "text-[var(--rm-text-faint)]"
                     }`}
                   >
                     {entry.favorite ? "★" : "☆"}
@@ -186,7 +186,7 @@ export function KeywordPicker({
                     aria-label="삭제"
                     disabled={busy}
                     onClick={(e) => void handleDelete(entry.label, e)}
-                    className="rounded-full px-1.5 py-0.5 text-slate-400 hover:text-rose-600"
+                    className="rounded-full px-1.5 py-0.5 text-[var(--rm-text-faint)] hover:text-[var(--rm-danger)]"
                   >
                     ×
                   </button>
@@ -196,14 +196,14 @@ export function KeywordPicker({
           </div>
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-400">
+        <p className="rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-[11px] text-[var(--rm-text-faint)]">
           아직 만든 {kind === "wrong" ? "오답" : "문제"} 키워드가 없어요. 위에서
           추가하면 다음에 여기 목록으로 나와요.
         </p>
       )}
 
       {selected.length > 0 ? (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-[var(--rm-text-muted)]">
           선택됨: {selected.map((s) => `#${s}`).join(" ")}
         </p>
       ) : null}

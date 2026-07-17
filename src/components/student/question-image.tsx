@@ -34,12 +34,12 @@ export function QuestionImage({
 
   if (!isLikelyValidImageSrc(src) || failed) {
     return (
-      <div className="flex h-full min-h-[8rem] w-full flex-col items-center justify-center gap-1 bg-slate-100 px-4 text-center text-sm text-slate-500">
+      <div className="flex h-full min-h-[8rem] w-full flex-col items-center justify-center gap-1 bg-[var(--rm-accent-muted)] px-4 text-center text-sm text-[var(--rm-text-muted)]">
         <span className="text-2xl" aria-hidden>
           📷
         </span>
         <p>사진을 불러올 수 없어요</p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-[var(--rm-text-faint)]">
           삭제 후 다시 올려 주세요.
         </p>
       </div>

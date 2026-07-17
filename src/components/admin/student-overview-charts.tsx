@@ -28,16 +28,16 @@ const CHART_OPTIONS: { id: ChartKind; label: string; hint: string }[] = [
 ];
 
 const PALETTE = [
-  "#2563eb",
-  "#936dff",
-  "#3b82f6",
-  "#7c3aed",
-  "#0ea5e9",
-  "#6366f1",
-  "#a78bfa",
-  "#1d4ed8",
-  "#8b5cf6",
-  "#38bdf8",
+  "var(--rm-chart-1)",
+  "var(--rm-chart-2)",
+  "var(--rm-chart-3)",
+  "var(--rm-chart-4)",
+  "var(--rm-chart-5)",
+  "var(--rm-chart-6)",
+  "var(--rm-chart-7)",
+  "var(--rm-chart-8)",
+  "var(--rm-chart-9)",
+  "var(--rm-chart-10)",
 ];
 
 const SCHOOL_LABELS: Record<string, string> = {
@@ -109,21 +109,64 @@ function activitySlices(students: AdminStudentRow[]): ChartSlice[] {
   }
 
   return [
-    { key: "reviewed", label: "오늘 학습함", count: reviewedToday, color: "#2563eb" },
-    { key: "due", label: "오늘 마감 미완료", count: duePending, color: "#936dff" },
-    { key: "inactive", label: "7일+ 미접속", count: inactive7, color: "#1d4ed8" },
-    { key: "never", label: "로그인 이력 없음", count: neverLogin, color: "#64748b" },
-    { key: "other", label: "그 외", count: other, color: "#3b82f6" },
+    {
+      key: "reviewed",
+      label: "오늘 학습함",
+      count: reviewedToday,
+      color: "var(--rm-chart-1)",
+    },
+    {
+      key: "due",
+      label: "오늘 마감 미완료",
+      count: duePending,
+      color: "var(--rm-chart-2)",
+    },
+    {
+      key: "inactive",
+      label: "7일+ 미접속",
+      count: inactive7,
+      color: "var(--rm-chart-8)",
+    },
+    {
+      key: "never",
+      label: "로그인 이력 없음",
+      count: neverLogin,
+      color: "var(--rm-chart-muted)",
+    },
+    {
+      key: "other",
+      label: "그 외",
+      count: other,
+      color: "var(--rm-chart-3)",
+    },
   ].filter((s) => s.count > 0);
 }
 
 function reviewSlices(students: AdminStudentRow[]): ChartSlice[] {
   const buckets = [
-    { key: "0", label: "0회", min: 0, max: 0, color: "#a1a1aa" },
-    { key: "1-9", label: "1~9회", min: 1, max: 9, color: "#0891b2" },
-    { key: "10-49", label: "10~49회", min: 10, max: 49, color: "#2563eb" },
-    { key: "50-99", label: "50~99회", min: 50, max: 99, color: "#7c3aed" },
-    { key: "100+", label: "100회+", min: 100, max: Infinity, color: "#db2777" },
+    { key: "0", label: "0회", min: 0, max: 0, color: "var(--rm-chart-zero)" },
+    { key: "1-9", label: "1~9회", min: 1, max: 9, color: "var(--rm-chart-mid)" },
+    {
+      key: "10-49",
+      label: "10~49회",
+      min: 10,
+      max: 49,
+      color: "var(--rm-chart-1)",
+    },
+    {
+      key: "50-99",
+      label: "50~99회",
+      min: 50,
+      max: 99,
+      color: "var(--rm-chart-4)",
+    },
+    {
+      key: "100+",
+      label: "100회+",
+      min: 100,
+      max: Infinity,
+      color: "var(--rm-chart-hot)",
+    },
   ];
   const counts = buckets.map((b) => ({ ...b, count: 0 }));
   for (const s of students) {

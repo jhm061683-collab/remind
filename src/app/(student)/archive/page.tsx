@@ -16,7 +16,7 @@ export default async function ArchivePage() {
         description="저장한 문제를 찾아보세요."
         compact
       />
-      <Suspense fallback={<p className="text-sm text-slate-500">불러오는 중...</p>}>
+      <Suspense fallback={<p className="text-sm text-[var(--rm-text-muted)]">불러오는 중...</p>}>
         <ArchiveList userId={userId} />
       </Suspense>
     </>
