@@ -57,15 +57,18 @@ export function AdminAccountMenu({
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex max-w-[10.5rem] items-center gap-1.5 rounded-full border px-2 py-1 text-sm font-semibold transition sm:max-w-[12rem] sm:px-2.5 sm:py-1.5 ${
           open
-            ? "border-blue-200 bg-blue-50 text-blue-900"
-            : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50"
+            ? "border-[var(--rm-border-glow)] bg-[var(--rm-accent-muted)] text-[var(--rm-text)]"
+            : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)] hover:border-[var(--rm-border-glow)] hover:bg-[var(--rm-accent-muted)]"
         }`}
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+        <span
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+          style={{ background: "var(--rm-logo-gradient)" }}
+        >
           {initial}
         </span>
         <span className="truncate">{userName}</span>
-        <span className="text-[10px] text-slate-400" aria-hidden>
+        <span className="text-[10px] text-[var(--rm-text-faint)]" aria-hidden>
           {open ? "▲" : "▼"}
         </span>
       </button>
@@ -73,14 +76,14 @@ export function AdminAccountMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/60"
+          className="absolute right-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] py-1 shadow-lg shadow-[var(--rm-shadow-soft)]"
         >
           <Link
             href="/admin/account"
             role="menuitem"
             prefetch={false}
             onClick={() => setOpen(false)}
-            className="block px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="block px-3.5 py-2.5 text-sm font-medium text-[var(--rm-text)] hover:bg-[var(--rm-accent-muted)]"
           >
             계정 설정
           </Link>
@@ -90,17 +93,17 @@ export function AdminAccountMenu({
               role="menuitem"
               prefetch={false}
               onClick={() => setOpen(false)}
-              className="block px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="block px-3.5 py-2.5 text-sm font-medium text-[var(--rm-text)] hover:bg-[var(--rm-accent-muted)]"
             >
               건의사항
             </Link>
           ) : null}
-          <div className="my-1 border-t border-slate-100" />
+          <div className="my-1 border-t border-[var(--rm-border)]" />
           <form action={logoutAction}>
             <button
               type="submit"
               role="menuitem"
-              className="w-full px-3.5 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+              className="w-full px-3.5 py-2.5 text-left text-sm font-medium text-[var(--rm-danger)] hover:bg-[var(--rm-error-bg)]"
             >
               로그아웃
             </button>

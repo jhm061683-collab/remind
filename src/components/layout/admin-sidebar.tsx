@@ -14,7 +14,7 @@ export function AdminSidebar({ role }: Props) {
   const links = navItemsForRole(role);
 
   return (
-    <aside className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-48 shrink-0 self-start overflow-y-auto border-r border-slate-200/70 bg-white/80 p-2.5 backdrop-blur-sm md:block">
+    <aside className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-44 shrink-0 self-start overflow-y-auto border-r border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_72%,transparent)] p-2 backdrop-blur-xl md:block">
       <ul className="space-y-0.5 pt-1">
         {links.map((link) => {
           const active =
@@ -26,8 +26,8 @@ export function AdminSidebar({ role }: Props) {
                 prefetch={false}
                 className={`block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-[linear-gradient(135deg,var(--rm-brand-violet)_0%,var(--rm-brand)_100%)] text-white shadow-sm shadow-[var(--rm-accent-glow)]"
+                    : "text-[var(--rm-text-muted)] hover:bg-[var(--rm-accent-muted)] hover:text-[var(--rm-text)]"
                 }`}
               >
                 {link.label}
@@ -56,8 +56,8 @@ export function AdminMobileNav({ role }: Props) {
             prefetch={false}
             className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
               active
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-700"
+                ? "bg-[linear-gradient(135deg,var(--rm-brand-violet)_0%,var(--rm-brand)_100%)] text-white"
+                : "bg-[var(--rm-accent-muted)] text-[var(--rm-text-muted)]"
             }`}
           >
             {link.shortLabel ?? link.label}

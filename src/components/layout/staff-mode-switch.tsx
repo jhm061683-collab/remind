@@ -12,14 +12,14 @@ export function StaffModeSwitch({ currentMode }: Props) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-50 p-0.5 text-[11px]">
+    <div className="flex items-center gap-0.5 rounded-full border border-[var(--rm-border)] bg-[var(--rm-accent-muted)] p-0.5 text-[11px]">
       <button
         type="button"
         disabled={pending || currentMode === "admin"}
         className={`whitespace-nowrap rounded-full px-2 py-1 font-semibold transition ${
           currentMode === "admin"
-            ? "bg-blue-600 text-white"
-            : "text-slate-600 hover:bg-white"
+            ? "bg-[var(--rm-brand)] text-white shadow-sm"
+            : "text-[var(--rm-text-muted)] hover:bg-[var(--rm-surface)] hover:text-[var(--rm-text)]"
         } disabled:opacity-60`}
         onClick={() => {
           startTransition(() => {
@@ -34,8 +34,8 @@ export function StaffModeSwitch({ currentMode }: Props) {
         disabled={pending || currentMode === "teacher"}
         className={`whitespace-nowrap rounded-full px-2 py-1 font-semibold transition ${
           currentMode === "teacher"
-            ? "bg-violet-600 text-white"
-            : "text-slate-600 hover:bg-white"
+            ? "bg-[var(--rm-brand-violet)] text-white shadow-sm"
+            : "text-[var(--rm-text-muted)] hover:bg-[var(--rm-surface)] hover:text-[var(--rm-text)]"
         } disabled:opacity-60`}
         onClick={() => {
           startTransition(() => {

@@ -31,14 +31,18 @@ export default async function AdminDashboardPage() {
   return (
     <>
       <PageHeader
-        title={isSubAdmin ? "대시보드" : "대시보드"}
+        title="대시보드"
         description={
           isSubAdmin ? "담당 학생 학습 현황" : "학습 현황 · 복습 이행률"
         }
       />
 
       <div
-        className={`grid grid-cols-2 gap-2.5 sm:gap-3 ${isSubAdmin ? "sm:grid-cols-3" : "lg:grid-cols-4"}`}
+        className={`grid grid-cols-2 gap-2 ${
+          isSubAdmin
+            ? "sm:grid-cols-3"
+            : "sm:grid-cols-3 xl:grid-cols-5"
+        }`}
       >
         <AdminStatCard
           label={isSubAdmin ? "담당 학생" : "전체 학생"}
@@ -73,25 +77,25 @@ export default async function AdminDashboardPage() {
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
         <StudentOverviewCharts
           students={data.students}
-          title={isSubAdmin ? "담당 학생 인원 차트" : "전체 학생 인원 차트"}
+          title={isSubAdmin ? "담당 학생 인원" : "전체 학생 인원"}
         />
         <WeeklyActivityChart
           data={data.dailyReviews}
-          title={isSubAdmin ? "담당 학생 최근 7일 복습" : "최근 7일 복습 횟수"}
+          title={isSubAdmin ? "담당 최근 7일 복습" : "최근 7일 복습"}
         />
       </div>
 
-      <section className="mt-4">
-        <h2 className="mb-2 text-base font-semibold text-zinc-900">
+      <section className="mt-3">
+        <h2 className="mb-2 text-sm font-semibold text-[var(--rm-text)]">
           {isSubAdmin ? "담당 학생" : "학생 요약"}
         </h2>
         {data.students.length === 0 && isSubAdmin ? (
-          <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-6 text-center text-sm text-amber-950">
+          <div className="rounded-xl border border-[var(--rm-warning)]/30 bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-4 py-5 text-center text-sm text-[var(--rm-text)]">
             <p className="font-medium">담당 학생이 아직 없어요</p>
-            <p className="mt-1.5 text-amber-900">
+            <p className="mt-1 text-[var(--rm-text-muted)]">
               원장님이 <strong>반 관리</strong>에서 반 담당으로 지정해 주면
               여기에 보입니다.
             </p>

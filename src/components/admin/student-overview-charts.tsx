@@ -29,15 +29,15 @@ const CHART_OPTIONS: { id: ChartKind; label: string; hint: string }[] = [
 
 const PALETTE = [
   "#2563eb",
+  "#936dff",
+  "#3b82f6",
   "#7c3aed",
-  "#db2777",
-  "#ea580c",
-  "#059669",
-  "#0891b2",
-  "#4f46e5",
-  "#ca8a04",
-  "#be123c",
-  "#0d9488",
+  "#0ea5e9",
+  "#6366f1",
+  "#a78bfa",
+  "#1d4ed8",
+  "#8b5cf6",
+  "#38bdf8",
 ];
 
 const SCHOOL_LABELS: Record<string, string> = {
@@ -109,11 +109,11 @@ function activitySlices(students: AdminStudentRow[]): ChartSlice[] {
   }
 
   return [
-    { key: "reviewed", label: "오늘 학습함", count: reviewedToday, color: "#059669" },
-    { key: "due", label: "오늘 마감 미완료", count: duePending, color: "#ea580c" },
-    { key: "inactive", label: "7일+ 미접속", count: inactive7, color: "#be123c" },
-    { key: "never", label: "로그인 이력 없음", count: neverLogin, color: "#71717a" },
-    { key: "other", label: "그 외", count: other, color: "#2563eb" },
+    { key: "reviewed", label: "오늘 학습함", count: reviewedToday, color: "#2563eb" },
+    { key: "due", label: "오늘 마감 미완료", count: duePending, color: "#936dff" },
+    { key: "inactive", label: "7일+ 미접속", count: inactive7, color: "#1d4ed8" },
+    { key: "never", label: "로그인 이력 없음", count: neverLogin, color: "#64748b" },
+    { key: "other", label: "그 외", count: other, color: "#3b82f6" },
   ].filter((s) => s.count > 0);
 }
 
@@ -142,27 +142,27 @@ function BarChart({ slices }: { slices: ChartSlice[] }) {
 
   if (slices.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-zinc-500">
+      <p className="py-6 text-center text-sm text-[var(--rm-text-muted)]">
         표시할 데이터가 없습니다.
       </p>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {slices.map((slice) => {
         const pct = total > 0 ? Math.round((slice.count / total) * 100) : 0;
         return (
           <div key={slice.key}>
-            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-              <span className="truncate font-medium text-zinc-800">
+            <div className="mb-0.5 flex items-baseline justify-between gap-2 text-xs sm:text-sm">
+              <span className="truncate font-medium text-[var(--rm-text)]">
                 {slice.label}
               </span>
-              <span className="shrink-0 tabular-nums text-zinc-500">
+              <span className="shrink-0 tabular-nums text-[var(--rm-text-muted)]">
                 {slice.count}명 · {pct}%
               </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-zinc-100">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--rm-accent-muted)]">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -182,20 +182,20 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
   const total = slices.reduce((sum, s) => sum + s.count, 0);
   if (total === 0 || slices.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-zinc-500">
+      <p className="py-6 text-center text-sm text-[var(--rm-text-muted)]">
         표시할 데이터가 없습니다.
       </p>
     );
   }
 
-  const size = 180;
-  const stroke = 28;
+  const size = 140;
+  const stroke = 22;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center sm:gap-6">
+    <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start sm:justify-center sm:gap-5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle
@@ -203,7 +203,7 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="#f4f4f5"
+            stroke="color-mix(in srgb, var(--rm-border) 80%, transparent)"
             strokeWidth={stroke}
           />
           {slices.map((slice) => {
@@ -228,13 +228,13 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
           })}
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-2xl font-bold tabular-nums text-zinc-900">
+          <p className="text-xl font-bold tabular-nums text-[var(--rm-text)]">
             {total}
           </p>
-          <p className="text-xs text-zinc-500">전체</p>
+          <p className="text-[10px] text-[var(--rm-text-muted)]">전체</p>
         </div>
       </div>
-      <ul className="w-full max-w-xs space-y-2 text-sm">
+      <ul className="w-full max-w-xs space-y-1.5 text-xs sm:text-sm">
         {slices.map((slice) => {
           const pct = Math.round((slice.count / total) * 100);
           return (
@@ -244,12 +244,14 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
             >
               <span className="flex min-w-0 items-center gap-2">
                 <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: slice.color }}
                 />
-                <span className="truncate text-zinc-700">{slice.label}</span>
+                <span className="truncate text-[var(--rm-text)]">
+                  {slice.label}
+                </span>
               </span>
-              <span className="shrink-0 tabular-nums text-zinc-500">
+              <span className="shrink-0 tabular-nums text-[var(--rm-text-muted)]">
                 {slice.count}명 ({pct}%)
               </span>
             </li>
@@ -316,24 +318,24 @@ export function StudentOverviewCharts({
   const showDonutOption = kind !== "reviews";
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <section className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 shadow-[var(--rm-shadow-soft)] sm:p-3.5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-900 sm:text-base">
+          <h2 className="text-sm font-semibold text-[var(--rm-text)]">
             {title}
           </h2>
-          <p className="mt-0.5 text-[11px] text-zinc-500 sm:text-xs">
+          <p className="mt-0.5 text-[11px] text-[var(--rm-text-muted)]">
             {option.hint}
           </p>
         </div>
-        <div className="flex shrink-0 gap-1 self-start rounded-lg bg-zinc-100 p-0.5">
+        <div className="flex shrink-0 gap-1 self-start rounded-lg bg-[var(--rm-accent-muted)] p-0.5">
           <button
             type="button"
             onClick={() => setView("bar")}
             className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
               view === "bar"
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700"
+                ? "bg-[var(--rm-surface)] text-[var(--rm-text)] shadow-sm"
+                : "text-[var(--rm-text-muted)] hover:text-[var(--rm-text)]"
             }`}
           >
             막대
@@ -344,8 +346,8 @@ export function StudentOverviewCharts({
             onClick={() => setView("donut")}
             className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
               view === "donut"
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700"
+                ? "bg-[var(--rm-surface)] text-[var(--rm-text)] shadow-sm"
+                : "text-[var(--rm-text-muted)] hover:text-[var(--rm-text)]"
             }`}
           >
             원형
@@ -353,7 +355,7 @@ export function StudentOverviewCharts({
         </div>
       </div>
 
-      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {CHART_OPTIONS.map((opt) => {
           const active = kind === opt.id;
           return (
@@ -366,8 +368,8 @@ export function StudentOverviewCharts({
               }}
               className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
                 active
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  ? "bg-[linear-gradient(135deg,var(--rm-brand-violet)_0%,var(--rm-brand)_100%)] text-white"
+                  : "bg-[var(--rm-accent-muted)] text-[var(--rm-text-muted)] hover:text-[var(--rm-text)]"
               }`}
             >
               {opt.label}
@@ -376,7 +378,7 @@ export function StudentOverviewCharts({
         })}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {view === "donut" && showDonutOption ? (
           <DonutChart slices={slices} />
         ) : (
@@ -384,7 +386,7 @@ export function StudentOverviewCharts({
         )}
       </div>
 
-      <p className="mt-3 border-t border-zinc-100 pt-2 text-[11px] text-zinc-400">
+      <p className="mt-2.5 border-t border-[var(--rm-border)] pt-2 text-[10px] text-[var(--rm-text-faint)]">
         기준 인원 {students.length}명
         {kind === "class" || kind === "teacher"
           ? " · 복수 소속은 중복 집계될 수 있어요"
