@@ -60,7 +60,7 @@ export function AdminStudentsTable({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const classOptions = useMemo(() => {
+  const classNameFilters = useMemo(() => {
     const names = new Set<string>();
     for (const student of students) {
       for (const name of student.classNames) names.add(name);
@@ -169,14 +169,14 @@ export function AdminStudentsTable({
           className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
         />
         <div className="flex flex-wrap gap-2">
-          {classOptions.length > 0 ? (
+          {classNameFilters.length > 0 ? (
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
               className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
             >
               <option value="all">전체 반</option>
-              {classOptions.map((name) => (
+              {classNameFilters.map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
