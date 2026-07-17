@@ -3,9 +3,9 @@ import type { UserRole } from "@/types/user";
 
 export type StaffMode = "admin" | "teacher";
 
-/** 관리자 모드 ↔ 선생님(원장반) 모드 전환 가능 여부 */
+/** 관리자 모드 ↔ 선생님 모드 전환 — 관리자(admin) 계정만 */
 export function canSwitchStaffMode(session: SessionUser): boolean {
-  return session.role === "admin" || Boolean(session.isDirector);
+  return session.role === "admin";
 }
 
 export function resolveStaffMode(session: SessionUser): StaffMode {

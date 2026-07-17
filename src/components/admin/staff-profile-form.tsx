@@ -1,18 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateDirectorProfileAction } from "@/lib/actions/admin";
+import { updateOwnStaffProfileAction } from "@/lib/actions/account";
 
 type Props = {
   displayName: string;
   nickname: string | null;
   username: string | null;
+  /** 관리자(admin)면 화면에 「OOO원장」으로 표시 */
+  isAdmin: boolean;
 };
 
-export function DirectorProfileForm({
+export function StaffProfileForm({
   displayName,
   nickname,
   username,
+  isAdmin,
 }: Props) {
   const [name, setName] = useState(displayName);
   const [nick, setNick] = useState(nickname ?? "");
@@ -23,50 +26,51 @@ export function DirectorProfileForm({
     /원장님?$/u,
     "",
   );
+  const preview = isAdmin ? `${previewBase}원장` : previewBase;
 
   return (
-    <section className="rounded-2xl border border-violet-200 bg-violet-50/50 p-5 shadow-sm">
-      <h2 className="font-semibold text-violet-950">원장(관리자) 표시 이름</h2>
-      <p className="mt-1 text-xs text-violet-900/80">
-        「원장으로 지정」은 <strong>새 선생님 계정에 관리자 권한을 여는 것</strong>
-        이고, 지금 로그인 중인 원장 계정 이름과는 별개예요. 학생/반에 「박원장」으로
-        보이면 여기서 <strong>장현문</strong>으로 바꿔 주세요.
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h2 className="font-semibold text-zinc-900">표시 이름</h2>
+      <p className="mt-1 text-xs text-zinc-500">
+        {isAdmin
+          ? "학생·반 담당 목록에 보이는 원장 이름이에요."
+          : "학생·반 담당 목록에 보이는 이름이에요."}
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-violet-950">
+          <label className="mb-1 block text-sm font-medium text-zinc-700">
             이름
           </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm"
-            placeholder="예: 장현문"
+            className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+            placeholder={isAdmin ? "예: 장현문" : "예: 김민수"}
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-violet-950">
+          <label className="mb-1 block text-sm font-medium text-zinc-700">
             닉네임 (선택)
           </label>
           <input
             value={nick}
             onChange={(e) => setNick(e.target.value)}
-            className="w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
             placeholder="있으면 이 이름으로 표시"
           />
         </div>
       </div>
-      <p className="mt-2 text-xs text-violet-800">
+      <p className="mt-2 text-xs text-zinc-500">
         로그인 아이디: {username ?? "—"} · 화면에{" "}
-        <strong>{previewBase}원장</strong> 으로 보여요.
+        <strong className="text-zinc-800">{preview}</strong> 으로 보여요.
       </p>
       <button
         type="button"
         disabled={pending || name.trim().length < 2}
-        className="mt-3 rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         onClick={() => {
           startTransition(async () => {
-            const res = await updateDirectorProfileAction({
+            const res = await updateOwnStaffProfileAction({
               displayName: name,
               nickname: nick,
             });
@@ -74,10 +78,10 @@ export function DirectorProfileForm({
           });
         }}
       >
-        원장 이름 저장
+        이름 저장
       </button>
       {message ? (
-        <p className="mt-2 text-sm text-violet-950">{message}</p>
+        <p className="mt-2 text-sm text-zinc-700">{message}</p>
       ) : null}
     </section>
   );

@@ -37,6 +37,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/notifications", label: "알림 발송" },
   // 지금은 원장(admin)만. 추후 platform_admin 전용으로 이전 예정.
   { href: "/admin/suggestions", label: "건의사항", adminOnly: true },
+  { href: "/admin/account", label: "계정 설정" },
 ];
 
 export function navItemsForRole(role: UserRole): AdminNavItem[] {

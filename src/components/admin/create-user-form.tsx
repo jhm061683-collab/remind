@@ -61,7 +61,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
                 className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
               />
               <p className="mt-1 text-xs text-zinc-400">
-                원장으로 지정하면 화면에 「닉네임원장」처럼 보여요.
+                비우면 이름으로 표시돼요.
               </p>
             </div>
             <div>
@@ -157,23 +157,6 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
             </a>
             에서 반을 만든 뒤, 등록 시 바로 배정하거나 나중에 일괄 배정하세요.
           </p>
-        ) : null}
-
-        {role === "sub_admin" ? (
-          <label className="flex items-start gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
-            <input
-              type="checkbox"
-              name="isDirector"
-              className="mt-0.5"
-            />
-            <span>
-              <span className="font-semibold">원장으로 지정</span>
-              <span className="mt-0.5 block text-xs text-violet-800/90">
-                이 계정은 선생님 모드로 쓰고, 필요할 때 관리자 모드로 전환할 수
-                있어요. (학원·반·계정 관리)
-              </span>
-            </span>
-          </label>
         ) : null}
 
         {state.error ? (

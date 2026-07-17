@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RemindLogo } from "@/components/brand/remind-logo";
 import {
@@ -18,15 +19,14 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  const baseRole = session?.role ?? "admin";
   const navRole = session ? effectiveRoleForNav(session) : "admin";
   const canSwitch = session ? canSwitchStaffMode(session) : false;
   const staffMode = session ? resolveStaffMode(session) : "admin";
 
   const roleLabel =
     navRole === "sub_admin"
-      ? staffMode === "teacher" && canSwitch
-        ? "원장/선생님 모드"
+      ? canSwitch
+        ? "선생님 모드"
         : "서브관리자"
       : "관리자 모드";
 
@@ -45,16 +45,17 @@ export default async function AdminLayout({
                   {roleLabel}
                 </span>
               </p>
-              <p className="text-[11px] text-slate-500">
-                Re:mind 학원 관리
-                {baseRole === "sub_admin" && session?.isDirector
-                  ? " · 원장 권한"
-                  : ""}
-              </p>
+              <p className="text-[11px] text-slate-500">Re:mind 학원 관리</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {canSwitch ? <StaffModeSwitch currentMode={staffMode} /> : null}
+            <Link
+              href="/admin/account"
+              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              계정
+            </Link>
             <LogoutButton compact />
           </div>
         </div>

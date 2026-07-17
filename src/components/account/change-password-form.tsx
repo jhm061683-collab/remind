@@ -8,7 +8,15 @@ import {
 
 const initial: ChangePasswordState = {};
 
-export function ChangePasswordForm() {
+type Props = {
+  successHint?: string;
+  revalidatePath?: string;
+};
+
+export function ChangePasswordForm({
+  successHint,
+  revalidatePath = "/account",
+}: Props) {
   const [state, formAction, pending] = useActionState(
     changeOwnPasswordAction,
     initial,
@@ -16,8 +24,16 @@ export function ChangePasswordForm() {
 
   return (
     <form action={formAction} className="space-y-3">
+      {successHint ? (
+        <input type="hidden" name="successHint" value={successHint} />
+      ) : null}
+      <input type="hidden" name="revalidatePath" value={revalidatePath} />
+
       <div>
-        <label htmlFor="currentPassword" className="mb-1 block text-sm font-medium text-slate-700">
+        <label
+          htmlFor="currentPassword"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
           현재 비밀번호
         </label>
         <input
@@ -30,7 +46,10 @@ export function ChangePasswordForm() {
         />
       </div>
       <div>
-        <label htmlFor="nextPassword" className="mb-1 block text-sm font-medium text-slate-700">
+        <label
+          htmlFor="nextPassword"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
           새 비밀번호
         </label>
         <input
@@ -44,7 +63,10 @@ export function ChangePasswordForm() {
         />
       </div>
       <div>
-        <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
+        <label
+          htmlFor="confirmPassword"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
           새 비밀번호 확인
         </label>
         <input
