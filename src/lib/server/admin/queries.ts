@@ -754,11 +754,11 @@ export async function getClassManagementData(
   adminId: string,
 ): Promise<ClassManagementData> {
   if (!isSupabaseEnabled() || !isServiceRoleConfigured() || !isSupabaseUserId(adminId)) {
-    return { classes: [], students: [], teachers: [] };
+    return { classes: [], students: [], teachers: [], teacherOverviews: [] };
   }
 
   const academyId = await getAdminAcademyId(adminId);
-  if (!academyId) return { classes: [], students: [], teachers: [] };
+  if (!academyId) return { classes: [], students: [], teachers: [], teacherOverviews: [] };
 
   const supabase = createServiceClient();
   const [{ data: classRows }, { data: profiles }] = await Promise.all([
