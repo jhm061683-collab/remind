@@ -563,18 +563,44 @@ async function fetchDashboardForStudentIds(
     student.passwordPlain = passwordMap.get(student.id) ?? null;
   }
 
-  const subAdmins: SubAdminRow[] = subAdminProfiles.map((p) => ({
-    id: p.id,
-    displayName: formatStaffLabel({
-      displayName: p.display_name,
-      nickname: p.nickname,
-      role: p.role,
-      isDirector: p.is_director,
-    }),
-    username: p.username ?? "—",
-    assignedCount: assignments.filter((a) => a.sub_admin_id === p.id).length,
-    isDirector: Boolean(p.is_director),
-  }));
+  // 담당 학생 = 직접 배정 ∪ 담당 반의 학생 (중복 제거)
+  const studentsByClassRoom = new Map<string, string[]>();
+  for (const row of classStudents) {
+    const arr = studentsByClassRoom.get(row.class_room_id) ?? [];
+    arr.push(row.student_id);
+    studentsByClassRoom.set(row.class_room_id, arr);
+  }
+  const classStudentIdsByTeacher = new Map<string, Set<string>>();
+  for (const ct of classTeachers) {
+    const set = classStudentIdsByTeacher.get(ct.teacher_id) ?? new Set();
+    for (const sid of studentsByClassRoom.get(ct.class_room_id) ?? []) {
+      set.add(sid);
+    }
+    classStudentIdsByTeacher.set(ct.teacher_id, set);
+  }
+
+  const subAdmins: SubAdminRow[] = subAdminProfiles.map((p) => {
+    const uniqueStudents = new Set<string>(
+      assignments
+        .filter((a) => a.sub_admin_id === p.id)
+        .map((a) => a.student_id),
+    );
+    for (const sid of classStudentIdsByTeacher.get(p.id) ?? []) {
+      uniqueStudents.add(sid);
+    }
+    return {
+      id: p.id,
+      displayName: formatStaffLabel({
+        displayName: p.display_name,
+        nickname: p.nickname,
+        role: p.role,
+        isDirector: p.is_director,
+      }),
+      username: p.username ?? "—",
+      assignedCount: uniqueStudents.size,
+      isDirector: Boolean(p.is_director),
+    };
+  });
 
   return {
     totalStudents: studentIds.length,
