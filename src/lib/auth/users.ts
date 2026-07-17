@@ -21,7 +21,7 @@ export const DEMO_USERS: AuthUser[] = [
     id: "admin-1",
     username: "admin",
     password: "admin123",
-    name: "박원장",
+    name: "장현문",
     role: "admin",
   },
   {

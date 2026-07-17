@@ -12,6 +12,56 @@ import {
 import { createServiceClient } from "@/lib/supabase/service";
 import type { UserRole } from "@/types/user";
 
+export async function updateDirectorProfileAction(payload: {
+  displayName: string;
+  nickname?: string;
+}): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  const displayName = payload.displayName.trim();
+  if (displayName.length < 2) {
+    return { error: "이름은 2자 이상 입력해 주세요." };
+  }
+
+  const nickname = payload.nickname?.trim() || null;
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      display_name: displayName,
+      nickname,
+      is_director: true,
+    })
+    .eq("id", session.id);
+  if (error) return { error: error.message };
+
+  const { setSession } = await import("@/lib/auth/session");
+  const { formatStaffLabel } = await import("@/lib/admin/staff-label");
+  await setSession({
+    ...session,
+    name: formatStaffLabel({
+      displayName,
+      nickname,
+      role: session.role,
+      isDirector: true,
+    }),
+    isDirector: true,
+  });
+
+  revalidatePath("/admin", "layout");
+  revalidatePath("/admin/sub-admins");
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  return {
+    success: `원장 표시 이름을 「${formatStaffLabel({
+      displayName,
+      nickname,
+      role: "admin",
+      isDirector: true,
+    })}」으로 저장했습니다.`,
+  };
+}
+
 export async function assignStudentAction(
   studentId: string,
   subAdminId: string | null,

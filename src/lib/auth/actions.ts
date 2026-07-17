@@ -17,13 +17,14 @@ type LoginProfile = {
   name: string;
   role: UserRole;
   isDirector: boolean;
+  nickname: string | null;
 };
 
 async function getProfileFromSupabase(userId: string): Promise<LoginProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, role, is_director")
+    .select("display_name, role, is_director, nickname")
     .eq("id", userId)
     .single();
 
@@ -32,6 +33,7 @@ async function getProfileFromSupabase(userId: string): Promise<LoginProfile | nu
     name: data.display_name as string,
     role: data.role as UserRole,
     isDirector: Boolean(data.is_director) || data.role === "admin",
+    nickname: (data.nickname as string | null) ?? null,
   };
 }
 
@@ -47,6 +49,7 @@ function profileFromUserMetadata(metadata: Record<string, unknown> | undefined):
       name,
       role,
       isDirector: role === "admin" || metadata?.is_director === true,
+      nickname: typeof metadata?.nickname === "string" ? metadata.nickname : null,
     };
   }
   return null;
@@ -90,7 +93,7 @@ export async function loginAction(
       const service = createServiceClient();
       const { data: profile } = await service
         .from("profiles")
-        .select("auth_email, display_name, role, is_director")
+        .select("auth_email, display_name, role, is_director, nickname")
         .eq("username", trimmed)
         .maybeSingle();
       mark("lookupLoginEmail");
@@ -102,6 +105,7 @@ export async function loginAction(
           role: profile.role as UserRole,
           isDirector:
             Boolean(profile.is_director) || profile.role === "admin",
+          nickname: (profile.nickname as string | null) ?? null,
         };
       }
     }
@@ -152,10 +156,21 @@ export async function loginAction(
           : "fetchProfile",
     );
 
-    if (!profile) {
+  if (!profile) {
       flushTiming("error");
       return { error: "프로필 정보를 불러오지 못했습니다." };
     }
+
+    const { formatStaffLabel } = await import("@/lib/admin/staff-label");
+    const sessionName =
+      profile.role === "admin" || profile.isDirector
+        ? formatStaffLabel({
+            displayName: profile.name,
+            nickname: profile.nickname,
+            role: profile.role,
+            isDirector: profile.isDirector,
+          })
+        : profile.name;
 
     const userId = data.user.id;
     after(async () => {
@@ -166,7 +181,7 @@ export async function loginAction(
 
     await setSession({
       id: userId,
-      name: profile.name,
+      name: sessionName,
       role: profile.role,
       isDirector: profile.isDirector || profile.role === "admin",
       staffMode: profile.role === "admin" ? "admin" : "teacher",
