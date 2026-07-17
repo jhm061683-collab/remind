@@ -40,7 +40,7 @@ export default async function AdminDashboardPage() {
       />
 
       <div
-        className={`grid gap-2.5 sm:gap-3 ${isSubAdmin ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4"}`}
+        className={`grid grid-cols-2 gap-2.5 sm:gap-3 ${isSubAdmin ? "sm:grid-cols-3" : "lg:grid-cols-4"}`}
       >
         <AdminStatCard
           label={isSubAdmin ? "담당 학생" : "전체 학생"}
@@ -66,17 +66,14 @@ export default async function AdminDashboardPage() {
               : "오늘 마감인 단기 문제 기준"
           }
         />
-      </div>
-
-      {!isSubAdmin ? (
-        <div className="mt-2.5 grid gap-2.5 sm:mt-3 sm:gap-3 lg:grid-cols-3">
+        {!isSubAdmin ? (
           <AdminStatCard
             label="중·장기 이행률"
             value={pct(data.mediumLongFulfillmentPct)}
             hint="오늘 마감인 중·장기 문제 기준"
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <StudentOverviewCharts

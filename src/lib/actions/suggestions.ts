@@ -48,7 +48,6 @@ export async function submitSuggestionAction(
     user_id: session.id,
     academy_id: profile?.academy_id ?? null,
     body,
-    is_read: false,
   });
 
   if (error) {
@@ -60,7 +59,7 @@ export async function submitSuggestionAction(
     ) {
       return {
         error:
-          "건의사항 테이블이 아직 없어요. Supabase에서 012_suggestions.sql을 실행해 주세요.",
+          "건의사항 테이블이 없어요. Supabase SQL Editor에서 012_suggestions.sql 을 실행해 주세요.",
       };
     }
     return { error: "저장에 실패했어요. 잠시 후 다시 시도해 주세요." };
@@ -85,7 +84,6 @@ export async function listSuggestionsForAdminAction(): Promise<{
   }
 
   try {
-    // 지금은 원장(admin) 조회. 추후 platform_admin 전용으로 이전.
     const service = createServiceClient();
     let query = service
       .from("suggestions")
@@ -104,7 +102,26 @@ export async function listSuggestionsForAdminAction(): Promise<{
       query = query.eq("academy_id", adminProfile.academy_id);
     }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    // 012만 실행해서 is_read 가 없는 경우 호환
+    if (
+      error &&
+      (error.message?.includes("is_read") || error.code === "42703")
+    ) {
+      let fallback = service
+        .from("suggestions")
+        .select("id, user_id, academy_id, body, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (adminProfile?.academy_id) {
+        fallback = fallback.eq("academy_id", adminProfile.academy_id);
+      }
+      const retry = await fallback;
+      data = retry.data as typeof data;
+      error = retry.error;
+    }
+
     if (error) {
       console.error("[listSuggestionsForAdminAction]", error);
       return {
@@ -112,8 +129,10 @@ export async function listSuggestionsForAdminAction(): Promise<{
           error.message?.includes("suggestions") ||
           error.code === "42P01" ||
           error.code === "PGRST205"
-            ? "건의사항 테이블이 없습니다. 012_suggestions.sql을 실행해 주세요."
-            : "목록을 불러오지 못했어요.",
+            ? "건의사항 테이블이 없습니다. Supabase에서 012_suggestions.sql 을 실행해 주세요."
+            : error.message?.includes("is_read")
+              ? "is_read 컬럼이 없습니다. 021_suggestions_is_read_fix.sql 을 실행해 주세요."
+              : "목록을 불러오지 못했어요.",
       };
     }
 
@@ -137,7 +156,9 @@ export async function listSuggestionsForAdminAction(): Promise<{
       academyId: (row.academy_id as string | null) ?? undefined,
       body: row.body as string,
       createdAt: row.created_at as string,
-      isRead: Boolean(row.is_read),
+      isRead: Boolean(
+        "is_read" in row ? (row as { is_read?: boolean }).is_read : false,
+      ),
     }));
 
     return { items };
@@ -171,11 +192,12 @@ export async function setSuggestionReadAction(
       console.error("[setSuggestionReadAction]", error);
       if (
         error.message?.includes("is_read") ||
-        error.code === "PGRST204"
+        error.code === "PGRST204" ||
+        error.code === "42703"
       ) {
         return {
           error:
-            "is_read 컬럼이 없어요. Supabase에서 setup.sql을 다시 실행하거나 README의 건의사항 패치를 실행해 주세요.",
+            "읽음 표시용 컬럼이 없어요. Supabase SQL Editor에서 아래를 실행해 주세요:\n\nalter table public.suggestions add column if not exists is_read boolean not null default false;",
         };
       }
       return { error: "상태를 바꾸지 못했어요." };

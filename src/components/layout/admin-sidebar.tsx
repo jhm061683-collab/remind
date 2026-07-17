@@ -16,7 +16,7 @@ export function AdminSidebar({ role }: Props) {
   const roleLabel = role === "sub_admin" ? "서브관리자" : "관리자";
 
   return (
-    <aside className="sticky top-[3.25rem] hidden h-[calc(100dvh-3.25rem)] w-52 shrink-0 self-start overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 p-3 md:block">
+    <aside className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-52 shrink-0 self-start overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 p-3 md:block">
       <div className="mb-3 px-1">
         <RemindLogo href="/admin/dashboard" size="sm" />
         <p className="mt-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
