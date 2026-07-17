@@ -148,7 +148,7 @@ export function QuestionArchiveCard({
           />
         </div>
 
-        <div className="p-4 text-sm">
+        <div className="p-3.5 text-base">
           <div className="flex items-center justify-between gap-2">
             <p className="font-semibold text-[var(--rm-text)]">{subjectName}</p>
             <span
@@ -195,14 +195,14 @@ export function QuestionArchiveCard({
         </div>
 
         {expanded ? (
-          <div className="space-y-4 border-t border-[var(--rm-border)] px-4 pb-4">
+          <div className="space-y-3 border-t border-[var(--rm-border)] px-3.5 pb-3.5">
             {message ? (
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
                 {message}
               </p>
             ) : null}
 
-            <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-4">
+            <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-[var(--rm-text-on-info)]">오답 분석</p>
                 {!editing ? (
@@ -224,7 +224,7 @@ export function QuestionArchiveCard({
                       value={source}
                       onChange={(e) => setSource(e.target.value)}
                       placeholder="예: 26년 6월 모평 22번"
-                      className="remind-input mt-1 text-sm"
+                      className="remind-input mt-1 text-base"
                     />
                   </label>
                   <KeywordPicker
@@ -242,8 +242,8 @@ export function QuestionArchiveCard({
                     wrongKeywords={wrongKeywords}
                     onWrongReasonChange={setWrongReason}
                     onWrongKeywordsChange={setWrongKeywords}
-                    selectClassName="remind-input mt-1 text-sm"
-                    inputClassName="remind-input mt-1 text-sm"
+                    selectClassName="remind-input mt-1 text-base"
+                    inputClassName="remind-input mt-1 text-base"
                   />
                   <label className="block">
                     <span className="text-xs font-medium text-[var(--rm-text-muted)]">
@@ -254,7 +254,7 @@ export function QuestionArchiveCard({
                       value={reflectionMemo}
                       onChange={(e) => setReflectionMemo(e.target.value)}
                       placeholder="무엇을 몰라서 틀렸는지, 다음에 어떻게 풀지 적어 보세요."
-                      className="remind-input mt-1 text-sm"
+                      className="remind-input mt-1 text-base"
                     />
                   </label>
                   <div className="flex gap-2">
@@ -302,7 +302,7 @@ export function QuestionArchiveCard({
                     </div>
                   ) : null}
                   {question.reflectionMemo ? (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--rm-text)]">
+                    <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--rm-text)]">
                       {question.reflectionMemo}
                     </p>
                   ) : !question.wrongReason ? (
@@ -314,7 +314,7 @@ export function QuestionArchiveCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-4">
+            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
               <p className="text-sm font-bold text-[var(--rm-text)]">정답 · 해설</p>
               {!hasAnswer ? (
                 <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
@@ -334,7 +334,7 @@ export function QuestionArchiveCard({
                     </div>
                   ) : null}
                   {question.answerText ? (
-                    <p className="whitespace-pre-wrap text-sm text-[var(--rm-text)]">
+                    <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--rm-text)]">
                       {question.answerText}
                     </p>
                   ) : null}

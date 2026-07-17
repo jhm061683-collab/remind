@@ -61,14 +61,13 @@ export default async function AdminLayout({
         <div className="flex min-h-0 flex-1">
           <AdminSidebar role={navRole} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] z-30 border-b border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_82%,transparent)] px-3 py-2 backdrop-blur-xl md:hidden">
-              <AdminMobileNav role={navRole} />
-            </div>
-            <main className="flex-1 px-3 py-3 sm:px-4 md:px-5 md:py-4">
+            <main className="flex-1 px-3 py-2.5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-3 md:px-5 md:py-4 md:pb-4">
               <div className="mx-auto w-full max-w-5xl">{children}</div>
             </main>
           </div>
         </div>
+
+        <AdminMobileNav role={navRole} />
       </div>
     </AdminThemeProvider>
   );

@@ -16,7 +16,7 @@ export default async function UploadPage({ searchParams }: Props) {
       <BackBar href="/dashboard" label="홈" />
       <PageHeader
         title="문제 등록"
-        description="틀린 문제 사진을 올려요."
+        description="사진 찍고, 정답만 적으면 끝이에요."
         compact
       />
       <QuestionUploadForm

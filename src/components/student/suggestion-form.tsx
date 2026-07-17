@@ -56,8 +56,8 @@ export function SuggestionForm({ userId, userName }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <form action={handleSubmit} className="remind-card space-y-3 p-5">
+    <div className="space-y-3">
+      <form action={handleSubmit} className="remind-card space-y-3 p-3.5">
         <label className="block">
           <span className="remind-field-label">건의 내용</span>
           <textarea

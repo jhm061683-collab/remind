@@ -29,7 +29,7 @@ export function StaffProfileForm({
   const preview = isAdmin ? `${previewBase}원장` : previewBase;
 
   return (
-    <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-5 shadow-sm">
+    <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3.5 shadow-sm md:p-5">
       <h2 className="font-semibold text-[var(--rm-text)]">표시 이름</h2>
       <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
         {isAdmin

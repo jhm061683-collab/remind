@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import { MissionList } from "@/components/student/dashboard/mission-list";
 import { PrimaryActions } from "@/components/student/dashboard/primary-actions";
-import { StreakProgressCard } from "@/components/student/dashboard/streak-progress-card";
-import { WeeklyTrendCard } from "@/components/student/dashboard/weekly-trend-card";
+import { StudyPulseCard } from "@/components/student/dashboard/study-pulse-card";
 import { useSubjects } from "@/components/student/subject-provider";
 import type { UserStats } from "@/lib/data/user-stats";
 import { getActivityEvents } from "@/lib/data/activity";
-import { IconArchive, IconChevronRight, IconTrophy } from "@/components/ui/icons";
+import { IconArchive, IconChevronRight } from "@/components/ui/icons";
 import {
   getAllQuestions,
   type StoredQuestion,
 } from "@/lib/data/questions";
 import { computeUserStats } from "@/lib/stats/compute";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   userId: string;
@@ -100,54 +99,44 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
 
   return (
     <div className="rm-page">
-      <header className="rm-page-header">
-        <h1 className="rm-display">
-          {userName}
-          <span className="text-[var(--rm-text-muted)]">님</span>
-        </h1>
-        <p className="rm-body-muted">{formatTodayLabel()}</p>
+      <header className="rm-page-header flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="rm-display">
+            {userName}
+            <span className="text-[var(--rm-text-muted)]">님</span>
+          </h1>
+          <p className="rm-body-muted">{formatTodayLabel()}</p>
+        </div>
+        <Link
+          href="/records"
+          className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--rm-nav-active)] touch-manipulation"
+        >
+          기록
+          {!loading && (userStats?.studyStreak ?? 0) > 0
+            ? ` · ${userStats?.studyStreak}일`
+            : ""}
+          <IconChevronRight size={12} className="ml-0.5 inline align-[-1px]" />
+        </Link>
       </header>
 
-      <div className="rm-section-gap">
-        <PrimaryActions todayCount={todayCount ?? 0} loading={loading} />
+      <PrimaryActions todayCount={todayCount ?? 0} loading={loading} />
 
-        <Link href="/records" className="rm-link-row rm-link-row--compact group">
-          <span className="rm-icon-wrap h-8 w-8 shrink-0">
-            <IconTrophy size={16} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium text-[var(--rm-text-muted)]">내 기록</p>
-            <p className="text-sm font-bold text-[var(--rm-text)]">
-              {loading ? "—" : `다시 푼 ${userStats?.totalReviews ?? 0}회`}
-              {!loading && (userStats?.studyStreak ?? 0) > 0 ? (
-                <span className="ml-1.5 text-xs font-semibold text-[var(--rm-brand-bright)]">
-                  · {userStats?.studyStreak}일 연속
-                </span>
-              ) : null}
-            </p>
-          </span>
-          <IconChevronRight
-            size={14}
-            className="shrink-0 text-[var(--rm-text-subtle)] transition group-hover:text-[var(--rm-brand-bright)]"
-          />
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-2 rm-stat-grid">
+      {/* 한 줄 통계 스트립 — 카드 4장 대신 divider */}
+      <div className="rm-stat-strip">
         <QuickStat label="전체" value={loading ? "—" : stats.total} />
         <QuickStat label="정리" value={loading ? "—" : stats.active} />
-        <QuickStat label="정복" value={loading ? "—" : `${masteryPct}%`} accent />
+        <QuickStat
+          label="정복"
+          value={loading ? "—" : `${masteryPct}%`}
+          accent
+        />
         <QuickStat label="예정" value={loading ? "—" : (upcomingCount ?? 0)} />
       </div>
 
-      <StreakProgressCard
+      <StudyPulseCard
         streak={userStats?.studyStreak ?? 0}
         longestStreak={userStats?.longestStreak ?? 0}
         weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
-        loading={loading}
-      />
-
-      <WeeklyTrendCard
         weekly={userStats?.weekly ?? null}
         totalReviews={userStats?.totalReviews ?? 0}
         loading={loading}
@@ -193,12 +182,10 @@ function QuickStat({
   accent?: boolean;
 }) {
   return (
-    <div className="rm-glass rm-glass--compact text-center">
-      <p className="rm-stat-label text-[10px] font-medium text-[var(--rm-text-muted)] sm:text-[9px]">
-        {label}
-      </p>
+    <div className="rm-stat-strip__item">
+      <p className="rm-stat-label">{label}</p>
       <p
-        className={`rm-stat-value mt-1 text-sm font-bold tabular-nums leading-none sm:mt-0.5 sm:text-base ${
+        className={`rm-stat-value tabular-nums ${
           accent ? "text-[var(--rm-brand-bright)]" : "text-[var(--rm-text)]"
         }`}
       >

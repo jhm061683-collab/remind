@@ -98,11 +98,17 @@ export function MultiImagePicker({
 
   return (
     <div>
-      <p className="mb-1 text-sm font-medium text-[var(--rm-text)]">
-        {label}
-        {required ? <span className="text-red-400"> *</span> : null}
-      </p>
-      {hint ? <p className="mb-2 text-xs text-[var(--rm-text-muted)]">{hint}</p> : null}
+      {label ? (
+        <p className="mb-1 text-sm font-medium text-[var(--rm-text)]">
+          {label}
+          {required ? (
+            <span className="text-[var(--rm-danger)]"> *</span>
+          ) : null}
+        </p>
+      ) : null}
+      {hint ? (
+        <p className="mb-2 text-xs text-[var(--rm-text-muted)]">{hint}</p>
+      ) : null}
 
       {status ? (
         <p className="rm-pick-status mb-2 rounded-lg px-3 py-2 text-sm font-medium">
@@ -114,21 +120,21 @@ export function MultiImagePicker({
       ) : null}
 
       {pages.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {pages.map((page, index) => (
             <div key={page.id} className="relative">
-              <span className="absolute left-2 top-2 z-10 rounded-lg bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="absolute left-2 top-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
                 {index + 1}장
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={page.preview}
-                alt={`${label} ${index + 1}`}
-                className="max-h-64 w-full rounded-xl border-2 border-[var(--rm-accent)]/40 bg-[var(--rm-bg-elevated)] object-contain"
+                alt={`${label || "문제"} ${index + 1}`}
+                className="max-h-52 w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] object-contain"
               />
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                 <ImagePickButton
-                  text="다시 촬영"
+                  text="다시 찍기"
                   capture
                   variant="outline"
                   onPick={(f) => void handleSelect(f, index)}
@@ -141,7 +147,7 @@ export function MultiImagePicker({
                 <button
                   type="button"
                   onClick={() => removePage(index)}
-                  className="min-h-12 rounded-[var(--rm-radius-md)] border border-red-400/30 bg-red-500/10 text-sm font-bold text-red-300"
+                  className="min-h-11 rounded-[var(--rm-radius-md)] border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] text-sm font-bold text-[var(--rm-text-on-error)]"
                 >
                   삭제
                 </button>
@@ -152,33 +158,33 @@ export function MultiImagePicker({
           {pages.length < 2 ? (
             <div className="grid grid-cols-2 gap-2">
               <ImagePickButton
-                text="📸 페이지 추가 촬영"
+                text="장 추가 촬영"
                 capture
                 variant="primary"
                 onPick={(f) => void handleSelect(f)}
               />
               <ImagePickButton
-                text="🖼️ 앨범에서 추가"
+                text="앨범에서 추가"
                 variant="secondary"
                 onPick={(f) => void handleSelect(f)}
               />
             </div>
           ) : (
             <p className="text-center text-xs text-[var(--rm-text-muted)]">
-              문제 사진은 최대 2장까지 올릴 수 있어요.
+              최대 2장까지 올릴 수 있어요
             </p>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           <ImagePickButton
-            text="📸 촬영"
+            text="촬영"
             capture
             variant="primary"
             onPick={(f) => void handleSelect(f)}
           />
           <ImagePickButton
-            text="🖼️ 앨범"
+            text="앨범"
             variant="secondary"
             onPick={(f) => void handleSelect(f)}
           />

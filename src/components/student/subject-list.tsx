@@ -157,7 +157,7 @@ export function SubjectList({ userId }: Props) {
               <li key={subject.id}>
                 <Link
                   href={`/subjects/${subject.id}/settings`}
-                  className="remind-card block px-5 py-4 transition hover:border-[var(--rm-info-border)]"
+                  className="remind-card block px-3.5 py-3 transition hover:border-[var(--rm-info-border)]"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-semibold text-[var(--rm-text)]">

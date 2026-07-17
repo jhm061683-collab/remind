@@ -14,7 +14,7 @@ export function LoginForm() {
   return (
     <form
       action={formAction}
-      className="remind-card space-y-4 p-6 md:p-8"
+      className="remind-card space-y-3 p-4 md:p-6"
     >
       {state.error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

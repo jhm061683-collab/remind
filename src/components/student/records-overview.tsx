@@ -42,7 +42,7 @@ export function RecordsOverview({ userId }: Props) {
   const locked = stats.achievements.filter((a) => !a.unlocked);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 md:space-y-4">
       <section className="rm-rules-panel">
         <p className="rm-rules-panel__title">집계 기준</p>
         <ul className="rm-rules-panel__list">

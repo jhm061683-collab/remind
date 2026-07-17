@@ -150,7 +150,7 @@ export function TodayStudySession({ userId }: Props) {
 
   if (!isReady) {
     return (
-      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-8 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
+      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
         불러오는 중...
       </div>
     );
@@ -158,7 +158,7 @@ export function TodayStudySession({ userId }: Props) {
 
   if (isEmpty) {
     return (
-      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-6 text-center shadow-sm">
+      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 text-center shadow-sm">
         <p className="text-[var(--rm-text-muted)]">{UI_LABELS.todayQueueEmpty}</p>
         <p className="mt-2 text-sm text-[var(--rm-text-faint)]">
           문제를 업로드하면 보통 다음 날부터 여기에 나타납니다.
@@ -192,7 +192,7 @@ export function TodayStudySession({ userId }: Props) {
 
   if (isFinished) {
     return (
-      <div className="rounded-2xl border border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] p-8 text-center shadow-sm">
+      <div className="rounded-2xl border border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] p-4 text-center shadow-sm">
         <p className="text-lg font-semibold text-[var(--rm-text-on-success)]">
           오늘의 학습을 완료했어요!
         </p>
@@ -201,7 +201,7 @@ export function TodayStudySession({ userId }: Props) {
         </p>
         <Link
           href="/dashboard"
-          className="mt-6 inline-block rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
+          className="mt-3 inline-block rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700"
         >
           홈으로
         </Link>
@@ -212,7 +212,7 @@ export function TodayStudySession({ userId }: Props) {
   if (!current) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <ConfirmDialog
         open={showDeleteConfirm}
         title="문제를 삭제할까요?"
@@ -255,7 +255,7 @@ export function TodayStudySession({ userId }: Props) {
           />
         </div>
 
-        <div className="space-y-3 p-4">
+        <div className="mx-auto max-w-xl space-y-3 p-3.5">
           {current.keywords.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {current.keywords.map((keyword) => (
@@ -280,7 +280,7 @@ export function TodayStudySession({ userId }: Props) {
                 </span>
               ) : null}
               {current.reflectionMemo ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--rm-text)]">
+                <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-[var(--rm-text)]">
                   {current.reflectionMemo}
                 </p>
               ) : null}
@@ -310,7 +310,7 @@ export function TodayStudySession({ userId }: Props) {
                     </div>
                   ) : null}
                   {current.answerText ? (
-                    <p className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2 text-sm text-[var(--rm-text)] whitespace-pre-wrap">
+                    <p className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-3 text-base leading-relaxed text-[var(--rm-text)] whitespace-pre-wrap">
                       {current.answerText}
                     </p>
                   ) : null}
@@ -324,7 +324,7 @@ export function TodayStudySession({ userId }: Props) {
       </div>
 
       {pendingCompletion ? (
-        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] p-5 shadow-sm">
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] p-3.5 shadow-sm">
           <p className="font-semibold text-[var(--rm-text)]">
             장기 복습을 완료했어요!
           </p>
@@ -335,21 +335,21 @@ export function TodayStudySession({ userId }: Props) {
             <button
               type="button"
               onClick={() => void handleCompletedAction("delete")}
-              className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-sm font-medium text-[var(--rm-text)] hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
+              className="min-h-[48px] rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-base font-medium text-[var(--rm-text)] touch-manipulation hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
             >
               삭제
             </button>
             <button
               type="button"
               onClick={() => void handleCompletedAction("archive")}
-              className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-sm font-medium text-[var(--rm-text)] hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
+              className="min-h-[48px] rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_45%,transparent)] bg-[var(--rm-surface)] py-3 text-base font-medium text-[var(--rm-text)] touch-manipulation hover:bg-[color-mix(in_srgb,var(--rm-warning)_14%,var(--rm-surface))]"
             >
               보관함 저장
             </button>
             <button
               type="button"
               onClick={() => void handleCompletedAction("review_once_more")}
-              className="rounded-xl bg-[var(--rm-warning)] py-3 text-sm font-semibold text-white hover:opacity-90"
+              className="min-h-[48px] rounded-xl bg-[var(--rm-warning)] py-2.5 text-base font-semibold text-white touch-manipulation hover:opacity-90"
             >
               한 번 더 복습
             </button>
@@ -360,14 +360,14 @@ export function TodayStudySession({ userId }: Props) {
           <button
             type="button"
             onClick={() => void handleAnswer("incorrect")}
-            className="rounded-xl bg-[var(--rm-danger)] py-4 text-sm font-semibold text-white hover:opacity-90"
+            className="min-h-[48px] rounded-xl bg-[var(--rm-danger)] py-2.5 text-base font-semibold text-white touch-manipulation hover:opacity-90"
           >
             틀렸어요
           </button>
           <button
             type="button"
             onClick={() => void handleAnswer("correct")}
-            className="rounded-xl bg-green-600 py-4 text-sm font-semibold text-white hover:bg-green-700"
+            className="min-h-[48px] rounded-xl bg-green-600 py-2.5 text-base font-semibold text-white touch-manipulation hover:bg-green-700"
           >
             맞았어요
           </button>

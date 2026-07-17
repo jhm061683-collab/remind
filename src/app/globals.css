@@ -54,6 +54,14 @@ body {
     sans-serif;
   touch-action: manipulation;
   min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 label[for] {
@@ -193,7 +201,7 @@ label[for] {
   border: 1.5px solid #cbd5e1;
   background: #fff;
   padding: 0.625rem 0.875rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }

@@ -93,7 +93,7 @@ export default async function AdminDashboardPage() {
           {isSubAdmin ? "담당 학생" : "학생 요약"}
         </h2>
         {data.students.length === 0 && isSubAdmin ? (
-          <div className="rounded-xl border border-[var(--rm-warning)]/30 bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-4 py-5 text-center text-sm text-[var(--rm-text)]">
+          <div className="rounded-xl border border-[var(--rm-warning)]/30 bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-3 py-4 text-center text-sm text-[var(--rm-text)]">
             <p className="font-medium">담당 학생이 아직 없어요</p>
             <p className="mt-1 text-[var(--rm-text-muted)]">
               원장님이 <strong>반 관리</strong>에서 반 담당으로 지정해 주면

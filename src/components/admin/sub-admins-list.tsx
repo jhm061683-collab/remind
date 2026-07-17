@@ -13,11 +13,42 @@ type Props = {
   subAdmins: SubAdminRow[];
 };
 
+function TeamLeadToggle({
+  row,
+  pending,
+  onToggle,
+}: {
+  row: SubAdminRow;
+  pending: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  return (
+    <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-[var(--rm-text)]">
+      <input
+        type="checkbox"
+        checked={row.isDirector}
+        disabled={pending}
+        className="h-4 w-4 rounded border-[var(--rm-border)]"
+        onChange={(e) => onToggle(e.target.checked)}
+      />
+      팀장
+    </label>
+  );
+}
+
 export function SubAdminsList({ subAdmins }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SubAdminRow | null>(null);
+
+  function handleTeamLead(rowId: string, next: boolean) {
+    startTransition(async () => {
+      const res = await setSubAdminTeamLeadAction(rowId, next);
+      setFeedback(res.error ?? res.success ?? null);
+      router.refresh();
+    });
+  }
 
   if (subAdmins.length === 0) {
     return (
@@ -29,7 +60,8 @@ export function SubAdminsList({ subAdmins }: Props) {
 
   return (
     <>
-      <div className="overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm">
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm md:block">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]">
             <tr>
@@ -55,26 +87,11 @@ export function SubAdminsList({ subAdmins }: Props) {
                   {row.username}
                 </td>
                 <td className="px-3 py-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-[var(--rm-text)]">
-                    <input
-                      type="checkbox"
-                      checked={row.isDirector}
-                      disabled={pending}
-                      className="rounded border-[var(--rm-border)]"
-                      onChange={(e) => {
-                        const next = e.target.checked;
-                        startTransition(async () => {
-                          const res = await setSubAdminTeamLeadAction(
-                            row.id,
-                            next,
-                          );
-                          setFeedback(res.error ?? res.success ?? null);
-                          router.refresh();
-                        });
-                      }}
-                    />
-                    팀장
-                  </label>
+                  <TeamLeadToggle
+                    row={row}
+                    pending={pending}
+                    onToggle={(next) => handleTeamLead(row.id, next)}
+                  />
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text)]">
                   {row.assignedCount}명
@@ -94,6 +111,50 @@ export function SubAdminsList({ subAdmins }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile cards */}
+      <ul className="space-y-2 md:hidden">
+        {subAdmins.map((row) => (
+          <li
+            key={row.id}
+            className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3.5 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-1.5 text-base font-semibold text-[var(--rm-text)]">
+                  {row.displayName}
+                  {row.isDirector ? (
+                    <span className="rounded-full bg-[var(--rm-accent-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--rm-brand-violet)]">
+                      팀장
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-sm text-[var(--rm-text-muted)]">
+                  {row.username}
+                </p>
+              </div>
+              <p className="shrink-0 text-sm font-medium text-[var(--rm-text)]">
+                담당 {row.assignedCount}명
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--rm-border)] pt-3">
+              <TeamLeadToggle
+                row={row}
+                pending={pending}
+                onToggle={(next) => handleTeamLead(row.id, next)}
+              />
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setDeleteTarget(row)}
+                className="min-h-[44px] rounded-xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-4 text-sm font-semibold text-[var(--rm-text-on-error)] disabled:opacity-50"
+              >
+                삭제
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
 
       {feedback ? (
         <p className="mt-3 text-sm text-[var(--rm-text)]">{feedback}</p>

@@ -26,7 +26,7 @@ export function canAccessAdminPath(role: UserRole, pathname: string): boolean {
 export type AdminNavItem = {
   href: string;
   label: string;
-  /** 모바일 가로 탭용 짧은 라벨 */
+  /** 모바일 하단 탭용 짧은 라벨 */
   shortLabel?: string;
   adminOnly?: boolean;
   /** 사이드바/모바일 탭에 숨기고 계정 메뉴로만 진입 */

@@ -292,7 +292,7 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
   const presetModified = isPresetModified(activePreset, settings);
 
   return (
-    <div className="remind-card space-y-5 p-6 md:p-8">
+    <div className="remind-card space-y-3 p-3.5 md:p-6">
       {loadError ? (
         <div className="rounded-xl bg-red-100 px-4 py-3 text-sm text-red-900">
           {loadError}

@@ -153,7 +153,7 @@ export function ClassManagementBoard({ data }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {message ? (
         <p className="rounded-xl bg-[var(--rm-info-bg)] px-4 py-2 text-sm text-[var(--rm-text-on-info)]">{message}</p>
       ) : null}
@@ -439,7 +439,7 @@ export function ClassManagementBoard({ data }: Props) {
           ) : (
             classesByGrade.map((group) => (
               <div key={group.gradeLabel} className="space-y-2">
-                <h3 className="sticky top-[calc(5.5rem+env(safe-area-inset-top))] z-10 rounded-lg bg-[color-mix(in_srgb,var(--rm-accent-muted)_95%,transparent)] px-3 py-2 text-sm font-bold text-[var(--rm-text)] backdrop-blur md:top-[calc(2.75rem+env(safe-area-inset-top))]">
+                <h3 className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] z-10 rounded-lg bg-[color-mix(in_srgb,var(--rm-accent-muted)_95%,transparent)] px-3 py-2 text-sm font-bold text-[var(--rm-text)] backdrop-blur">
                   {group.gradeLabel}{" "}
                   <span className="font-medium text-[var(--rm-text-muted)]">
                     · {group.rooms.length}개 반 ·{" "}

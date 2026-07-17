@@ -293,7 +293,7 @@ export function ArchiveList({ userId }: Props) {
         onConfirm={() => void handleBulkDeleteConfirm()}
         onCancel={() => setShowBulkDeleteConfirm(false)}
       />
-      <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-[var(--rm-accent-muted)] p-1">
+      <div className="mb-3 grid grid-cols-3 gap-2 rounded-2xl bg-[var(--rm-accent-muted)] p-1">
         {STATUS_TABS.map((tab) => {
           const active = statusFilter === tab.id;
           const count = counts[tab.id];
@@ -493,7 +493,7 @@ export function ArchiveList({ userId }: Props) {
               : "등록된 문제가 없습니다. 문제 등록 탭에서 올려 주세요."}
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-3 space-y-2.5">
           {filtered.map((question) => (
             <QuestionArchiveCard
               key={question.id}

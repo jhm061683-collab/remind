@@ -30,7 +30,7 @@ export default async function AdminAccountPage() {
           isAdmin={isAdmin}
         />
 
-        <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3.5 shadow-sm md:p-5">
           <h2 className="mb-1 font-semibold text-[var(--rm-text)]">비밀번호 변경</h2>
           <p className="mb-4 text-xs text-[var(--rm-text-muted)]">
             현재 비밀번호를 확인한 뒤 새 비밀번호로 바꿉니다.

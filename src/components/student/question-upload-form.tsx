@@ -19,10 +19,7 @@ import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { isLocalStorageAvailable } from "@/lib/storage/safe-storage";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
-import {
-  fileOrPreviewToDataUrl,
-} from "@/lib/utils/compress-image";
-import { UI_LABELS } from "@/lib/constants/ui-labels";
+import { fileOrPreviewToDataUrl } from "@/lib/utils/compress-image";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
 
 type Props = {
@@ -74,6 +71,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [wrongReason, setWrongReason] = useState("");
   const [wrongKeywords, setWrongKeywords] = useState<string[]>([]);
   const [reflectionMemo, setReflectionMemo] = useState("");
+  const [showExtras, setShowExtras] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -144,7 +142,6 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         );
       }
 
-      // 해설 사진은 선택 — 없어도 등록 가능
       let answerImageDataUrl: string | undefined;
       if (answerFile || answerPreview) {
         answerImageDataUrl = await fileOrPreviewToDataUrl(
@@ -211,6 +208,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
   function handleContinue() {
     setSuccess(false);
+    setShowExtras(false);
     resetFormFields({
       setQuestionPages,
       setQuestionReady,
@@ -227,9 +225,13 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
   if (success) {
     return (
-      <div className="remind-card space-y-4 p-8 text-center">
-        <p className="text-4xl">✅</p>
-        <p className="text-xl font-bold text-[var(--rm-text-on-success)]">등록 완료!</p>
+      <div className="remind-card space-y-3 p-4 text-center">
+        <p className="text-4xl" aria-hidden>
+          ✅
+        </p>
+        <p className="text-xl font-bold text-[var(--rm-text-on-success)]">
+          등록 완료!
+        </p>
         <p className="text-sm text-[var(--rm-text-on-success)]">
           {getSubjectName(subjectId)}에 저장됐어요
           {registeredCount > 1 ? ` · 이번에 ${registeredCount}개` : ""}
@@ -238,14 +240,14 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           <button
             type="button"
             onClick={handleContinue}
-            className="min-h-[48px] rounded-xl bg-[var(--rm-brand)] py-3 text-sm font-bold text-white"
+            className="min-h-[48px] rounded-xl bg-[var(--rm-brand)] py-2.5 text-sm font-bold text-white"
           >
             계속 등록
           </button>
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="min-h-[48px] rounded-xl border border-[var(--rm-border)] py-3 text-sm font-bold text-[var(--rm-text)]"
+            className="min-h-[48px] rounded-xl border border-[var(--rm-border)] py-2.5 text-sm font-bold text-[var(--rm-text)]"
           >
             홈으로
           </button>
@@ -261,114 +263,139 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     answerText.trim().length > 0;
 
   return (
-    <div className="remind-card space-y-4 p-5 md:p-6">
+    <div className="space-y-3">
       {error ? (
-        <p className="rounded-xl bg-red-100 px-4 py-3 text-sm font-medium text-[var(--rm-text-on-error)]">
+        <p className="rounded-xl bg-[var(--rm-error-bg)] px-3 py-2.5 text-sm font-medium text-[var(--rm-text-on-error)]">
           {error}
         </p>
       ) : null}
 
-      <label className="block">
-        <span className="remind-field-label">과목</span>
-        {subjectsLoading ? (
-          <p className="mt-1 text-sm text-[var(--rm-text-muted)]">과목 불러오는 중...</p>
-        ) : subjects.length === 0 ? (
-          <p className="mt-1 text-sm text-[var(--rm-danger)]">
-            과목이 없어요. 「과목 설정」에서 과목을 먼저 추가해 주세요.
-          </p>
-        ) : (
-          <select
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
-            className="remind-input mt-1 text-base"
-          >
-            {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
-                {subject.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
+      {/* 필수 3단계만 먼저 보여 부담을 줄임 */}
+      <section className="remind-card space-y-3 p-3.5">
+        <p className="text-xs font-semibold text-[var(--rm-text-muted)]">
+          필수 · 3가지만 하면 돼요
+        </p>
 
-      <MultiImagePicker
-        label={UI_LABELS.registerPhoto}
-        hint={UI_LABELS.registerPhotoHint}
-        required
-        onReadyChange={handleQuestionReady}
-        onChange={setQuestionPages}
-      />
-
-      <KeywordPicker
-        userId={userId}
-        kind="problem"
-        selected={keywords}
-        onChange={setKeywords}
-        label="문제 키워드"
-        hint="단원·유형·문제번호 등. ★즐겨찾기는 위에, ×로 목록에서 삭제."
-        placeholder="예: 이차함수, 모평22번"
-      />
-
-      <div className="rm-analysis-panel space-y-3">
-        <p className="text-sm font-bold">오답 분석</p>
         <label className="block">
-          <span className="rm-field-hint">문제 출처 (선택)</span>
-          <input
-            type="text"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            placeholder="예: 26년 6월 모평 22번"
-            className="remind-input mt-1 text-base"
-          />
+          <span className="remind-field-label">1. 과목</span>
+          {subjectsLoading ? (
+            <p className="mt-1 text-sm text-[var(--rm-text-muted)]">
+              과목 불러오는 중...
+            </p>
+          ) : subjects.length === 0 ? (
+            <p className="mt-1 text-sm text-[var(--rm-danger)]">
+              과목이 없어요. 「과목 설정」에서 먼저 추가해 주세요.
+            </p>
+          ) : (
+            <select
+              value={subjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
+              className="remind-input mt-1 text-base"
+            >
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
-        <WrongReasonFields
-          userId={userId}
-          wrongReason={wrongReason}
-          wrongKeywords={wrongKeywords}
-          onWrongReasonChange={setWrongReason}
-          onWrongKeywordsChange={setWrongKeywords}
-        />
-        <label className="block">
-          <span className="rm-field-hint">오답 분석 메모</span>
-          <textarea
-            rows={4}
-            value={reflectionMemo}
-            onChange={(e) => setReflectionMemo(e.target.value)}
-            placeholder="무엇을 몰라서 틀렸는지 적어 보세요."
-            className="remind-input mt-1 text-base"
-          />
-        </label>
-      </div>
 
-      <div className="rm-solution-panel space-y-3">
-        <p className="text-sm font-bold">정답 · 해설</p>
+        <div>
+          <p className="remind-field-label mb-1">2. 문제 사진</p>
+          <MultiImagePicker
+            label=""
+            hint="카메라나 앨범에서 고르면 됩니다"
+            required
+            onReadyChange={handleQuestionReady}
+            onChange={setQuestionPages}
+          />
+        </div>
+
         <label className="block">
           <span className="remind-field-label">
-            정답 <span className="text-red-500">*</span>
+            3. 정답 <span className="text-[var(--rm-danger)]">*</span>
           </span>
-          <textarea
-            rows={2}
+          <input
+            type="text"
             value={answerText}
             onChange={(e) => setAnswerText(e.target.value)}
-            placeholder="예: ③ / x=2"
+            placeholder="예: ③ 또는 x=2"
             className="remind-input mt-1 text-base"
+            autoComplete="off"
           />
         </label>
-        <ImagePicker
-          label="해설 사진 (선택)"
-          hint="없어도 등록할 수 있어요."
-          onChange={(file, preview) => {
-            setAnswerFile(file);
-            setAnswerPreview(preview);
-          }}
-        />
-      </div>
+      </section>
+
+      <button
+        type="button"
+        onClick={() => setShowExtras((v) => !v)}
+        className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface)] px-3.5 py-2 text-left text-sm font-medium text-[var(--rm-text-muted)] touch-manipulation"
+      >
+        <span>{showExtras ? "추가입력 접기" : "추가입력"}</span>
+        <span className="text-xs text-[var(--rm-text-faint)]">
+          키워드 · 오답 메모 · 해설 사진
+        </span>
+      </button>
+
+      {showExtras ? (
+        <section className="remind-card space-y-3 p-3.5">
+          <KeywordPicker
+            userId={userId}
+            kind="problem"
+            selected={keywords}
+            onChange={setKeywords}
+            label="문제 키워드"
+            hint="단원·유형 등 (나중에 찾아보기 쉬워요)"
+            placeholder="예: 이차함수"
+          />
+
+          <label className="block">
+            <span className="rm-field-hint">문제 출처</span>
+            <input
+              type="text"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="예: 6월 모평 22번"
+              className="remind-input mt-1 text-base"
+            />
+          </label>
+
+          <WrongReasonFields
+            userId={userId}
+            wrongReason={wrongReason}
+            wrongKeywords={wrongKeywords}
+            onWrongReasonChange={setWrongReason}
+            onWrongKeywordsChange={setWrongKeywords}
+          />
+
+          <label className="block">
+            <span className="rm-field-hint">오답 메모</span>
+            <textarea
+              rows={3}
+              value={reflectionMemo}
+              onChange={(e) => setReflectionMemo(e.target.value)}
+              placeholder="왜 틀렸는지 짧게"
+              className="remind-input mt-1 text-base"
+            />
+          </label>
+
+          <ImagePicker
+            label="해설 사진"
+            hint="없어도 등록할 수 있어요"
+            onChange={(file, preview) => {
+              setAnswerFile(file);
+              setAnswerPreview(preview);
+            }}
+          />
+        </section>
+      ) : null}
 
       <button
         type="button"
         onClick={handleSubmit}
         disabled={isSaving || !canSubmit}
-        className={`min-h-[56px] w-full rounded-xl py-4 text-base font-bold text-white touch-manipulation ${
+        className={`min-h-[48px] w-full rounded-xl py-3 text-base font-bold text-white touch-manipulation ${
           canSubmit ? "bg-[var(--rm-brand)]" : "bg-[var(--rm-text-faint)]"
         }`}
       >
