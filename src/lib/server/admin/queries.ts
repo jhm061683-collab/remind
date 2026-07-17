@@ -819,7 +819,7 @@ export async function getClassManagementData(
   const classes: ClassRoomSummary[] = rooms.map((room) => {
     const studentIds = studentsByClass.get(room.id) ?? [];
     const students: ClassStudentBrief[] = studentIds
-      .map((id) => {
+      .map((id): ClassStudentBrief | null => {
         const p = profileMap.get(id);
         if (!p || p.role !== "student") return null;
         return {
@@ -827,8 +827,8 @@ export async function getClassManagementData(
           displayName: p.display_name,
           username: p.username ?? "—",
           gradeLabel: toGradeLabel(p.school_level, p.grade_number),
-          classIds: [],
-          classLabels: [],
+          classIds: [] as string[],
+          classLabels: [] as string[],
         };
       })
       .filter((s): s is ClassStudentBrief => Boolean(s))
