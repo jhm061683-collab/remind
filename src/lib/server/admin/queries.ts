@@ -54,7 +54,6 @@ type ClassRoomRow = {
   name: string;
   school_level: "elementary" | "middle" | "high" | "adult" | null;
   grade_number: number | null;
-  is_director_class?: boolean;
 };
 
 type ClassTeacherRow = {
@@ -765,10 +764,11 @@ export async function getClassManagementData(
   if (!academyId) return { classes: [], students: [], teachers: [], teacherOverviews: [] };
 
   const supabase = createServiceClient();
-  const [{ data: classRows }, { data: profiles }] = await Promise.all([
+  const [{ data: classRows }, { data: profiles }, { data: adminProfile }] =
+    await Promise.all([
     supabase
       .from("class_rooms")
-      .select("id, name, school_level, grade_number, is_director_class")
+      .select("id, name, school_level, grade_number")
       .eq("academy_id", academyId)
       .order("school_level", { ascending: true })
       .order("grade_number", { ascending: true })
@@ -778,11 +778,22 @@ export async function getClassManagementData(
       .select("id, display_name, username, role, school_level, grade_number, is_director")
       .eq("academy_id", academyId)
       .in("role", ["student", "sub_admin", "admin"]),
+    supabase
+      .from("profiles")
+      .select("id, display_name, username, role, school_level, grade_number, is_director")
+      .eq("id", adminId)
+      .maybeSingle(),
   ]);
 
   const rooms = (classRows ?? []) as ClassRoomRow[];
   const classIds = rooms.map((room) => room.id);
   const profileList = (profiles ?? []) as ProfileRow[];
+  if (
+    adminProfile &&
+    !profileList.some((p) => p.id === adminProfile.id)
+  ) {
+    profileList.push(adminProfile as ProfileRow);
+  }
 
   const [{ data: teacherRows }, { data: studentRows }] =
     classIds.length > 0
@@ -843,13 +854,8 @@ export async function getClassManagementData(
       name: room.name,
       schoolLevel: room.school_level,
       gradeNumber: room.grade_number,
-      gradeLabel: room.is_director_class
-        ? "원장반"
-        : toGradeLabel(room.school_level, room.grade_number),
-      displayLabel: room.is_director_class
-        ? room.name?.trim() || "원장반"
-        : formatClassLabel(room.name, room.school_level, room.grade_number),
-      isDirectorClass: Boolean(room.is_director_class),
+      gradeLabel: toGradeLabel(room.school_level, room.grade_number),
+      displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
       teacherIds: teacherIdsByClass.get(room.id) ?? [],
       teacherNames: teachersByClass.get(room.id) ?? [],
       studentIds,

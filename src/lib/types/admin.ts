@@ -85,7 +85,6 @@ export type ClassRoomSummary = {
   gradeNumber: number | null;
   gradeLabel: string | null;
   displayLabel: string;
-  isDirectorClass: boolean;
   teacherIds: string[];
   teacherNames: string[];
   studentIds: string[];

@@ -40,7 +40,6 @@ export function ClassManagementBoard({ data }: Props) {
     useState<(typeof SCHOOL_LEVELS)[number]["value"]>("middle");
   const [newGradeNumber, setNewGradeNumber] = useState(1);
   const [newTeacherIds, setNewTeacherIds] = useState<string[]>([]);
-  const [isDirectorClass, setIsDirectorClass] = useState(false);
 
   const [addStudentIds, setAddStudentIds] = useState<Record<string, string[]>>({});
   const [addSearch, setAddSearch] = useState<Record<string, string>>({});
@@ -88,8 +87,6 @@ export function ClassManagementBoard({ data }: Props) {
       map.set(key, arr);
     }
     const keys = Array.from(map.keys()).sort((a, b) => {
-      if (a === "원장반") return -1;
-      if (b === "원장반") return 1;
       if (a === "학년 미지정") return 1;
       if (b === "학년 미지정") return -1;
       return a.localeCompare(b, "ko");
@@ -303,73 +300,59 @@ export function ClassManagementBoard({ data }: Props) {
       <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-violet-50/50 p-5 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">새 반 만들기</h2>
         <p className="mt-1 text-xs text-slate-600">
-          학년별 반 또는 원장반을 만들고 담당 선생님을 지정하세요. 학생은 반에
-          넣으면 담당 선생님에게 자동으로 보입니다.
+          학년 + 반 이름으로 만들고, 담당 선생님(원장 포함)을 지정하세요. 학생은
+          반에 넣으면 담당 선생님에게 자동으로 보입니다.
         </p>
-        <label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-white/80 px-3 py-2 text-sm text-violet-950">
-          <input
-            type="checkbox"
-            checked={isDirectorClass}
-            onChange={(e) => setIsDirectorClass(e.target.checked)}
-          />
-          원장반으로 만들기
-        </label>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {!isDirectorClass ? (
-            <>
-              <select
-                value={newSchoolLevel}
-                onChange={(e) =>
-                  setNewSchoolLevel(e.target.value as typeof newSchoolLevel)
-                }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              >
-                {SCHOOL_LEVELS.map((level) => (
-                  <option key={level.value} value={level.value}>
-                    {level.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={newGradeNumber}
-                onChange={(e) => setNewGradeNumber(Number(e.target.value))}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                placeholder="학년"
-              />
-            </>
-          ) : null}
+          <select
+            value={newSchoolLevel}
+            onChange={(e) =>
+              setNewSchoolLevel(e.target.value as typeof newSchoolLevel)
+            }
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            {SCHOOL_LEVELS.map((level) => (
+              <option key={level.value} value={level.value}>
+                {level.label}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={newGradeNumber}
+            onChange={(e) => setNewGradeNumber(Number(e.target.value))}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            placeholder="학년"
+          />
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder={isDirectorClass ? "반 이름 (기본: 원장반)" : "반 이름 (예: A반)"}
+            placeholder="반 이름 (예: A반)"
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
           />
           <button
             type="button"
-            disabled={pending || (!isDirectorClass && !newName.trim())}
+            disabled={pending || !newName.trim()}
             className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             onClick={() => {
               startTransition(async () => {
                 const res = await createClassRoomAction({
                   name: newName,
-                  schoolLevel: isDirectorClass ? null : newSchoolLevel,
-                  gradeNumber: isDirectorClass ? null : newGradeNumber,
+                  schoolLevel: newSchoolLevel,
+                  gradeNumber: newGradeNumber,
                   teacherIds: newTeacherIds,
-                  isDirectorClass,
                 });
                 setMessage(res.error ?? res.success ?? null);
                 if (res.success) {
                   setNewName("");
                   setNewTeacherIds([]);
-                  setIsDirectorClass(false);
                 }
               });
             }}
           >
-            {isDirectorClass ? "원장반 만들기" : "반 만들기"}
+            반 만들기
           </button>
         </div>
         {data.teachers.length > 0 ? (
@@ -470,16 +453,11 @@ export function ClassManagementBoard({ data }: Props) {
               const selectedToAdd = addStudentIds[room.id] ?? [];
               const gradeSel =
                 addGradeFilter[room.id] ??
-                (room.gradeLabel &&
-                room.gradeLabel !== "원장반" &&
-                studentGradeOptions.includes(room.gradeLabel)
+                (room.gradeLabel && studentGradeOptions.includes(room.gradeLabel)
                   ? room.gradeLabel
                   : "all");
               const unassignedOnly = addUnassignedOnly[room.id] ?? true;
-              const candidates = candidatesForRoom(
-                room.id,
-                room.gradeLabel === "원장반" ? null : room.gradeLabel,
-              );
+              const candidates = candidatesForRoom(room.id, room.gradeLabel);
 
               return (
                 <article
@@ -506,11 +484,6 @@ export function ClassManagementBoard({ data }: Props) {
                     <div>
                       <p className="font-semibold text-slate-900">
                         {room.displayLabel}
-                        {room.isDirectorClass ? (
-                          <span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
-                            원장반
-                          </span>
-                        ) : null}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         담당: {room.teacherNames.join(", ") || "미지정"} · 인원{" "}
