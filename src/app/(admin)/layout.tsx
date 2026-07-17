@@ -19,16 +19,21 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
+  const baseRole = session?.role ?? "admin";
   const navRole = session ? effectiveRoleForNav(session) : "admin";
   const canSwitch = session ? canSwitchStaffMode(session) : false;
   const staffMode = session ? resolveStaffMode(session) : "admin";
 
   const roleLabel =
-    navRole === "sub_admin"
-      ? canSwitch
-        ? "선생님 모드"
-        : "서브관리자"
-      : "관리자 모드";
+    baseRole === "admin"
+      ? navRole === "admin"
+        ? "관리자 모드"
+        : "선생님 모드"
+      : canSwitch
+        ? navRole === "admin"
+          ? "팀장 · 관리자 모드"
+          : "팀장 · 선생님 모드"
+        : "서브관리자";
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-[var(--rm-bg-base,#f4f7fb)]">

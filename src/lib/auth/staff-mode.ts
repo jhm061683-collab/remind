@@ -3,9 +3,9 @@ import type { UserRole } from "@/types/user";
 
 export type StaffMode = "admin" | "teacher";
 
-/** 관리자 모드 ↔ 선생님 모드 전환 — 관리자(admin) 계정만 */
+/** 관리자 모드 전환 — 원장(admin) 또는 팀장(is_director) 선생님 */
 export function canSwitchStaffMode(session: SessionUser): boolean {
-  return session.role === "admin";
+  return session.role === "admin" || Boolean(session.isDirector);
 }
 
 export function resolveStaffMode(session: SessionUser): StaffMode {
@@ -15,8 +15,8 @@ export function resolveStaffMode(session: SessionUser): StaffMode {
   if (session.staffMode === "admin" || session.staffMode === "teacher") {
     return session.staffMode;
   }
-  // 원장 계정(admin): 기본 관리자 모드
-  // 원장 지정된 서브: 기본 선생님 모드
+  // 원장(admin): 기본 관리자 모드
+  // 팀장 선생님: 기본 선생님 모드
   return session.role === "admin" ? "admin" : "teacher";
 }
 

@@ -43,7 +43,7 @@ export function StaffModeSwitch({ currentMode }: Props) {
           });
         }}
       >
-        원장/선생님
+        선생님
       </button>
     </div>
   );

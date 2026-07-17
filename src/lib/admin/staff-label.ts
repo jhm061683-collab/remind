@@ -1,4 +1,4 @@
-/** 선생님/원장 표시 이름 */
+/** 선생님/원장 표시 이름 — 「원장」호칭은 admin 계정만 */
 export function formatStaffLabel(opts: {
   displayName: string;
   nickname?: string | null;
@@ -12,10 +12,11 @@ export function formatStaffLabel(opts: {
   base = base
     .replace(/원장님$/u, "")
     .replace(/원장$/u, "")
+    .replace(/팀장$/u, "")
     .trim();
   if (!base) base = (opts.displayName || "").trim() || "원장";
 
-  const isDirector = opts.role === "admin" || Boolean(opts.isDirector);
-  if (!isDirector) return base;
-  return `${base}원장`;
+  // admin(원장)만 「OOO원장」. 팀장(is_director)은 일반 이름 + UI 배지로 구분
+  if (opts.role === "admin") return `${base}원장`;
+  return base;
 }

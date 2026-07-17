@@ -203,6 +203,111 @@ export async function deleteStudentsAction(
   };
 }
 
+/**
+ * 서브관리자(선생님) 삭제.
+ * 반은 유지하고, 해당 선생님의 반 담당·학생 배정만 해제합니다.
+ */
+export async function deleteSubAdminAction(
+  subAdminId: string,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  if (!subAdminId) return { error: "삭제할 선생님을 선택해 주세요." };
+  if (subAdminId === session.id) {
+    return { error: "자기 자신은 삭제할 수 없습니다." };
+  }
+
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보를 찾을 수 없습니다." };
+
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("id, role, academy_id, display_name, username")
+    .eq("id", subAdminId)
+    .eq("role", "sub_admin")
+    .eq("academy_id", me.academy_id)
+    .maybeSingle();
+
+  if (targetError) return { error: targetError.message };
+  if (!target) return { error: "삭제할 선생님 계정을 찾을 수 없습니다." };
+
+  // 반은 그대로 두고 담당 관계만 끊음
+  const { error: teacherLinkError } = await supabase
+    .from("class_room_teachers")
+    .delete()
+    .eq("teacher_id", subAdminId);
+  if (teacherLinkError) return { error: teacherLinkError.message };
+
+  const { error: assignError } = await supabase
+    .from("student_assignments")
+    .delete()
+    .eq("sub_admin_id", subAdminId);
+  if (assignError) return { error: assignError.message };
+
+  const { error: deleteError } = await supabase.auth.admin.deleteUser(
+    subAdminId,
+  );
+  if (deleteError) return { error: deleteError.message };
+
+  revalidatePath("/admin/sub-admins");
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/assignments");
+
+  return {
+    success: `${target.display_name} 선생님 계정을 삭제했습니다. 반은 그대로 남아 있으니 나중에 담당 선생님을 바꿔 주세요.`,
+  };
+}
+
+/** 팀장 선생님(관리자 모드 전환 가능) on/off — 여러 명 가능 */
+export async function setSubAdminTeamLeadAction(
+  subAdminId: string,
+  isTeamLead: boolean,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  if (!subAdminId) return { error: "선생님을 선택해 주세요." };
+
+  const supabase = createServiceClient();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", session.id)
+    .single();
+  if (!me?.academy_id) return { error: "학원 정보를 찾을 수 없습니다." };
+
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("id, role, academy_id, display_name")
+    .eq("id", subAdminId)
+    .eq("role", "sub_admin")
+    .eq("academy_id", me.academy_id)
+    .maybeSingle();
+
+  if (targetError) return { error: targetError.message };
+  if (!target) return { error: "선생님 계정을 찾을 수 없습니다." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_director: isTeamLead })
+    .eq("id", subAdminId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/sub-admins");
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin", "layout");
+
+  return {
+    success: isTeamLead
+      ? `${target.display_name} 선생님을 팀장으로 지정했습니다. 관리자 모드로 전환할 수 있어요.`
+      : `${target.display_name} 선생님의 팀장 권한을 해제했습니다.`,
+  };
+}
+
 export async function resetStudentPasswordAction(
   studentId: string,
   nextPassword: string,
