@@ -47,7 +47,7 @@ const DEMO_USERS = [
     password: "admin123",
     user_metadata: {
       role: "admin",
-      display_name: "박원장",
+      display_name: "장현문",
       username: "admin",
     },
   },
