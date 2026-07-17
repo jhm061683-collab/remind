@@ -21,7 +21,11 @@ export function StaffModeSwitch({ currentMode }: Props) {
             ? "bg-blue-600 text-white"
             : "text-slate-600 hover:bg-white"
         } disabled:opacity-60`}
-        onClick={() => startTransition(() => switchStaffModeAction("admin"))}
+        onClick={() => {
+          startTransition(() => {
+            void switchStaffModeAction("admin");
+          });
+        }}
       >
         관리자
       </button>
@@ -33,7 +37,11 @@ export function StaffModeSwitch({ currentMode }: Props) {
             ? "bg-violet-600 text-white"
             : "text-slate-600 hover:bg-white"
         } disabled:opacity-60`}
-        onClick={() => startTransition(() => switchStaffModeAction("teacher"))}
+        onClick={() => {
+          startTransition(() => {
+            void switchStaffModeAction("teacher");
+          });
+        }}
       >
         원장/선생님
       </button>
