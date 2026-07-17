@@ -434,19 +434,15 @@ export async function assignStudentsToClassAction(
   const session = await requireAdmin();
   if (studentIds.length === 0) return { error: "학생을 선택해 주세요." };
 
-  const supabase = createServiceClient();
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("academy_id")
-    .eq("id", session.id)
-    .single();
-  if (!me?.academy_id) return { error: "학원 정보가 없습니다." };
+  const academyId = await getAcademyIdForAdmin(session.id);
+  if (!academyId) return { error: "학원 정보가 없습니다." };
 
+  const supabase = createServiceClient();
   const { data: room } = await supabase
     .from("class_rooms")
     .select("id")
     .eq("id", classRoomId)
-    .eq("academy_id", me.academy_id)
+    .eq("academy_id", academyId)
     .maybeSingle();
   if (!room) return { error: "반을 찾을 수 없습니다." };
 
@@ -463,6 +459,73 @@ export async function assignStudentsToClassAction(
   revalidatePath("/admin/students");
   revalidatePath("/admin/dashboard");
   return { success: `${studentIds.length}명을 반에 추가했습니다.` };
+}
+
+export async function transferStudentClassAction(payload: {
+  studentId: string;
+  toClassRoomId: string;
+  fromClassRoomId?: string | null;
+  /** move: 기존 반에서 빼고 새 반으로 / add: 새 반만 추가 */
+  mode: "move" | "add";
+}): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  if (!payload.studentId || !payload.toClassRoomId) {
+    return { error: "학생과 옮길 반을 선택해 주세요." };
+  }
+
+  const academyId = await getAcademyIdForAdmin(session.id);
+  if (!academyId) return { error: "학원 정보가 없습니다." };
+
+  const supabase = createServiceClient();
+  const { data: room } = await supabase
+    .from("class_rooms")
+    .select("id, name")
+    .eq("id", payload.toClassRoomId)
+    .eq("academy_id", academyId)
+    .maybeSingle();
+  if (!room) return { error: "옮길 반을 찾을 수 없습니다." };
+
+  if (payload.mode === "move") {
+    if (payload.fromClassRoomId) {
+      await supabase
+        .from("class_room_students")
+        .delete()
+        .eq("class_room_id", payload.fromClassRoomId)
+        .eq("student_id", payload.studentId);
+    } else {
+      const { data: academyRooms } = await supabase
+        .from("class_rooms")
+        .select("id")
+        .eq("academy_id", academyId);
+      const roomIds = (academyRooms ?? []).map((r) => r.id);
+      if (roomIds.length > 0) {
+        await supabase
+          .from("class_room_students")
+          .delete()
+          .eq("student_id", payload.studentId)
+          .in("class_room_id", roomIds);
+      }
+    }
+  }
+
+  const { error } = await supabase.from("class_room_students").upsert(
+    {
+      class_room_id: payload.toClassRoomId,
+      student_id: payload.studentId,
+    },
+    { onConflict: "class_room_id,student_id" },
+  );
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/dashboard");
+  return {
+    success:
+      payload.mode === "move"
+        ? `학생을 「${room.name}」 반으로 옮겼습니다.`
+        : `학생을 「${room.name}」 반에 추가했습니다.`,
+  };
 }
 
 export async function removeStudentFromClassAction(

@@ -827,6 +827,8 @@ export async function getClassManagementData(
           displayName: p.display_name,
           username: p.username ?? "—",
           gradeLabel: toGradeLabel(p.school_level, p.grade_number),
+          classIds: [],
+          classLabels: [],
         };
       })
       .filter((s): s is ClassStudentBrief => Boolean(s))
@@ -847,6 +849,26 @@ export async function getClassManagementData(
     };
   });
 
+  const classIdsByStudent = new Map<string, string[]>();
+  const classLabelsByStudent = new Map<string, string[]>();
+  for (const room of classes) {
+    for (const studentId of room.studentIds) {
+      const ids = classIdsByStudent.get(studentId) ?? [];
+      ids.push(room.id);
+      classIdsByStudent.set(studentId, ids);
+      const labels = classLabelsByStudent.get(studentId) ?? [];
+      labels.push(room.displayLabel);
+      classLabelsByStudent.set(studentId, labels);
+    }
+  }
+
+  for (const room of classes) {
+    for (const student of room.students) {
+      student.classIds = classIdsByStudent.get(student.id) ?? [];
+      student.classLabels = classLabelsByStudent.get(student.id) ?? [];
+    }
+  }
+
   const students = profileList
     .filter((p) => p.role === "student")
     .map((p) => ({
@@ -854,6 +876,8 @@ export async function getClassManagementData(
       displayName: p.display_name,
       username: p.username ?? "—",
       gradeLabel: toGradeLabel(p.school_level, p.grade_number),
+      classIds: classIdsByStudent.get(p.id) ?? [],
+      classLabels: classLabelsByStudent.get(p.id) ?? [],
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
 

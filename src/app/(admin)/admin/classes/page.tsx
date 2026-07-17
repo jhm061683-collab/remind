@@ -11,7 +11,7 @@ export default async function AdminClassesPage() {
     <>
       <PageHeader
         title="반 관리"
-        description="반 → 담당 선생님, 학생 → 반. 선생님은 담당 반의 학생을 자동으로 봅니다. 반별·선생님별로 인원과 명단을 확인하세요."
+        description="선생님은 반에, 학생은 반에 배정합니다. 반에 들어간 학생은 담당 선생님에게 자동으로 보여요."
       />
       <ClassManagementBoard data={data} />
     </>

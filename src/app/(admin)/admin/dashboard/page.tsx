@@ -91,8 +91,8 @@ export default async function AdminDashboardPage() {
           <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-8 text-center text-sm text-amber-950">
             <p className="font-medium">담당 학생이 아직 없어요</p>
             <p className="mt-2 text-amber-900">
-              원장님이 <strong>반 관리</strong> 또는 <strong>담당 배정</strong>에서
-              연결해 주면 여기에 보입니다.
+              원장님이 <strong>반 관리</strong>에서 반 담당으로 지정해 주면
+              여기에 보입니다.
             </p>
           </div>
         ) : (

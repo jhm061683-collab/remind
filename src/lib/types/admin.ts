@@ -73,6 +73,8 @@ export type ClassStudentBrief = {
   displayName: string;
   username: string;
   gradeLabel: string | null;
+  classIds: string[];
+  classLabels: string[];
 };
 
 export type ClassRoomSummary = {
