@@ -1,5 +1,6 @@
 import { AdminStatCard } from "@/components/admin/stat-card";
 import { AdminStudentsTable } from "@/components/admin/students-table";
+import { StudentOverviewCharts } from "@/components/admin/student-overview-charts";
 import { WeeklyActivityChart } from "@/components/admin/weekly-activity-chart";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
@@ -77,7 +78,11 @@ export default async function AdminDashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-6">
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <StudentOverviewCharts
+          students={data.students}
+          title={isSubAdmin ? "담당 학생 인원 차트" : "전체 학생 인원 차트"}
+        />
         <WeeklyActivityChart
           data={data.dailyReviews}
           title={isSubAdmin ? "담당 학생 최근 7일 복습" : "최근 7일 복습 횟수"}
