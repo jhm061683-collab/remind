@@ -14,10 +14,12 @@ import type {
   AdminStudentRow,
   ClassManagementData,
   ClassRoomSummary,
+  ClassStudentBrief,
   DailyActivity,
   PromotionRule,
   StudentDetailData,
   SubAdminRow,
+  TeacherClassOverview,
 } from "@/lib/types/admin";
 
 type ProfileRow = {
@@ -814,17 +816,36 @@ export async function getClassManagementData(
     studentsByClass.set(row.class_room_id, ids);
   }
 
-  const classes: ClassRoomSummary[] = rooms.map((room) => ({
-    id: room.id,
-    name: room.name,
-    schoolLevel: room.school_level,
-    gradeNumber: room.grade_number,
-    gradeLabel: toGradeLabel(room.school_level, room.grade_number),
-    displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
-    teacherIds: teacherIdsByClass.get(room.id) ?? [],
-    teacherNames: teachersByClass.get(room.id) ?? [],
-    studentIds: studentsByClass.get(room.id) ?? [],
-  }));
+  const classes: ClassRoomSummary[] = rooms.map((room) => {
+    const studentIds = studentsByClass.get(room.id) ?? [];
+    const students: ClassStudentBrief[] = studentIds
+      .map((id) => {
+        const p = profileMap.get(id);
+        if (!p || p.role !== "student") return null;
+        return {
+          id: p.id,
+          displayName: p.display_name,
+          username: p.username ?? "—",
+          gradeLabel: toGradeLabel(p.school_level, p.grade_number),
+        };
+      })
+      .filter((s): s is ClassStudentBrief => Boolean(s))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+
+    return {
+      id: room.id,
+      name: room.name,
+      schoolLevel: room.school_level,
+      gradeNumber: room.grade_number,
+      gradeLabel: toGradeLabel(room.school_level, room.grade_number),
+      displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
+      teacherIds: teacherIdsByClass.get(room.id) ?? [],
+      teacherNames: teachersByClass.get(room.id) ?? [],
+      studentIds,
+      students,
+      studentCount: students.length,
+    };
+  });
 
   const students = profileList
     .filter((p) => p.role === "student")
@@ -841,5 +862,23 @@ export async function getClassManagementData(
     .map((p) => ({ id: p.id, displayName: p.display_name }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
 
-  return { classes, students, teachers };
+  const teacherOverviews: TeacherClassOverview[] = teachers.map((teacher) => {
+    const ownedClasses = classes.filter((c) => c.teacherIds.includes(teacher.id));
+    const studentNameSet = new Set<string>();
+    for (const room of ownedClasses) {
+      for (const student of room.students) {
+        studentNameSet.add(student.displayName);
+      }
+    }
+    return {
+      id: teacher.id,
+      displayName: teacher.displayName,
+      classIds: ownedClasses.map((c) => c.id),
+      classLabels: ownedClasses.map((c) => c.displayLabel),
+      studentCount: studentNameSet.size,
+      studentNames: Array.from(studentNameSet).sort((a, b) => a.localeCompare(b, "ko")),
+    };
+  });
+
+  return { classes, students, teachers, teacherOverviews };
 }

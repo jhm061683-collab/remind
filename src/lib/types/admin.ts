@@ -68,6 +68,13 @@ export type StudentDetailData = {
   topWeaknesses: { reason: string; count: number }[];
 };
 
+export type ClassStudentBrief = {
+  id: string;
+  displayName: string;
+  username: string;
+  gradeLabel: string | null;
+};
+
 export type ClassRoomSummary = {
   id: string;
   name: string;
@@ -78,10 +85,27 @@ export type ClassRoomSummary = {
   teacherIds: string[];
   teacherNames: string[];
   studentIds: string[];
+  students: ClassStudentBrief[];
+  studentCount: number;
+};
+
+export type TeacherClassOverview = {
+  id: string;
+  displayName: string;
+  classIds: string[];
+  classLabels: string[];
+  studentCount: number;
+  studentNames: string[];
 };
 
 export type ClassManagementData = {
   classes: ClassRoomSummary[];
-  students: { id: string; displayName: string; username: string; gradeLabel: string | null }[];
+  students: ClassStudentBrief[];
   teachers: { id: string; displayName: string }[];
+  teacherOverviews: TeacherClassOverview[];
+};
+
+export type ClassOption = {
+  id: string;
+  displayLabel: string;
 };

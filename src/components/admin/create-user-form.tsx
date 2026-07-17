@@ -13,9 +13,10 @@ const initialState: CreateUserState = {};
 type Props = {
   role: Extract<UserRole, "student" | "sub_admin">;
   title: string;
+  classOptions?: { id: string; displayLabel: string }[];
 };
 
-export function CreateUserForm({ role, title }: Props) {
+export function CreateUserForm({ role, title, classOptions = [] }: Props) {
   const [state, formAction, pending] = useActionState(
     createAcademyUserAction,
     initialState,
@@ -96,6 +97,38 @@ export function CreateUserForm({ role, title }: Props) {
               />
             </div>
           </div>
+        ) : null}
+
+        {role === "student" && classOptions.length > 0 ? (
+          <div>
+            <p className="mb-1 text-sm font-medium text-zinc-700">
+              반 배정 (선택 · 여러 개 가능)
+            </p>
+            <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-zinc-200 p-2">
+              {classOptions.map((opt) => (
+                <label
+                  key={opt.id}
+                  className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-zinc-50"
+                >
+                  <input type="checkbox" name="classIds" value={opt.id} />
+                  {opt.displayLabel}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              나중에 학생 목록·반 관리에서도 일괄 배정할 수 있어요.
+            </p>
+          </div>
+        ) : null}
+
+        {role === "student" && classOptions.length === 0 ? (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            아직 반이 없어요.{" "}
+            <a href="/admin/classes" className="font-semibold underline">
+              반 관리
+            </a>
+            에서 반을 만든 뒤, 등록 시 바로 배정하거나 나중에 일괄 배정하세요.
+          </p>
         ) : null}
 
         {state.error ? (

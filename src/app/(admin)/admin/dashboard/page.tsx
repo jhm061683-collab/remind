@@ -4,6 +4,7 @@ import { WeeklyActivityChart } from "@/components/admin/weekly-activity-chart";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { getStaffDashboard } from "@/lib/server/admin/dashboard";
+import { getClassManagementData } from "@/lib/server/admin/queries";
 
 function pct(value: number | null): string {
   if (value === null) return "—";
@@ -14,6 +15,13 @@ export default async function AdminDashboardPage() {
   const session = await requireStaff();
   const data = await getStaffDashboard(session);
   const isSubAdmin = session.role === "sub_admin";
+  const classData =
+    !isSubAdmin ? await getClassManagementData(session.id) : null;
+  const classOptions =
+    classData?.classes.map((c) => ({
+      id: c.id,
+      displayLabel: c.displayLabel,
+    })) ?? [];
 
   const fulfillment =
     data.shortFulfillmentPct ?? data.mediumLongFulfillmentPct;
@@ -88,7 +96,11 @@ export default async function AdminDashboardPage() {
             </p>
           </div>
         ) : (
-          <AdminStudentsTable students={data.students} canManage={!isSubAdmin} />
+          <AdminStudentsTable
+            students={data.students}
+            canManage={!isSubAdmin}
+            classOptions={classOptions}
+          />
         )}
       </section>
     </>

@@ -4,13 +4,22 @@ import { AdminStudentsTable } from "@/components/admin/students-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { getStaffDashboard } from "@/lib/server/admin/dashboard";
-import { getPromotionRule } from "@/lib/server/admin/queries";
+import {
+  getClassManagementData,
+  getPromotionRule,
+} from "@/lib/server/admin/queries";
 
 export default async function AdminStudentsPage() {
   const session = await requireStaff();
   const data = await getStaffDashboard(session);
   const isAdmin = session.role === "admin";
   const promotionRule = isAdmin ? await getPromotionRule(session.id) : null;
+  const classData = isAdmin ? await getClassManagementData(session.id) : null;
+  const classOptions =
+    classData?.classes.map((c) => ({
+      id: c.id,
+      displayLabel: c.displayLabel,
+    })) ?? [];
 
   return (
     <>
@@ -25,7 +34,11 @@ export default async function AdminStudentsPage() {
 
       {isAdmin ? (
         <div className="mb-6 space-y-4">
-          <CreateUserForm role="student" title="학생 계정 추가" />
+          <CreateUserForm
+            role="student"
+            title="학생 계정 추가"
+            classOptions={classOptions}
+          />
           <PromotionRuleForm
             initialMonth={promotionRule?.promotionMonth ?? 1}
             initialDay={promotionRule?.promotionDay ?? 1}
@@ -33,11 +46,16 @@ export default async function AdminStudentsPage() {
         </div>
       ) : null}
 
-      <AdminStudentsTable students={data.students} canManage={isAdmin} />
+      <AdminStudentsTable
+        students={data.students}
+        canManage={isAdmin}
+        classOptions={classOptions}
+      />
 
       {!isAdmin && data.students.length === 0 ? (
         <p className="mt-4 text-center text-sm text-zinc-500">
-          원장님이 담당 배정을 해 주면 학생 목록이 표시됩니다.
+          원장님이 반 담당으로 지정하거나 담당 배정을 해 주면 학생 목록이
+          표시됩니다.
         </p>
       ) : null}
     </>

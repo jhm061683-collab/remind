@@ -148,9 +148,16 @@ create table if not exists public.class_rooms (
   grade_number int
     check (grade_number >= 1 and grade_number <= 20),
   created_by uuid references public.profiles (id) on delete set null,
-  created_at timestamptz not null default now(),
-  unique (academy_id, name)
+  created_at timestamptz not null default now()
 );
+
+create unique index if not exists class_rooms_academy_grade_name_uidx
+  on public.class_rooms (
+    academy_id,
+    coalesce(school_level, ''),
+    coalesce(grade_number, 0),
+    name
+  );
 
 create table if not exists public.class_room_students (
   id uuid primary key default gen_random_uuid(),

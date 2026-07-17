@@ -16,6 +16,8 @@ type Props = {
   data: ClassManagementData;
 };
 
+type ViewMode = "by_class" | "by_teacher";
+
 const SCHOOL_LEVELS = [
   { value: "elementary", label: "초등" },
   { value: "middle", label: "중등" },
@@ -26,8 +28,10 @@ const SCHOOL_LEVELS = [
 export function ClassManagementBoard({ data }: Props) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>("by_class");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
@@ -35,13 +39,8 @@ export function ClassManagementBoard({ data }: Props) {
     useState<(typeof SCHOOL_LEVELS)[number]["value"]>("middle");
   const [newGradeNumber, setNewGradeNumber] = useState(1);
   const [newTeacherIds, setNewTeacherIds] = useState<string[]>([]);
-
   const [addStudentIds, setAddStudentIds] = useState<Record<string, string[]>>({});
-
-  const studentMap = useMemo(
-    () => new Map(data.students.map((s) => [s.id, s])),
-    [data.students],
-  );
+  const [studentSearch, setStudentSearch] = useState<Record<string, string>>({});
 
   const gradeOptions = useMemo(() => {
     const labels = new Set(
@@ -68,7 +67,8 @@ export function ClassManagementBoard({ data }: Props) {
       <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-violet-50/50 p-5 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">새 반 만들기</h2>
         <p className="mt-1 text-xs text-slate-600">
-          학년과 반 이름(예: A반, 진학반)을 정하고 담당 선생님을 지정하세요.
+          학년 + 반 이름(예: A반)으로 만들고, 담당 선생님을 지정하세요. 같은
+          「A반」이라도 학년이 다르면 따로 만들 수 있어요.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <select
@@ -150,205 +150,377 @@ export function ClassManagementBoard({ data }: Props) {
         )}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setView("by_class")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              view === "by_class"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            반별 보기
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("by_teacher")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              view === "by_teacher"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            선생님별 보기
+          </button>
+        </div>
+        {view === "by_class" && gradeOptions.length > 0 ? (
+          <select
+            value={gradeFilter}
+            onChange={(e) => setGradeFilter(e.target.value)}
+            className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
+          >
+            <option value="all">전체 학년</option>
+            {gradeOptions.map((label) => (
+              <option key={label} value={label}>
+                {label}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
+
+      {view === "by_class" ? (
+        <section className="space-y-3">
           <h2 className="text-base font-semibold text-slate-900">
             반 목록 ({filteredClasses.length})
           </h2>
-          {gradeOptions.length > 0 ? (
-            <select
-              value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
-            >
-              <option value="all">전체 학년</option>
-              {gradeOptions.map((label) => (
-                <option key={label} value={label}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
+          {filteredClasses.length === 0 ? (
+            <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500">
+              아직 만든 반이 없어요. 위에서 학년별 반을 만들어 보세요.
+            </p>
+          ) : (
+            filteredClasses.map((room) => {
+              const expanded = expandedId === room.id;
+              const selectedToAdd = addStudentIds[room.id] ?? [];
+              const search = (studentSearch[room.id] ?? "").trim().toLowerCase();
+              const candidates = data.students.filter((student) => {
+                if (room.studentIds.includes(student.id)) return false;
+                if (!search) return true;
+                return (
+                  student.displayName.toLowerCase().includes(search) ||
+                  student.username.toLowerCase().includes(search)
+                );
+              });
 
-        {filteredClasses.length === 0 ? (
-          <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500">
-            아직 만든 반이 없어요. 위에서 학년별 반을 만들어 보세요.
-          </p>
-        ) : (
-          filteredClasses.map((room) => {
-            const expanded = expandedId === room.id;
-            const selectedToAdd = addStudentIds[room.id] ?? [];
-            const assignedStudents = room.studentIds
-              .map((id) => studentMap.get(id))
-              .filter((s): s is NonNullable<typeof s> => Boolean(s));
-
-            return (
-              <article
-                key={room.id}
-                className="rounded-2xl border border-slate-200 bg-white shadow-sm"
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left"
-                  onClick={() => setExpandedId(expanded ? null : room.id)}
+              return (
+                <article
+                  key={room.id}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
-                  <div>
-                    <p className="font-semibold text-slate-900">{room.displayLabel}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      담당: {room.teacherNames.join(", ") || "미지정"} · 학생{" "}
-                      {room.studentIds.length}명
-                    </p>
-                  </div>
-                  <span className="text-xs text-blue-600">{expanded ? "접기" : "펼치기"}</span>
-                </button>
-
-                {expanded ? (
-                  <div className="border-t border-slate-100 px-4 py-4">
-                    <div className="mb-4">
-                      <p className="mb-2 text-xs font-semibold text-slate-600">
-                        담당 선생님 (복수 가능)
+                  <button
+                    type="button"
+                    className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left"
+                    onClick={() => setExpandedId(expanded ? null : room.id)}
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {room.displayLabel}
                       </p>
-                      <div className="flex flex-wrap gap-2">
-                        {data.teachers.map((teacher) => (
-                          <label
-                            key={teacher.id}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={room.teacherIds.includes(teacher.id)}
-                              disabled={pending}
-                              onChange={() => {
-                                const next = toggleTeacher(room.teacherIds, teacher.id);
-                                startTransition(async () => {
-                                  const res = await updateClassTeachersAction(room.id, next);
-                                  setMessage(res.error ?? res.success ?? null);
-                                });
-                              }}
-                            />
-                            {teacher.displayName}
-                          </label>
-                        ))}
-                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        담당: {room.teacherNames.join(", ") || "미지정"} · 인원{" "}
+                        {room.studentCount}명
+                      </p>
+                      {room.students.length > 0 ? (
+                        <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                          {room.students.map((s) => s.displayName).join(", ")}
+                        </p>
+                      ) : null}
                     </div>
+                    <span className="text-xs text-blue-600">
+                      {expanded ? "접기" : "명단·배정"}
+                    </span>
+                  </button>
 
-                    <div className="mb-4">
-                      <p className="mb-2 text-xs font-semibold text-slate-600">반 학생</p>
-                      {assignedStudents.length === 0 ? (
-                        <p className="text-xs text-slate-400">아직 배정된 학생이 없어요.</p>
-                      ) : (
-                        <ul className="space-y-1">
-                          {assignedStudents.map((student) => (
-                            <li
-                              key={student.id}
-                              className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                  {expanded ? (
+                    <div className="border-t border-slate-100 px-4 py-4 space-y-4">
+                      <div>
+                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                          담당 선생님 (복수 가능)
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {data.teachers.map((teacher) => (
+                            <label
+                              key={teacher.id}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs"
                             >
-                              <span>
-                                {student.displayName}{" "}
-                                <span className="text-xs text-slate-400">
-                                  ({student.username})
-                                </span>
-                              </span>
-                              <button
-                                type="button"
+                              <input
+                                type="checkbox"
+                                checked={room.teacherIds.includes(teacher.id)}
                                 disabled={pending}
-                                className="text-xs text-red-600"
-                                onClick={() => {
+                                onChange={() => {
+                                  const next = toggleTeacher(
+                                    room.teacherIds,
+                                    teacher.id,
+                                  );
                                   startTransition(async () => {
-                                    const res = await removeStudentFromClassAction(
+                                    const res = await updateClassTeachersAction(
                                       room.id,
-                                      student.id,
+                                      next,
                                     );
                                     setMessage(res.error ?? res.success ?? null);
                                   });
                                 }}
-                              >
-                                제외
-                              </button>
-                            </li>
+                              />
+                              {teacher.displayName}
+                            </label>
                           ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="mb-2 text-xs font-semibold text-slate-600">
-                        학생 추가 (다른 반에 있어도 추가 가능)
-                      </p>
-                      <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-100 p-2">
-                        {data.students.map((student) => (
-                          <label
-                            key={student.id}
-                            className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-slate-50"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedToAdd.includes(student.id)}
-                              onChange={(e) => {
-                                setAddStudentIds((prev) => {
-                                  const current = prev[room.id] ?? [];
-                                  const next = e.target.checked
-                                    ? [...current, student.id]
-                                    : current.filter((id) => id !== student.id);
-                                  return { ...prev, [room.id]: next };
-                                });
-                              }}
-                            />
-                            <span>
-                              {student.displayName}
-                              {student.gradeLabel ? (
-                                <span className="ml-1 text-xs text-slate-400">
-                                  {student.gradeLabel}
-                                </span>
-                              ) : null}
-                            </span>
-                          </label>
-                        ))}
+                        </div>
                       </div>
+
+                      <div>
+                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                          학생 명단 ({room.studentCount}명)
+                        </p>
+                        {room.students.length === 0 ? (
+                          <p className="text-xs text-slate-400">
+                            아직 배정된 학생이 없어요.
+                          </p>
+                        ) : (
+                          <ul className="grid gap-1 sm:grid-cols-2">
+                            {room.students.map((student) => (
+                              <li
+                                key={student.id}
+                                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                              >
+                                <span>
+                                  {student.displayName}{" "}
+                                  <span className="text-xs text-slate-400">
+                                    ({student.username})
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  className="text-xs text-red-600"
+                                  onClick={() => {
+                                    startTransition(async () => {
+                                      const res = await removeStudentFromClassAction(
+                                        room.id,
+                                        student.id,
+                                      );
+                                      setMessage(res.error ?? res.success ?? null);
+                                    });
+                                  }}
+                                >
+                                  제외
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="mb-2 text-xs font-semibold text-slate-600">
+                          학생 일괄 추가
+                        </p>
+                        <input
+                          value={studentSearch[room.id] ?? ""}
+                          onChange={(e) =>
+                            setStudentSearch((prev) => ({
+                              ...prev,
+                              [room.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="이름/아이디 검색"
+                          className="mb-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                        />
+                        <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-slate-100 p-2">
+                          {candidates.length === 0 ? (
+                            <p className="px-2 py-2 text-xs text-slate-400">
+                              추가할 학생이 없어요.
+                            </p>
+                          ) : (
+                            candidates.map((student) => (
+                              <label
+                                key={student.id}
+                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-slate-50"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedToAdd.includes(student.id)}
+                                  onChange={(e) => {
+                                    setAddStudentIds((prev) => {
+                                      const current = prev[room.id] ?? [];
+                                      const next = e.target.checked
+                                        ? [...current, student.id]
+                                        : current.filter((id) => id !== student.id);
+                                      return { ...prev, [room.id]: next };
+                                    });
+                                  }}
+                                />
+                                <span>
+                                  {student.displayName}
+                                  {student.gradeLabel ? (
+                                    <span className="ml-1 text-xs text-slate-400">
+                                      {student.gradeLabel}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={pending || selectedToAdd.length === 0}
+                            className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            onClick={() => {
+                              startTransition(async () => {
+                                const res = await assignStudentsToClassAction(
+                                  room.id,
+                                  selectedToAdd,
+                                );
+                                setMessage(res.error ?? res.success ?? null);
+                                if (res.success) {
+                                  setAddStudentIds((prev) => ({
+                                    ...prev,
+                                    [room.id]: [],
+                                  }));
+                                }
+                              });
+                            }}
+                          >
+                            선택 {selectedToAdd.length}명 반에 추가
+                          </button>
+                          <button
+                            type="button"
+                            disabled={pending || candidates.length === 0}
+                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                            onClick={() => {
+                              setAddStudentIds((prev) => ({
+                                ...prev,
+                                [room.id]: candidates.map((s) => s.id),
+                              }));
+                            }}
+                          >
+                            검색 결과 전체 선택
+                          </button>
+                        </div>
+                      </div>
+
                       <button
                         type="button"
-                        disabled={pending || selectedToAdd.length === 0}
-                        className="mt-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                        onClick={() => {
-                          startTransition(async () => {
-                            const res = await assignStudentsToClassAction(
-                              room.id,
-                              selectedToAdd,
-                            );
-                            setMessage(res.error ?? res.success ?? null);
-                            if (res.success) {
-                              setAddStudentIds((prev) => ({ ...prev, [room.id]: [] }));
-                            }
-                          });
-                        }}
+                        disabled={pending}
+                        className="text-xs text-red-600"
+                        onClick={() => setDeleteTarget(room.id)}
                       >
-                        선택 학생 반에 추가
+                        이 반 삭제
                       </button>
                     </div>
-
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className="text-xs text-red-600"
-                      onClick={() => setDeleteTarget(room.id)}
-                    >
-                      이 반 삭제
-                    </button>
-                  </div>
-                ) : null}
-              </article>
-            );
-          })
-        )}
-      </section>
+                  ) : null}
+                </article>
+              );
+            })
+          )}
+        </section>
+      ) : (
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold text-slate-900">
+            선생님별 담당 ({data.teacherOverviews.length})
+          </h2>
+          {data.teacherOverviews.length === 0 ? (
+            <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500">
+              서브관리자가 아직 없어요.
+            </p>
+          ) : (
+            data.teacherOverviews.map((teacher) => {
+              const expanded = expandedTeacherId === teacher.id;
+              return (
+                <article
+                  key={teacher.id}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-start justify-between gap-3 px-4 py-4 text-left"
+                    onClick={() =>
+                      setExpandedTeacherId(expanded ? null : teacher.id)
+                    }
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {teacher.displayName}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        담당 반 {teacher.classLabels.length}개 · 학생{" "}
+                        {teacher.studentCount}명
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {teacher.classLabels.join(", ") || "담당 반 없음"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-blue-600">
+                      {expanded ? "접기" : "자세히"}
+                    </span>
+                  </button>
+                  {expanded ? (
+                    <div className="border-t border-slate-100 px-4 py-4 space-y-3">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-slate-600">
+                          담당 반
+                        </p>
+                        {teacher.classLabels.length === 0 ? (
+                          <p className="text-xs text-slate-400">
+                            아직 지정된 반이 없어요. 반별 보기에서 담당을
+                            지정하세요.
+                          </p>
+                        ) : (
+                          <ul className="space-y-1 text-sm text-slate-700">
+                            {teacher.classIds.map((classId, idx) => {
+                              const room = data.classes.find((c) => c.id === classId);
+                              return (
+                                <li
+                                  key={classId}
+                                  className="rounded-lg bg-slate-50 px-3 py-2"
+                                >
+                                  {teacher.classLabels[idx]} ·{" "}
+                                  {room?.studentCount ?? 0}명
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-slate-600">
+                          담당 학생 명단
+                        </p>
+                        {teacher.studentNames.length === 0 ? (
+                          <p className="text-xs text-slate-400">학생이 없어요.</p>
+                        ) : (
+                          <p className="text-sm leading-relaxed text-slate-700">
+                            {teacher.studentNames.join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })
+          )}
+        </section>
+      )}
 
       <p className="text-xs text-slate-500">
-        학생별 상세 정보는{" "}
+        학생 등록 시에도 반을 지정할 수 있어요.{" "}
         <Link href="/admin/students" className="text-blue-600 underline">
           학생 관리
         </Link>
-        에서 확인할 수 있어요.
       </p>
 
       <ConfirmDialog

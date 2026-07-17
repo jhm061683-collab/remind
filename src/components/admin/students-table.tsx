@@ -7,7 +7,7 @@ import {
   deleteStudentsAction,
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { AdminStudentRow } from "@/lib/types/admin";
+import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 
 function formatLastLogin(iso: string | null): string {
   if (!iso) return "—";
@@ -34,6 +34,7 @@ function formatLastLogin(iso: string | null): string {
 type Props = {
   students: AdminStudentRow[];
   canManage?: boolean;
+  classOptions?: ClassOption[];
 };
 
 type ActivityFilter = "all" | "due_today" | "inactive_7" | "never_login";
@@ -43,14 +44,18 @@ function formatClassDisplay(student: AdminStudentRow): string {
   return student.className ?? "—";
 }
 
-export function AdminStudentsTable({ students, canManage = false }: Props) {
+export function AdminStudentsTable({
+  students,
+  canManage = false,
+  classOptions = [],
+}: Props) {
   const [query, setQuery] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [teacherFilter, setTeacherFilter] = useState("all");
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
-  const [className, setClassName] = useState("");
+  const [classRoomId, setClassRoomId] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -227,25 +232,45 @@ export function AdminStudentsTable({ students, canManage = false }: Props) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         {canManage ? (
           <div className="flex flex-wrap gap-2">
-            <input
-              value={className}
-              onChange={(e) => setClassName(e.target.value)}
-              placeholder="반명 (기존 반에 추가)"
-              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              disabled={pending || selected.length === 0}
-              className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              onClick={() => {
-                startTransition(async () => {
-                  const result = await bulkAssignClassAction(selected, className);
-                  setFeedback(result.error ?? result.success ?? null);
-                });
-              }}
-            >
-              반 일괄배정
-            </button>
+            {classOptions.length > 0 ? (
+              <>
+                <select
+                  value={classRoomId}
+                  onChange={(e) => setClassRoomId(e.target.value)}
+                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                >
+                  <option value="">일괄 배정할 반 선택</option>
+                  {classOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.displayLabel}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={pending || selected.length === 0 || !classRoomId}
+                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await bulkAssignClassAction(
+                        selected,
+                        classRoomId,
+                      );
+                      setFeedback(result.error ?? result.success ?? null);
+                    });
+                  }}
+                >
+                  반 일괄배정
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/admin/classes"
+                className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800"
+              >
+                먼저 반 만들기
+              </Link>
+            )}
             <button
               type="button"
               disabled={pending || selected.length === 0}
