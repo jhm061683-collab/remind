@@ -17,15 +17,23 @@ create extension if not exists "pgcrypto";
 create table if not exists public.academies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  code text,
+  status text not null default 'active',
+  max_students int,
   created_at timestamptz not null default now()
 );
+
+alter table public.academies
+  add column if not exists code text,
+  add column if not exists status text not null default 'active',
+  add column if not exists max_students int;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   academy_id uuid references public.academies (id) on delete set null,
-  role text not null check (role in ('student', 'admin', 'sub_admin')),
+  role text not null,
   display_name text not null,
-  username text unique,
+  username text,
   is_director boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -39,11 +47,56 @@ alter table public.profiles
   add column if not exists is_director boolean not null default false,
   add column if not exists nickname text;
 
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles
+  add constraint profiles_role_check
+  check (role in ('student', 'admin', 'sub_admin', 'platform_admin'));
+
+alter table public.profiles drop constraint if exists profiles_username_key;
+drop index if exists public.profiles_username_key;
+
+create unique index if not exists profiles_academy_username_uidx
+  on public.profiles (academy_id, lower(username))
+  where username is not null and academy_id is not null;
+
+create unique index if not exists profiles_platform_username_uidx
+  on public.profiles (lower(username))
+  where username is not null and academy_id is null;
+
+create unique index if not exists academies_code_lower_uidx
+  on public.academies (lower(code));
+
 -- school_level / grade_number 제약은 기존 DB와 충돌할 수 있어 별도 강제하지 않음
 
 create index if not exists profiles_role_idx on public.profiles (role);
 create index if not exists profiles_username_idx on public.profiles (username);
 create index if not exists profiles_phone_idx on public.profiles (phone);
+
+create table if not exists public.subscription_plans (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null,
+  max_students int,
+  price_krw int not null default 0,
+  billing_interval text not null default 'month'
+    check (billing_interval in ('month', 'year', 'manual')),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.academy_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  academy_id uuid not null unique references public.academies (id) on delete cascade,
+  plan_id uuid references public.subscription_plans (id) on delete set null,
+  status text not null default 'trial'
+    check (status in ('trial', 'active', 'past_due', 'canceled', 'none')),
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  external_customer_id text,
+  external_subscription_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
 -- -----------------------------------------------------------------------------
 -- 복습 설정 / 프리셋
@@ -559,15 +612,108 @@ create policy "images_public_read" on storage.objects
 -- -----------------------------------------------------------------------------
 -- 기본 데이터 / 백필
 -- -----------------------------------------------------------------------------
-insert into public.academies (name)
-select '데모 학원'
+insert into public.academies (name, code, status)
+select '데모 학원', 'DEMO', 'active'
 where not exists (select 1 from public.academies where name = '데모 학원');
+
+update public.academies
+set code = 'DEMO'
+where name = '데모 학원'
+  and (code is null or btrim(code) = '');
+
+insert into public.subscription_plans (code, name, max_students, price_krw, billing_interval)
+select 'trial', '체험', 30, 0, 'manual'
+where not exists (select 1 from public.subscription_plans where code = 'trial');
+
+insert into public.subscription_plans (code, name, max_students, price_krw, billing_interval)
+select 'standard', '스탠다드', 100, 99000, 'month'
+where not exists (select 1 from public.subscription_plans where code = 'standard');
+
+insert into public.subscription_plans (code, name, max_students, price_krw, billing_interval)
+select 'pro', '프로', 300, 199000, 'month'
+where not exists (select 1 from public.subscription_plans where code = 'pro');
+
+alter table public.academy_subscriptions
+  add column if not exists price_per_student_krw int;
+
+alter table public.academy_subscriptions
+  add column if not exists customer_key text,
+  add column if not exists billing_key text,
+  add column if not exists card_company text,
+  add column if not exists card_number_masked text,
+  add column if not exists billing_registered_at timestamptz;
+
+create table if not exists public.billing_charges (
+  id uuid primary key default gen_random_uuid(),
+  academy_id uuid not null references public.academies (id) on delete cascade,
+  order_id text not null unique,
+  amount_krw int not null check (amount_krw >= 0),
+  student_count int not null default 0,
+  price_per_student_krw int not null default 0,
+  status text not null default 'pending'
+    check (status in ('pending', 'done', 'failed', 'canceled')),
+  payment_key text,
+  failure_code text,
+  failure_message text,
+  created_at timestamptz not null default now(),
+  approved_at timestamptz
+);
+
+update public.subscription_plans
+set price_per_student_krw = 3000
+where price_per_student_krw is null;
+
+update public.academy_subscriptions
+set price_per_student_krw = coalesce(price_per_student_krw, 3000)
+where price_per_student_krw is null;
+
+create table if not exists public.academy_invites (
+  id uuid primary key default gen_random_uuid(),
+  token text not null unique,
+  academy_code text not null,
+  academy_name_hint text,
+  price_per_student_krw int not null default 3000
+    check (price_per_student_krw >= 0),
+  trial_days int not null default 14
+    check (trial_days >= 0 and trial_days <= 365),
+  status text not null default 'pending'
+    check (status in ('pending', 'accepted', 'revoked', 'expired')),
+  expires_at timestamptz,
+  accepted_academy_id uuid references public.academies (id) on delete set null,
+  accepted_at timestamptz,
+  created_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists academy_invites_pending_code_uidx
+  on public.academy_invites (lower(academy_code))
+  where status = 'pending';
+
+create index if not exists academy_invites_status_idx
+  on public.academy_invites (status, created_at desc);
+
+alter table public.academy_invites enable row level security;
+
+insert into public.academy_subscriptions (academy_id, plan_id, status, current_period_start, current_period_end)
+select
+  a.id,
+  p.id,
+  'trial',
+  now(),
+  now() + interval '30 days'
+from public.academies a
+cross join public.subscription_plans p
+where p.code = 'trial'
+  and not exists (
+    select 1 from public.academy_subscriptions s where s.academy_id = a.id
+  );
 
 update public.profiles
 set academy_id = (
   select id from public.academies where name = '데모 학원' limit 1
 )
-where academy_id is null;
+where academy_id is null
+  and role <> 'platform_admin';
 
 update public.profiles p
 set auth_email = u.email

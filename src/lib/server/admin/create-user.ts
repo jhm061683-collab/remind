@@ -93,6 +93,7 @@ export async function createAcademyUser(
       .from("profiles")
       .select("id")
       .eq("username", username)
+      .eq("academy_id", academyId)
       .maybeSingle();
     if (!existingProfile) break;
     suffix += 1;

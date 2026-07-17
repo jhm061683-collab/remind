@@ -7,7 +7,11 @@ import { clearSession, setSession } from "@/lib/auth/session";
 import { isSupabaseEnabled, toAuthEmail } from "@/lib/supabase/config";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
-import type { UserRole } from "@/types/user";
+import {
+  DEMO_ACADEMY_CODE,
+  PLATFORM_LOGIN_CODE,
+  type UserRole,
+} from "@/types/user";
 
 export type LoginState = {
   error?: string;
@@ -18,38 +22,53 @@ type LoginProfile = {
   role: UserRole;
   isDirector: boolean;
   nickname: string | null;
+  academyId: string | null;
+  academyStatus: string | null;
 };
+
+function normalizeAcademyCode(raw: string): string {
+  return raw.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function isValidRole(role: string): role is UserRole {
+  return (
+    role === "student" ||
+    role === "admin" ||
+    role === "sub_admin" ||
+    role === "platform_admin"
+  );
+}
 
 async function getProfileFromSupabase(userId: string): Promise<LoginProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, role, is_director, nickname")
+    .select("display_name, role, is_director, nickname, academy_id")
     .eq("id", userId)
     .single();
 
-  if (error || !data) return null;
+  if (error || !data || !isValidRole(String(data.role))) return null;
   return {
     name: data.display_name as string,
     role: data.role as UserRole,
     isDirector: Boolean(data.is_director) || data.role === "admin",
     nickname: (data.nickname as string | null) ?? null,
+    academyId: (data.academy_id as string | null) ?? null,
+    academyStatus: null,
   };
 }
 
 function profileFromUserMetadata(metadata: Record<string, unknown> | undefined): LoginProfile | null {
   const role = metadata?.role;
   const name = metadata?.display_name;
-  if (
-    typeof role === "string" &&
-    typeof name === "string" &&
-    (role === "student" || role === "admin" || role === "sub_admin")
-  ) {
+  if (typeof role === "string" && typeof name === "string" && isValidRole(role)) {
     return {
       name,
       role,
       isDirector: role === "admin" || metadata?.is_director === true,
       nickname: typeof metadata?.nickname === "string" ? metadata.nickname : null,
+      academyId: null,
+      academyStatus: null,
     };
   }
   return null;
@@ -76,9 +95,15 @@ export async function loginAction(
 
   const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
+  const academyCode = normalizeAcademyCode(
+    String(formData.get("academyCode") ?? DEMO_ACADEMY_CODE),
+  );
 
   if (!username || !password) {
     return { error: "아이디와 비밀번호를 입력해 주세요." };
+  }
+  if (!academyCode) {
+    return { error: "학원 코드를 입력해 주세요." };
   }
 
   if (isSupabaseEnabled()) {
@@ -91,22 +116,66 @@ export async function loginAction(
 
     if (!trimmed.includes("@") && isServiceRoleConfigured()) {
       const service = createServiceClient();
-      const { data: profile } = await service
-        .from("profiles")
-        .select("auth_email, display_name, role, is_director, nickname")
-        .eq("username", trimmed)
-        .maybeSingle();
-      mark("lookupLoginEmail");
-      if (profile?.auth_email) {
-        email = profile.auth_email;
-        resolvedAuthEmail = true;
-        cachedProfile = {
-          name: profile.display_name as string,
-          role: profile.role as UserRole,
-          isDirector:
-            Boolean(profile.is_director) || profile.role === "admin",
-          nickname: (profile.nickname as string | null) ?? null,
-        };
+
+      if (academyCode === PLATFORM_LOGIN_CODE) {
+        const { data: profile } = await service
+          .from("profiles")
+          .select("auth_email, display_name, role, is_director, nickname, academy_id")
+          .eq("username", trimmed)
+          .eq("role", "platform_admin")
+          .is("academy_id", null)
+          .maybeSingle();
+        mark("lookupPlatformLogin");
+        if (profile?.auth_email && isValidRole(String(profile.role))) {
+          email = profile.auth_email as string;
+          resolvedAuthEmail = true;
+          cachedProfile = {
+            name: profile.display_name as string,
+            role: profile.role as UserRole,
+            isDirector: false,
+            nickname: (profile.nickname as string | null) ?? null,
+            academyId: null,
+            academyStatus: null,
+          };
+        }
+      } else {
+        const { data: academy } = await service
+          .from("academies")
+          .select("id, status, code")
+          .ilike("code", academyCode)
+          .maybeSingle();
+        mark("lookupAcademy");
+
+        if (!academy) {
+          flushTiming("error");
+          return { error: "학원 코드를 확인해 주세요." };
+        }
+        if (academy.status === "suspended") {
+          flushTiming("error");
+          return { error: "이 학원은 이용이 정지되어 있습니다." };
+        }
+
+        const { data: profile } = await service
+          .from("profiles")
+          .select("auth_email, display_name, role, is_director, nickname, academy_id")
+          .eq("username", trimmed)
+          .eq("academy_id", academy.id)
+          .maybeSingle();
+        mark("lookupLoginEmail");
+
+        if (profile?.auth_email && isValidRole(String(profile.role))) {
+          email = profile.auth_email as string;
+          resolvedAuthEmail = true;
+          cachedProfile = {
+            name: profile.display_name as string,
+            role: profile.role as UserRole,
+            isDirector:
+              Boolean(profile.is_director) || profile.role === "admin",
+            nickname: (profile.nickname as string | null) ?? null,
+            academyId: (profile.academy_id as string | null) ?? null,
+            academyStatus: (academy.status as string | null) ?? null,
+          };
+        }
       }
     }
 
@@ -121,11 +190,29 @@ export async function loginAction(
 
     if (error && !resolvedAuthEmail && !trimmed.includes("@") && isServiceRoleConfigured()) {
       const service = createServiceClient();
-      const { data: profile } = await service
+      let profileQuery = service
         .from("profiles")
-        .select("id")
-        .eq("username", trimmed)
-        .maybeSingle();
+        .select("id, academy_id, role")
+        .eq("username", trimmed);
+
+      if (academyCode === PLATFORM_LOGIN_CODE) {
+        profileQuery = profileQuery
+          .eq("role", "platform_admin")
+          .is("academy_id", null);
+      } else {
+        const { data: academy } = await service
+          .from("academies")
+          .select("id")
+          .ilike("code", academyCode)
+          .maybeSingle();
+        if (!academy) {
+          flushTiming("error");
+          return { error: "학원 코드를 확인해 주세요." };
+        }
+        profileQuery = profileQuery.eq("academy_id", academy.id);
+      }
+
+      const { data: profile } = await profileQuery.maybeSingle();
       mark("lookupProfileId");
       if (profile?.id) {
         const got = await service.auth.admin.getUserById(profile.id);
@@ -142,7 +229,7 @@ export async function loginAction(
 
     if (error || !data.user) {
       flushTiming("error");
-      return { error: "아이디 또는 비밀번호가 올바르지 않습니다." };
+      return { error: "학원 코드·아이디·비밀번호를 확인해 주세요." };
     }
 
     const metadataProfile = profileFromUserMetadata(data.user.user_metadata);
@@ -156,9 +243,38 @@ export async function loginAction(
           : "fetchProfile",
     );
 
-  if (!profile) {
+    if (!profile) {
       flushTiming("error");
       return { error: "프로필 정보를 불러오지 못했습니다." };
+    }
+
+    if (academyCode === PLATFORM_LOGIN_CODE) {
+      if (profile.role !== "platform_admin") {
+        flushTiming("error");
+        return { error: "플랫폼 관리자 계정이 아닙니다." };
+      }
+    } else if (profile.role === "platform_admin") {
+      flushTiming("error");
+      return { error: "플랫폼 계정은 PLATFORM 코드로 로그인해 주세요." };
+    } else if (
+      isServiceRoleConfigured() &&
+      profile.academyId &&
+      academyCode
+    ) {
+      const service = createServiceClient();
+      const { data: academy } = await service
+        .from("academies")
+        .select("id, status")
+        .ilike("code", academyCode)
+        .maybeSingle();
+      if (!academy || academy.id !== profile.academyId) {
+        flushTiming("error");
+        return { error: "이 학원에 속한 계정이 아닙니다." };
+      }
+      if (academy.status === "suspended") {
+        flushTiming("error");
+        return { error: "이 학원은 이용이 정지되어 있습니다." };
+      }
     }
 
     const { formatStaffLabel } = await import("@/lib/admin/staff-label");
@@ -184,7 +300,12 @@ export async function loginAction(
       name: sessionName,
       role: profile.role,
       isDirector: profile.isDirector || profile.role === "admin",
-      staffMode: profile.role === "admin" ? "admin" : "teacher",
+      staffMode:
+        profile.role === "admin"
+          ? "admin"
+          : profile.role === "platform_admin"
+            ? "admin"
+            : "teacher",
     });
     mark("setSession");
 
@@ -197,6 +318,10 @@ export async function loginAction(
   if (!user) {
     flushTiming("error");
     return { error: "아이디 또는 비밀번호가 올바르지 않습니다." };
+  }
+  if (academyCode !== DEMO_ACADEMY_CODE) {
+    flushTiming("error");
+    return { error: "로컬 데모는 학원 코드 DEMO 만 지원합니다." };
   }
 
   await setSession({

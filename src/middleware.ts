@@ -17,6 +17,7 @@ const STUDENT_PREFIXES = [
   "/suggestions",
 ];
 const ADMIN_PREFIXES = ["/admin"];
+const PLATFORM_PREFIXES = ["/platform"];
 const LEGACY_SUB_ADMIN_PREFIXES = ["/sub-admin"];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {
@@ -84,7 +85,8 @@ export async function middleware(request: NextRequest) {
 
   const isProtected =
     matchesPrefix(pathname, STUDENT_PREFIXES) ||
-    matchesPrefix(pathname, ADMIN_PREFIXES);
+    matchesPrefix(pathname, ADMIN_PREFIXES) ||
+    matchesPrefix(pathname, PLATFORM_PREFIXES);
 
   if (!isProtected) {
     return response;
@@ -94,6 +96,15 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (matchesPrefix(pathname, PLATFORM_PREFIXES)) {
+    if (session.role !== "platform_admin") {
+      return NextResponse.redirect(
+        new URL(getHomePathForRole(session.role), request.url),
+      );
+    }
+    return response;
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES)) {
@@ -136,5 +147,7 @@ export const config = {
     "/suggestions",
     "/admin/:path*",
     "/sub-admin/:path*",
+    "/platform",
+    "/platform/:path*",
   ],
 };

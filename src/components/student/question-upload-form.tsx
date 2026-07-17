@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { saveQuestionAction } from "@/lib/actions/questions";
 import {
   MultiImagePicker,
@@ -76,6 +77,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrPending, startOcr] = useTransition();
 
   useEffect(() => {
     if (!subjectId && subjects.length > 0) {
@@ -89,6 +92,46 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const handleQuestionReady = useCallback((ready: boolean) => {
     setQuestionReady(ready);
   }, []);
+
+  function runOcr() {
+    setError(null);
+    setOcrNote(null);
+    const preview = questionPages[0]?.preview;
+    if (!preview) {
+      setError("문제 사진을 먼저 선택해 주세요.");
+      return;
+    }
+
+    startOcr(async () => {
+      const result = await ocrFromImageAction({ imageDataUrl: preview });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      const data = result.result;
+      if (!data) return;
+
+      if (data.answerGuess) {
+        setAnswerText((prev) => prev || data.answerGuess);
+      }
+      if (data.keywords.length > 0) {
+        setKeywords((prev) => {
+          const merged = [...prev];
+          for (const k of data.keywords) {
+            if (!merged.includes(k)) merged.push(k);
+          }
+          return merged.slice(0, 12);
+        });
+        setShowExtras(true);
+      }
+      setOcrNote(
+        data.note ||
+          (result.mock
+            ? "목 OCR입니다. Vision 키를 넣으면 실제로 읽습니다."
+            : "인식 결과를 확인해 주세요."),
+      );
+    });
+  }
 
   async function uploadIfNeeded(dataUrl: string, kind: "question" | "answer") {
     if (!isSupabaseEnabled() || !dataUrl.startsWith("data:")) {
@@ -310,6 +353,19 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
             onReadyChange={handleQuestionReady}
             onChange={setQuestionPages}
           />
+          {questionReady && questionPages.length > 0 ? (
+            <button
+              type="button"
+              onClick={runOcr}
+              disabled={ocrPending}
+              className="mt-2 min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm font-semibold text-[var(--rm-text)] touch-manipulation disabled:opacity-60"
+            >
+              {ocrPending ? "읽는 중…" : "AI로 읽기 (정답·키워드 채우기)"}
+            </button>
+          ) : null}
+          {ocrNote ? (
+            <p className="mt-1.5 text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
+          ) : null}
         </div>
 
         <label className="block">

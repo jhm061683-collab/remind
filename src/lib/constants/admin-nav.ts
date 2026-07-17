@@ -5,6 +5,7 @@ export const ADMIN_ONLY_PATHS = [
   "/admin/sub-admins",
   "/admin/classes",
   "/admin/suggestions",
+  "/admin/billing",
 ] as const;
 
 export function isAdminOnlyPath(pathname: string): boolean {
@@ -15,6 +16,10 @@ export function isAdminOnlyPath(pathname: string): boolean {
 
 export function canAccessAdminArea(role: UserRole): boolean {
   return role === "admin" || role === "sub_admin";
+}
+
+export function canAccessPlatformArea(role: UserRole): boolean {
+  return role === "platform_admin";
 }
 
 export function canAccessAdminPath(role: UserRole, pathname: string): boolean {
@@ -44,6 +49,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     adminOnly: true,
   },
   { href: "/admin/notifications", label: "알림 발송", shortLabel: "알림" },
+  {
+    href: "/admin/billing",
+    label: "결제 · 구독",
+    shortLabel: "결제",
+    adminOnly: true,
+  },
   // 계정 메뉴로만 진입
   {
     href: "/admin/suggestions",

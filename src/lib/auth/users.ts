@@ -48,6 +48,8 @@ export function verifyUser(
 
 export function getHomePathForRole(role: UserRole): string {
   switch (role) {
+    case "platform_admin":
+      return "/platform";
     case "admin":
       return "/admin/dashboard";
     case "sub_admin":
