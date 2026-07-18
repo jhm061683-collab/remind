@@ -89,6 +89,28 @@ export function DirectorJoinForm({ invite }: { invite: PublicInviteInfo }) {
 
       <div>
         <label
+          htmlFor="recoveryEmail"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          이메일
+        </label>
+        <input
+          id="recoveryEmail"
+          name="recoveryEmail"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="hong@example.com"
+          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          비밀번호를 잊었을 때 본인 확인·안내용으로 씁니다. (로그인 아이디와는
+          별개예요)
+        </p>
+      </div>
+
+      <div>
+        <label
           htmlFor="username"
           className="mb-1 block text-sm font-medium text-slate-700"
         >

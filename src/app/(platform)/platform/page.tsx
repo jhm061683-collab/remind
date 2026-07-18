@@ -1,5 +1,6 @@
 import { AcademyPlanSelect } from "@/components/platform/academy-plan-select";
 import { AcademyStatusActions } from "@/components/platform/academy-status-actions";
+import { DirectorPasswordReset } from "@/components/platform/director-password-reset";
 import { CreateAcademyForm } from "@/components/platform/create-academy-form";
 import { CreateInviteForm } from "@/components/platform/create-invite-form";
 import { InviteList } from "@/components/platform/invite-list";
@@ -98,7 +99,20 @@ export default async function PlatformHomePage() {
                 >
                   <td className="px-4 py-3 font-medium">{academy.name}</td>
                   <td className="px-4 py-3 font-mono text-xs">{academy.code}</td>
-                  <td className="px-4 py-3">{academy.adminName ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <p>{academy.adminName ?? "—"}</p>
+                    {academy.adminUsername ? (
+                      <p className="text-[11px] text-[var(--rm-text-faint)]">
+                        @{academy.adminUsername}
+                      </p>
+                    ) : null}
+                    <div className="mt-1">
+                      <DirectorPasswordReset
+                        academyId={academy.id}
+                        directorUserId={academy.adminId}
+                      />
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{academy.studentCount}</td>
                   <td className="px-4 py-3">
                     <AcademyPlanSelect

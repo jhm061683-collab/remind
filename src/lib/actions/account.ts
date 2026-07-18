@@ -65,6 +65,26 @@ export async function updateOwnStaffProfileAction(payload: {
   return { success: `표시 이름을 「${labeled}」으로 저장했습니다.` };
 }
 
+export async function updateOwnRecoveryEmailAction(
+  recoveryEmail: string,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireStaff();
+  const email = recoveryEmail.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "이메일을 올바르게 입력해 주세요." };
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ recovery_email: email })
+    .eq("id", session.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/account");
+  return { success: "이메일을 저장했습니다." };
+}
+
 export async function changeOwnPasswordAction(
   _prev: ChangePasswordState,
   formData: FormData,

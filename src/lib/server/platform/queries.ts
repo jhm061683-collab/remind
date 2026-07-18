@@ -20,6 +20,8 @@ export type PlatformAcademyRow = {
   createdAt: string;
   studentCount: number;
   adminName: string | null;
+  adminId: string | null;
+  adminUsername: string | null;
   planName: string | null;
   subscriptionStatus: string | null;
   periodEnd: string | null;
@@ -88,7 +90,7 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, academy_id, role, display_name")
+        .select("id, academy_id, role, display_name, username, is_director")
         .in("academy_id", academyIds),
       supabase
         .from("academy_subscriptions")
@@ -119,7 +121,9 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
     const id = academy.id as string;
     const members = (profiles ?? []).filter((p) => p.academy_id === id);
     const studentCount = members.filter((p) => p.role === "student").length;
-    const admin = members.find((p) => p.role === "admin");
+    const admin =
+      members.find((p) => p.role === "admin" && p.is_director) ??
+      members.find((p) => p.role === "admin");
     const sub = subByAcademy.get(id);
     const plan = sub?.plan_id
       ? planById.get(sub.plan_id as string)
@@ -137,6 +141,8 @@ export async function listPlatformAcademies(): Promise<PlatformAcademyRow[]> {
       createdAt: academy.created_at as string,
       studentCount,
       adminName: (admin?.display_name as string | null) ?? null,
+      adminId: (admin?.id as string | null) ?? null,
+      adminUsername: (admin?.username as string | null) ?? null,
       planName: plan?.name ?? null,
       planCode: plan?.code ?? null,
       subscriptionStatus: (sub?.status as string | null) ?? null,
@@ -337,12 +343,14 @@ export async function acceptAcademyInvite(input: {
   username: string;
   password: string;
   phone?: string;
+  recoveryEmail?: string;
 }): Promise<{ error?: string; academyCode?: string; username?: string }> {
   const academyName = input.academyName.trim();
   const displayName = input.displayName.trim();
   const username = input.username.trim();
   const password = input.password.trim();
   const phone = input.phone?.replace(/\D/g, "") || null;
+  const recoveryEmail = input.recoveryEmail?.trim().toLowerCase() || null;
 
   if (academyName.length < 2) {
     return { error: "학원 이름은 2자 이상으로 입력해 주세요." };
@@ -355,6 +363,9 @@ export async function acceptAcademyInvite(input: {
   }
   if (password.length < 4) {
     return { error: "비밀번호는 4자 이상으로 입력해 주세요." };
+  }
+  if (!recoveryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail)) {
+    return { error: "이메일을 올바르게 입력해 주세요." };
   }
 
   const supabase = createServiceClient();
@@ -423,6 +434,7 @@ export async function acceptAcademyInvite(input: {
     display_name: displayName,
     username,
     auth_email: authEmail,
+    recovery_email: recoveryEmail,
     phone,
     is_director: true,
   });
@@ -585,4 +597,63 @@ export async function setAcademyStatus(
     .eq("id", academyId);
   if (error) return { error: error.message };
   return {};
+}
+
+function generateTempPassword(): string {
+  // 헷갈리는 글자(0/O, 1/l/I) 제외한 8자리
+  const chars = "abcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = randomBytes(8);
+  let out = "";
+  for (let i = 0; i < 8; i++) {
+    out += chars[bytes[i] % chars.length];
+  }
+  return out;
+}
+
+/**
+ * 플랫폼(owner)이 특정 원장(admin)의 비밀번호를 임시 비번으로 재설정.
+ * 원장은 로그인 후 계정 화면에서 스스로 다시 바꾸면 됩니다.
+ */
+export async function resetDirectorPassword(input: {
+  academyId: string;
+  directorUserId: string;
+  updatedBy: string;
+}): Promise<{ error?: string; password?: string; username?: string }> {
+  const supabase = createServiceClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, username, academy_id, role")
+    .eq("id", input.directorUserId)
+    .maybeSingle();
+
+  if (
+    !profile ||
+    profile.academy_id !== input.academyId ||
+    profile.role !== "admin"
+  ) {
+    return { error: "해당 학원의 원장 계정을 찾을 수 없습니다." };
+  }
+
+  const password = generateTempPassword();
+  const { error } = await supabase.auth.admin.updateUserById(
+    input.directorUserId,
+    { password },
+  );
+  if (error) return { error: error.message };
+
+  try {
+    const { upsertAdminVisiblePassword } = await import(
+      "@/lib/server/admin/password-notes"
+    );
+    await upsertAdminVisiblePassword(
+      input.directorUserId,
+      password,
+      input.updatedBy,
+    );
+  } catch {
+    // optional
+  }
+
+  return { password, username: (profile.username as string | null) ?? undefined };
 }

@@ -105,6 +105,23 @@ export async function revokeInviteAction(
   return { ok: "초대를 취소했습니다." };
 }
 
+export async function resetDirectorPasswordAction(
+  academyId: string,
+  directorUserId: string,
+): Promise<{ error?: string; password?: string; username?: string }> {
+  const session = await requirePlatformAdmin();
+  const { resetDirectorPassword } = await import(
+    "@/lib/server/platform/queries"
+  );
+  const result = await resetDirectorPassword({
+    academyId,
+    directorUserId,
+    updatedBy: session.id,
+  });
+  if (result.error) return { error: result.error };
+  return { password: result.password, username: result.username };
+}
+
 export async function acceptInviteAction(
   _prev: JoinActionState,
   formData: FormData,
@@ -117,6 +134,7 @@ export async function acceptInviteAction(
     username: String(formData.get("username") ?? ""),
     password: String(formData.get("password") ?? ""),
     phone: String(formData.get("phone") ?? ""),
+    recoveryEmail: String(formData.get("recoveryEmail") ?? ""),
   });
 
   if (result.error) return { error: result.error };

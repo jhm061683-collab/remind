@@ -1,4 +1,5 @@
 import { ChangePasswordForm } from "@/components/account/change-password-form";
+import { RecoveryEmailForm } from "@/components/account/recovery-email-form";
 import { StaffProfileForm } from "@/components/admin/staff-profile-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
@@ -9,7 +10,7 @@ export default async function AdminAccountPage() {
   const supabase = createServiceClient();
   const { data: me } = await supabase
     .from("profiles")
-    .select("display_name, nickname, username, role")
+    .select("display_name, nickname, username, role, recovery_email")
     .eq("id", session.id)
     .maybeSingle();
 
@@ -19,7 +20,7 @@ export default async function AdminAccountPage() {
     <>
       <PageHeader
         title="계정 설정"
-        description="표시 이름 · 비밀번호"
+        description="표시 이름 · 이메일 · 비밀번호"
       />
 
       <div className="mx-auto max-w-lg space-y-4">
@@ -28,6 +29,10 @@ export default async function AdminAccountPage() {
           nickname={(me?.nickname as string | null) ?? null}
           username={(me?.username as string | null) ?? null}
           isAdmin={isAdmin}
+        />
+
+        <RecoveryEmailForm
+          initialEmail={(me?.recovery_email as string | null) ?? null}
         />
 
         <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3.5 shadow-sm md:p-5">

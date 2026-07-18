@@ -44,6 +44,7 @@ alter table public.profiles
   add column if not exists grade_number int,
   add column if not exists auto_promote_enabled boolean not null default true,
   add column if not exists auth_email text,
+  add column if not exists recovery_email text,
   add column if not exists is_director boolean not null default false,
   add column if not exists nickname text;
 
