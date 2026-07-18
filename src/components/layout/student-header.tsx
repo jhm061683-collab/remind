@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { HelpButton } from "@/components/layout/help-button";
 import { RemindLogo } from "@/components/brand/remind-logo";
 import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -61,6 +62,7 @@ export function StudentHeader({ userName }: Props) {
 
         <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
           <InstallAppPrompt variant="chip" />
+          <HelpButton />
           <ThemeToggle />
           <AccountMenu userName={userName} />
         </div>

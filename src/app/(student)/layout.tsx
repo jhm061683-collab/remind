@@ -3,6 +3,7 @@ import { StudentNav } from "@/components/layout/student-nav";
 import { StudentThemeProvider } from "@/components/theme/student-theme-provider";
 import { SubjectProvider } from "@/components/student/subject-provider";
 import { StorageNotice } from "@/components/student/storage-notice";
+import { StudentOnboarding } from "@/components/student/student-onboarding";
 import { getStudentThemeOnServer } from "@/lib/actions/student-theme";
 import { getSession } from "@/lib/auth/session";
 import { DEFAULT_STUDENT_THEME } from "@/lib/theme/student-theme";
@@ -27,6 +28,7 @@ export default async function StudentLayout({
           <StorageNotice />
           {children}
         </div>
+        <StudentOnboarding userId={userId} />
         <StudentNav />
       </StudentThemeProvider>
     </SubjectProvider>
