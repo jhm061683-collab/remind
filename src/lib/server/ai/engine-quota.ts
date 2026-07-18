@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  *
  * 정책 (027 마이그레이션과 한 세트)
  *  - Basic  : AI 사용 불가
- *  - Pro    : 월 400건 / 일 30건, 전량 Gemini 2.5 Flash
+ *  - Pro    : 월 400건 / 일 30건, 전량 Gemini 3.5 Flash
  *  - Premium: 월 400건 / 일 30건, 그중 100건은 GPT-4o 골드 티켓
  *             골드 소진(또는 학생별 우선 설정 off) 시 Gemini로 자동 전환
  *
@@ -13,7 +13,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  * (동시 업로드로 한도를 넘겨 차감되는 경쟁 상태 방지)
  */
 
-export type AiEngine = "gemini-2.5-flash" | "gpt-4o";
+export type AiEngine = "gemini-3.5-flash" | "gpt-4o";
 
 /** B타입 = 업로드 즉시 레이텍+정답 추출, A타입 = 온디맨드 상세 해설 */
 export type AiTaskKind = "extract" | "explain";
@@ -148,7 +148,7 @@ export async function getAvailableEngineAndDeductQuota(input: {
   }
 
   return {
-    engine: row.use_gold ? "gpt-4o" : "gemini-2.5-flash",
+    engine: row.use_gold ? "gpt-4o" : "gemini-3.5-flash",
     ...usage,
   };
 }

@@ -15,9 +15,9 @@ type GeminiResponse = {
   error?: { message?: string };
 };
 
-// 2.0 Flash는 무료 등급 할당량이 0이라 기본을 2.5 Flash로 둠.
+// 신규 계정은 2.5 Flash가 막혀 있어서 기본은 3.5 Flash.
 // 필요하면 GEMINI_MODEL 환경변수로 교체 가능.
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash";
 
 export function getGeminiApiKey(): string | null {
   return (
@@ -107,7 +107,7 @@ export async function extractWithGemini(
   }
 
   return {
-    engine: "gemini-2.5-flash",
+    engine: "gemini-3.5-flash",
     provider: "gemini",
     problemLatex: parsed.problemLatex,
     answerGuess: parsed.answerGuess,

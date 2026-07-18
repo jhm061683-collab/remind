@@ -38,12 +38,12 @@ export const PLAN_DEFINITIONS: PlanDefinition[] = [
     ocrDailyLimit: 30,
     aiMonthlyLimit: 400,
     aiGoldMonthlyLimit: 0,
-    description: "AI 문제 분석 월 400건 (Gemini 2.5 Flash)",
+    description: "AI 문제 분석 월 400건 (Gemini 3.5 Flash)",
     highlight: true,
     features: [
       "학생당 월 29,000원",
       "AI 문제 분석 월 400건 · 하루 최대 30건",
-      "Gemini 2.5 Flash 엔진 (빠르고 안정적)",
+      "Gemini 3.5 Flash 엔진 (빠르고 안정적)",
     ],
   },
   {
