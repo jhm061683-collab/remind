@@ -10,6 +10,7 @@ type QuestionRow = {
   subject_id: string;
   image_url: string;
   extra_image_urls: string[] | null;
+  problem_latex: string | null;
   answer_text: string | null;
   answer_image_url: string | null;
   keywords: string[] | null;
@@ -33,6 +34,7 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     userId: row.user_id,
     imageDataUrl: row.image_url,
     extraImageDataUrls: row.extra_image_urls ?? [],
+    problemLatex: row.problem_latex ?? undefined,
     answerText: row.answer_text ?? undefined,
     answerImageDataUrl: row.answer_image_url ?? undefined,
     keywords: row.keywords ?? [],
@@ -193,6 +195,7 @@ export async function saveQuestion(
     subject_id: input.subjectId,
     image_url: imageUrl,
     extra_image_urls: extraImageUrls,
+    problem_latex: input.problemLatex?.trim() || null,
     answer_text: answerText,
     answer_image_url: answerImageUrl ?? null,
     keywords: input.keywords,

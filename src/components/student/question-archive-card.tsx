@@ -8,6 +8,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
 import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
+import { LatexContent } from "@/components/math/latex-content";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
@@ -137,16 +138,27 @@ export function QuestionArchiveCard({
         onCancel={() => setShowDeleteConfirm(false)}
       />
       <li className="remind-card overflow-hidden">
-        {/* 썸네일: 문제 사진만 (여러 장이면 넘김) */}
-        <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
-          <QuestionImages
-            question={question}
-            alt="문제"
-            thumbnail
-            fill
-            imageClassName="object-contain"
-          />
-        </div>
+        {question.problemLatex ? (
+          /* AI가 조판한 문제를 대표로 표시 (원본 사진은 상세에서) */
+          <div className="relative max-h-64 overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)]">
+            <LatexContent
+              content={question.problemLatex}
+              className="px-4 py-3.5 text-[15px]"
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--rm-surface)] to-transparent" />
+          </div>
+        ) : (
+          /* 썸네일: 문제 사진만 (여러 장이면 넘김) */
+          <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
+            <QuestionImages
+              question={question}
+              alt="문제"
+              thumbnail
+              fill
+              imageClassName="object-contain"
+            />
+          </div>
+        )}
 
         <div className="p-3.5 text-base">
           <div className="flex items-center justify-between gap-2">
@@ -196,6 +208,32 @@ export function QuestionArchiveCard({
 
         {expanded ? (
           <div className="space-y-3 border-t border-[var(--rm-border)] px-3.5 pb-3.5">
+            {question.problemLatex ? (
+              <>
+                <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4">
+                  <p className="mb-2 text-sm font-bold text-[var(--rm-text)]">
+                    문제 전체
+                  </p>
+                  <LatexContent
+                    content={question.problemLatex}
+                    className="text-base"
+                  />
+                </div>
+                <div className="overflow-hidden rounded-xl border border-[var(--rm-border)]">
+                  <p className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-bold text-[var(--rm-text-muted)]">
+                    원본 사진
+                  </p>
+                  <div className="relative bg-[var(--rm-accent-muted)]">
+                    <QuestionImages
+                      question={question}
+                      alt="문제 원본"
+                      imageClassName="h-auto max-h-80 w-full object-contain"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
+
             {message ? (
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
                 {message}
@@ -334,9 +372,10 @@ export function QuestionArchiveCard({
                     </div>
                   ) : null}
                   {question.answerText ? (
-                    <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--rm-text)]">
-                      {question.answerText}
-                    </p>
+                    <LatexContent
+                      content={question.answerText}
+                      className="text-base"
+                    />
                   ) : null}
                 </div>
               )}

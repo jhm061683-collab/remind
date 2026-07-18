@@ -132,6 +132,7 @@ create table if not exists public.questions (
   academy_id uuid references public.academies (id) on delete set null,
   subject_id text not null,
   image_url text not null,
+  problem_latex text,
   answer_text text,
   answer_image_url text,
   keywords text[] not null default '{}',
@@ -149,6 +150,7 @@ alter table public.questions
   add column if not exists wrong_reason text,
   add column if not exists reflection_memo text,
   add column if not exists extra_image_urls text[] not null default '{}',
+  add column if not exists problem_latex text,
   add column if not exists wrong_reason_detail text,
   add column if not exists wrong_keywords text[] not null default '{}';
 

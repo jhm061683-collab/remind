@@ -10,6 +10,8 @@ export type StoredQuestion = {
   imageDataUrl: string;
   /** 2번째 이후 문제 사진 (각각 따로 표시) */
   extraImageDataUrls?: string[];
+  /** AI가 원본 문제를 다시 조판한 LaTeX 혼합 문서 */
+  problemLatex?: string;
   answerText?: string;
   answerImageDataUrl?: string;
   keywords: string[];
@@ -183,6 +185,7 @@ function normalizeQuestion(question: StoredQuestion): StoredQuestion {
     ...question,
     keywords: question.keywords ?? [],
     extraImageDataUrls: question.extraImageDataUrls ?? [],
+    problemLatex: question.problemLatex ?? undefined,
     source: question.source ?? undefined,
     wrongReason: question.wrongReason ?? undefined,
     wrongKeywords: question.wrongKeywords?.length

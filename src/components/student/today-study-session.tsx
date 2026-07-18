@@ -3,6 +3,7 @@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
 import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
+import { LatexContent } from "@/components/math/latex-content";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -256,6 +257,15 @@ export function TodayStudySession({ userId }: Props) {
         </div>
 
         <div className="mx-auto max-w-xl space-y-3 p-3.5">
+          {current.problemLatex ? (
+            <section className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-4">
+              <p className="mb-2 text-xs font-bold text-[var(--rm-text-muted)]">
+                문제
+              </p>
+              <LatexContent content={current.problemLatex} className="text-base" />
+            </section>
+          ) : null}
+
           {current.keywords.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {current.keywords.map((keyword) => (
@@ -310,9 +320,12 @@ export function TodayStudySession({ userId }: Props) {
                     </div>
                   ) : null}
                   {current.answerText ? (
-                    <p className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-3 text-base leading-relaxed text-[var(--rm-text)] whitespace-pre-wrap">
-                      {current.answerText}
-                    </p>
+                    <div className="rounded-lg bg-[var(--rm-surface-raised)] px-3 py-3">
+                      <LatexContent
+                        content={current.answerText}
+                        className="text-base"
+                      />
+                    </div>
                   ) : null}
                 </div>
               ) : null}

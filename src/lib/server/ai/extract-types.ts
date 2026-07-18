@@ -23,7 +23,7 @@ export const EXTRACT_RESPONSE_SCHEMA = {
     problemLatex: {
       type: "string",
       description:
-        "문제 본문. 수식은 LaTeX($...$ 또는 $$...$$). 선지·조건 포함. 해설은 넣지 말 것.",
+        "원본 시험지처럼 다시 조판할 문제 본문. 한국어 문장은 일반 텍스트, 수식만 $...$ 또는 $$...$$ LaTeX. 문제 번호·조건·보기를 원본 순서와 줄바꿈대로 포함.",
     },
     answer: {
       type: "string",
@@ -43,12 +43,15 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 주어진 문제 사진(들)을 보고 JSON만 반환하세요.
 
 규칙:
-1. problemLatex: 문제 문장·조건을 정확히 옮기세요. 수식은 LaTeX로 씁니다.
-2. answer: 정답만. 풀이·해설은 절대 쓰지 마세요. (B타입 추출)
-3. keywords: 관련 단원/개념 한국어 키워드 최대 5개.
-4. 확실하지 않으면 answer를 빈 문자열로 두고, problemLatex는 읽을 수 있는 만큼만 적으세요.
-5. 객관식이면 ①②③④⑤ 또는 1~5 중 하나로.
-6. JSON 외 다른 텍스트는 출력하지 마세요.`;
+1. problemLatex는 원본 시험지와 최대한 같은 읽기 순서와 배치로 다시 구성하세요.
+2. 문제 번호, 지문, 조건, 표기, 객관식 보기 ①~⑤를 빠짐없이 포함하세요.
+3. 한국어 문장은 일반 텍스트로 쓰고, 수학 수식만 $...$ 또는 $$...$$ 안에 LaTeX로 쓰세요. 한국어 전체를 \\text{}로 감싸지 마세요.
+4. 각 문단과 각 보기는 줄바꿈으로 구분하세요. 긴 식이나 독립된 식은 $$...$$로 한 줄에 배치하세요.
+5. problemLatex 안에는 정답 표시, 풀이, 해설, 분석을 절대 넣지 마세요.
+6. answer에는 최종 정답만 쓰세요. 객관식이면 ①②③④⑤ 중 하나로 쓰세요.
+7. keywords는 관련 단원/개념 한국어 키워드 최대 5개입니다.
+8. 확실하지 않으면 answer를 빈 문자열로 두고, problemLatex는 읽을 수 있는 만큼만 적으세요.
+9. JSON 외 다른 텍스트는 출력하지 마세요.`;
 
 export function normalizeExtractJson(raw: unknown): {
   problemLatex: string;

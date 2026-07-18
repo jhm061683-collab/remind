@@ -22,6 +22,7 @@ import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { fileOrPreviewToDataUrl } from "@/lib/utils/compress-image";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
+import { LatexContent } from "@/components/math/latex-content";
 
 type Props = {
   userId: string;
@@ -79,6 +80,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [registeredCount, setRegisteredCount] = useState(0);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [problemLatex, setProblemLatex] = useState<string | null>(null);
+  const [editingLatex, setEditingLatex] = useState(false);
   const [ocrPending, startOcr] = useTransition();
 
   useEffect(() => {
@@ -98,6 +100,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     setError(null);
     setOcrNote(null);
     setProblemLatex(null);
+    setEditingLatex(false);
     const preview = questionPages[0]?.preview;
     if (!preview) {
       setError("문제 사진을 먼저 선택해 주세요.");
@@ -228,6 +231,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         subjectId,
         imageDataUrl,
         extraImageDataUrls,
+        problemLatex: problemLatex?.trim() || undefined,
         answerText: trimmedAnswer,
         answerImageDataUrl,
         keywords,
@@ -283,6 +287,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     setSuccess(false);
     setShowExtras(false);
     setProblemLatex(null);
+    setEditingLatex(false);
     setOcrNote(null);
     resetFormFields({
       setQuestionPages,
@@ -399,13 +404,39 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
             <p className="mt-1.5 text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
           ) : null}
           {problemLatex ? (
-            <div className="mt-2 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
-              <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
-                AI가 읽은 문제
-              </p>
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-sans text-sm text-[var(--rm-text)]">
-                {problemLatex}
-              </pre>
+            <div className="mt-2 overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
+              <div className="flex items-center justify-between border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
+                <p className="text-xs font-bold text-[var(--rm-text)]">
+                  AI가 다시 만든 문제
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEditingLatex((v) => !v)}
+                  className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
+                >
+                  {editingLatex ? "미리보기" : "수정"}
+                </button>
+              </div>
+              {editingLatex ? (
+                <div className="p-3">
+                  <textarea
+                    rows={8}
+                    value={problemLatex}
+                    onChange={(e) => setProblemLatex(e.target.value)}
+                    className="remind-input w-full font-mono text-sm leading-6"
+                    placeholder="문제 내용 (수식은 $...$ 로)"
+                  />
+                  <p className="mt-1 text-[11px] text-[var(--rm-text-faint)]">
+                    수식은 $...$ 안에 쓰면 자동으로 예쁘게 바뀝니다. 저장하면 이
+                    내용이 문제로 함께 등록돼요.
+                  </p>
+                </div>
+              ) : (
+                <LatexContent
+                  content={problemLatex}
+                  className="max-h-80 overflow-auto px-4 py-3 text-[15px]"
+                />
+              )}
             </div>
           ) : null}
         </div>
