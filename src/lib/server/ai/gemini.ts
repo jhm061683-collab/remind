@@ -12,6 +12,12 @@ type GeminiResponse = {
     content?: { parts?: Array<{ text?: string }> };
     finishReason?: string;
   }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+    totalTokenCount?: number;
+  };
   error?: { message?: string };
 };
 
@@ -76,6 +82,10 @@ export async function extractWithGemini(
         ],
         generationConfig: {
           temperature: 0.2,
+          // 옮겨 적기 작업이라 깊은 사고가 필요 없음.
+          // 생각(thinking) 토큰은 출력 요금으로 청구되어 건당 비용을 수십 배 올린다.
+          thinkingConfig: { thinkingBudget: 0 },
+          maxOutputTokens: 2048,
           response_mime_type: "application/json",
           response_schema: {
             ...EXTRACT_RESPONSE_SCHEMA,
@@ -89,6 +99,13 @@ export async function extractWithGemini(
   const body = (await res.json()) as GeminiResponse;
   if (!res.ok) {
     throw new Error(body.error?.message || "Gemini API 호출에 실패했습니다.");
+  }
+
+  if (body.usageMetadata) {
+    // Vercel 로그에서 건당 토큰(=비용) 추적용
+    console.log(
+      `[gemini] tokens in=${body.usageMetadata.promptTokenCount ?? 0} out=${body.usageMetadata.candidatesTokenCount ?? 0} thoughts=${body.usageMetadata.thoughtsTokenCount ?? 0}`,
+    );
   }
 
   const text =
