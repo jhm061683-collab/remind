@@ -9,9 +9,9 @@ import {
 import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
-import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
 import { LatexContent } from "@/components/math/latex-content";
+import { LatexLightbox } from "@/components/math/latex-lightbox";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
@@ -64,10 +64,8 @@ export function QuestionArchiveCard({
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [latexZoomOpen, setLatexZoomOpen] = useState(false);
   const [aiPending, startAi] = useTransition();
-
-  const imageUrls = getQuestionImageUrls(question);
 
   const hasAnswer = Boolean(question.answerText || question.answerImageDataUrl);
   const hasReflection = Boolean(
@@ -250,9 +248,7 @@ export function QuestionArchiveCard({
         {displayLatex ? (
           <button
             type="button"
-            onClick={() => {
-              if (imageUrls.length > 0) setLightboxOpen(true);
-            }}
+            onClick={() => setLatexZoomOpen(true)}
             className="relative block max-h-64 w-full overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)] text-left"
           >
             <LatexContent
@@ -260,11 +256,9 @@ export function QuestionArchiveCard({
               className="px-4 py-3.5 text-[15px]"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--rm-surface)] to-transparent" />
-            {imageUrls.length > 0 ? (
-              <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white">
-                <span aria-hidden>🔍</span> 원본 사진
-              </span>
-            ) : null}
+            <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white">
+              <span aria-hidden>🔍</span> 크게 보기
+            </span>
           </button>
         ) : (
           <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
@@ -590,11 +584,10 @@ export function QuestionArchiveCard({
           </div>
         ) : null}
       </li>
-      <ImageLightbox
-        urls={imageUrls}
-        alt="문제 원본"
-        open={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
+      <LatexLightbox
+        content={displayLatex}
+        open={latexZoomOpen}
+        onClose={() => setLatexZoomOpen(false)}
       />
     </>
   );
