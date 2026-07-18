@@ -78,6 +78,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [success, setSuccess] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [problemLatex, setProblemLatex] = useState<string | null>(null);
   const [ocrPending, startOcr] = useTransition();
 
   useEffect(() => {
@@ -96,14 +97,23 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   function runOcr() {
     setError(null);
     setOcrNote(null);
+    setProblemLatex(null);
     const preview = questionPages[0]?.preview;
     if (!preview) {
       setError("문제 사진을 먼저 선택해 주세요.");
       return;
     }
 
+    const extraImageDataUrls = questionPages
+      .slice(1)
+      .map((p) => p.preview)
+      .filter(Boolean);
+
     startOcr(async () => {
-      const result = await ocrFromImageAction({ imageDataUrl: preview });
+      const result = await ocrFromImageAction({
+        imageDataUrl: preview,
+        extraImageDataUrls,
+      });
       if (result.error) {
         setError(result.error);
         return;
@@ -111,6 +121,9 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       const data = result.result;
       if (!data) return;
 
+      if (data.problemLatex) {
+        setProblemLatex(data.problemLatex);
+      }
       if (data.answerGuess) {
         setAnswerText((prev) => prev || data.answerGuess);
       }
@@ -124,6 +137,12 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         });
         setShowExtras(true);
       }
+      const engineLabel =
+        result.engine === "gpt-4o"
+          ? "GPT-4o"
+          : result.engine === "gemini-2.0-flash"
+            ? "Gemini"
+            : "";
       const dailyHint =
         result.limit != null && result.used != null
           ? `오늘 ${result.used}/${result.limit}`
@@ -137,10 +156,9 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           ? ` (${[dailyHint, monthlyHint].filter(Boolean).join(" · ")})`
           : "";
       setOcrNote(
-        (data.note ||
-          (result.mock
-            ? "목 OCR입니다. Vision 키를 넣으면 실제로 읽습니다."
-            : "인식 결과를 확인해 주세요.")) + quotaHint,
+        (data.note || "인식 결과를 확인해 주세요.") +
+          (engineLabel ? ` · ${engineLabel}` : "") +
+          quotaHint,
       );
     });
   }
@@ -264,6 +282,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   function handleContinue() {
     setSuccess(false);
     setShowExtras(false);
+    setProblemLatex(null);
+    setOcrNote(null);
     resetFormFields({
       setQuestionPages,
       setQuestionReady,
@@ -372,11 +392,21 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               disabled={ocrPending}
               className="mt-2 min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm font-semibold text-[var(--rm-text)] touch-manipulation disabled:opacity-60"
             >
-              {ocrPending ? "읽는 중…" : "AI로 읽기 (정답·키워드 채우기)"}
+              {ocrPending ? "AI 분석 중…" : "AI로 읽기 (문제·정답 채우기)"}
             </button>
           ) : null}
           {ocrNote ? (
             <p className="mt-1.5 text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
+          ) : null}
+          {problemLatex ? (
+            <div className="mt-2 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
+              <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
+                AI가 읽은 문제
+              </p>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-sans text-sm text-[var(--rm-text)]">
+                {problemLatex}
+              </pre>
+            </div>
           ) : null}
         </div>
 

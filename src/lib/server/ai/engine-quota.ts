@@ -81,6 +81,8 @@ export async function getAvailableEngineAndDeductQuota(input: {
   userId: string;
   academyId: string | null;
   kind: AiTaskKind;
+  /** false면 GPT-4o 골드 티켓을 쓰지 않음 (OpenAI 키 없을 때) */
+  allowGold?: boolean;
 }): Promise<EngineQuotaResult> {
   if (!input.academyId) {
     return {
@@ -100,9 +102,9 @@ export async function getAvailableEngineAndDeductQuota(input: {
 
   const supabase = createServiceClient();
 
-  // Premium: 학생별 GPT-4o 우선 설정 확인 (기본 on)
+  // Premium: 학생별 GPT-4o 우선 설정 + 실제 OpenAI 키 가능 여부
   let wantGold = false;
-  if (limits.goldLimit > 0) {
+  if (limits.goldLimit > 0 && input.allowGold !== false) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("ai_prefer_gpt4o")
