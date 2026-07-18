@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   deleteQuestionAction,
+  updateProblemLatexAction,
   updateReflectionAction,
 } from "@/lib/actions/questions";
+import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
 import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
@@ -16,6 +18,7 @@ import { deleteQuestion, updateQuestion, type StoredQuestion } from "@/lib/data/
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import { formatDate } from "@/lib/utils/labels";
+import { getQuestionImageUrls } from "@/lib/utils/question-images";
 
 type Props = {
   question: StoredQuestion;
@@ -52,10 +55,15 @@ export function QuestionArchiveCard({
   const [reflectionMemo, setReflectionMemo] = useState(
     question.reflectionMemo ?? "",
   );
+  const [problemLatexDraft, setProblemLatexDraft] = useState(
+    question.problemLatex ?? "",
+  );
+  const [editingLatex, setEditingLatex] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [aiPending, startAi] = useTransition();
 
   const hasAnswer = Boolean(question.answerText || question.answerImageDataUrl);
   const hasReflection = Boolean(
@@ -65,6 +73,7 @@ export function QuestionArchiveCard({
       question.wrongReasonDetail ||
       question.source,
   );
+  const displayLatex = question.problemLatex ?? "";
 
   async function handleSaveReflection() {
     setSaving(true);
@@ -105,6 +114,102 @@ export function QuestionArchiveCard({
     }
   }
 
+  async function handleSaveLatex() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const latex = problemLatexDraft.trim();
+      if (!latex) {
+        setMessage("문제 내용을 입력해 주세요.");
+        return;
+      }
+
+      if (isSupabaseEnabled()) {
+        const result = await updateProblemLatexAction({
+          questionId: question.id,
+          problemLatex: latex,
+        });
+        if (result.error) {
+          setMessage(result.error);
+          return;
+        }
+        if (result.question) {
+          onUpdate(result.question);
+          setProblemLatexDraft(result.question.problemLatex ?? latex);
+        }
+      } else {
+        const updated = await updateQuestion(userId, question.id, {
+          problemLatex: latex,
+        });
+        if (updated) onUpdate(updated);
+      }
+      setEditingLatex(false);
+      setMessage("문제 문구를 저장했어요.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleRebuildWithAi() {
+    const urls = getQuestionImageUrls(question);
+    if (urls.length === 0) {
+      setMessage("문제 사진이 없어서 AI로 만들 수 없어요.");
+      return;
+    }
+
+    setMessage(null);
+    setExpanded(true);
+    startAi(async () => {
+      const result = await ocrFromImageAction({
+        imageDataUrl: urls[0]!,
+        extraImageDataUrls: urls.slice(1),
+      });
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      const latex = result.result?.problemLatex?.trim() ?? "";
+      if (!latex) {
+        setMessage("AI가 문제를 읽지 못했어요. 사진을 확인해 주세요.");
+        return;
+      }
+
+      setProblemLatexDraft(latex);
+      setEditingLatex(true);
+
+      if (isSupabaseEnabled()) {
+        const saved = await updateProblemLatexAction({
+          questionId: question.id,
+          problemLatex: latex,
+        });
+        if (saved.error) {
+          setMessage(saved.error);
+          return;
+        }
+        if (saved.question) onUpdate(saved.question);
+      } else {
+        const updated = await updateQuestion(userId, question.id, {
+          problemLatex: latex,
+        });
+        if (updated) onUpdate(updated);
+      }
+
+      if (result.result?.keywords?.length) {
+        setKeywords((prev) => {
+          const merged = [...prev];
+          for (const k of result.result!.keywords) {
+            if (!merged.includes(k)) merged.push(k);
+          }
+          return merged.slice(0, 12);
+        });
+      }
+
+      setMessage(
+        "깔끔한 문제로 바꿨어요. 틀린 부분은 수정 버튼으로 고쳐 주세요.",
+      );
+    });
+  }
+
   async function handleDeleteConfirm() {
     setDeleting(true);
     try {
@@ -138,17 +243,15 @@ export function QuestionArchiveCard({
         onCancel={() => setShowDeleteConfirm(false)}
       />
       <li className="remind-card overflow-hidden">
-        {question.problemLatex ? (
-          /* AI가 조판한 문제를 대표로 표시 (원본 사진은 상세에서) */
+        {displayLatex ? (
           <div className="relative max-h-64 overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)]">
             <LatexContent
-              content={question.problemLatex}
+              content={displayLatex}
               className="px-4 py-3.5 text-[15px]"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--rm-surface)] to-transparent" />
           </div>
         ) : (
-          /* 썸네일: 문제 사진만 (여러 장이면 넘김) */
           <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
             <QuestionImages
               question={question}
@@ -157,6 +260,18 @@ export function QuestionArchiveCard({
               fill
               imageClassName="object-contain"
             />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-10">
+              <button
+                type="button"
+                disabled={aiPending}
+                onClick={handleRebuildWithAi}
+                className="w-full rounded-xl bg-[var(--rm-nav-active)] px-3 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+              >
+                {aiPending
+                  ? "AI가 문제 만드는 중…"
+                  : "사진 → 깔끔한 문제로 바꾸기"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -174,7 +289,9 @@ export function QuestionArchiveCard({
             </span>
           </div>
           {question.source ? (
-            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">출처: {question.source}</p>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              출처: {question.source}
+            </p>
           ) : null}
           {question.wrongReason ? (
             <span className="mt-2 inline-block rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
@@ -195,7 +312,20 @@ export function QuestionArchiveCard({
               ) : null}
             </div>
           ) : null}
-          <p className="mt-1 text-[var(--rm-text-muted)]">등록: {formatDate(question.createdAt)}</p>
+          <p className="mt-1 text-[var(--rm-text-muted)]">
+            등록: {formatDate(question.createdAt)}
+          </p>
+
+          {displayLatex ? (
+            <button
+              type="button"
+              disabled={aiPending}
+              onClick={handleRebuildWithAi}
+              className="mt-2 w-full rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface)] py-2 text-xs font-semibold text-[var(--rm-text-muted)] touch-manipulation disabled:opacity-60"
+            >
+              {aiPending ? "AI 다시 읽는 중…" : "AI로 문제 다시 만들기"}
+            </button>
+          ) : null}
 
           <button
             type="button"
@@ -208,31 +338,80 @@ export function QuestionArchiveCard({
 
         {expanded ? (
           <div className="space-y-3 border-t border-[var(--rm-border)] px-3.5 pb-3.5">
-            {question.problemLatex ? (
-              <>
-                <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4">
-                  <p className="mb-2 text-sm font-bold text-[var(--rm-text)]">
-                    문제 전체
-                  </p>
-                  <LatexContent
-                    content={question.problemLatex}
-                    className="text-base"
+            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
+              <div className="flex items-center justify-between border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
+                <p className="text-sm font-bold text-[var(--rm-text)]">문제</p>
+                {displayLatex || editingLatex ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!editingLatex) {
+                        setProblemLatexDraft(displayLatex || problemLatexDraft);
+                      }
+                      setEditingLatex((v) => !v);
+                    }}
+                    className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
+                  >
+                    {editingLatex ? "미리보기" : "수정"}
+                  </button>
+                ) : null}
+              </div>
+
+              {editingLatex ? (
+                <div className="space-y-2 p-3">
+                  <textarea
+                    rows={8}
+                    value={problemLatexDraft}
+                    onChange={(e) => setProblemLatexDraft(e.target.value)}
+                    className="remind-input w-full font-mono text-sm leading-6"
+                    placeholder="문제 내용 (수식은 $...$ 로)"
                   />
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void handleSaveLatex()}
+                    className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+                  >
+                    {saving ? "저장 중…" : "문제 문구 저장"}
+                  </button>
                 </div>
-                <div className="overflow-hidden rounded-xl border border-[var(--rm-border)]">
-                  <p className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-bold text-[var(--rm-text-muted)]">
-                    원본 사진
+              ) : displayLatex ? (
+                <LatexContent
+                  content={displayLatex}
+                  className="px-4 py-3 text-base"
+                />
+              ) : (
+                <div className="space-y-2 p-3">
+                  <p className="text-sm text-[var(--rm-text-muted)]">
+                    아직 깔끔한 문제 문구가 없어요. 아래 버튼으로 AI가 사진을
+                    읽어 만들어 줍니다.
                   </p>
-                  <div className="relative bg-[var(--rm-accent-muted)]">
-                    <QuestionImages
-                      question={question}
-                      alt="문제 원본"
-                      imageClassName="h-auto max-h-80 w-full object-contain"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    disabled={aiPending}
+                    onClick={handleRebuildWithAi}
+                    className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+                  >
+                    {aiPending
+                      ? "AI가 문제 만드는 중…"
+                      : "사진 → 깔끔한 문제로 바꾸기"}
+                  </button>
                 </div>
-              </>
-            ) : null}
+              )}
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)]">
+              <p className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-bold text-[var(--rm-text-muted)]">
+                원본 사진
+              </p>
+              <div className="relative bg-[var(--rm-accent-muted)]">
+                <QuestionImages
+                  question={question}
+                  alt="문제 원본"
+                  imageClassName="h-auto max-h-80 w-full object-contain"
+                />
+              </div>
+            </div>
 
             {message ? (
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
@@ -242,7 +421,9 @@ export function QuestionArchiveCard({
 
             <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-[var(--rm-text-on-info)]">오답 분석</p>
+                <p className="text-sm font-bold text-[var(--rm-text-on-info)]">
+                  오답 분석
+                </p>
                 {!editing ? (
                   <button
                     type="button"
@@ -257,7 +438,9 @@ export function QuestionArchiveCard({
               {editing ? (
                 <div className="mt-3 space-y-3">
                   <label className="block">
-                    <span className="text-xs font-medium text-[var(--rm-text-muted)]">문제 출처</span>
+                    <span className="text-xs font-medium text-[var(--rm-text-muted)]">
+                      문제 출처
+                    </span>
                     <input
                       value={source}
                       onChange={(e) => setSource(e.target.value)}

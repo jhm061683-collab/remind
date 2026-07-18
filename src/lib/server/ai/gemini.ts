@@ -5,7 +5,7 @@ import {
   type QuestionExtractInput,
   type QuestionExtractResult,
 } from "@/lib/server/ai/extract-types";
-import { parseImageDataUrl } from "@/lib/server/ai/image-data";
+import { resolveImageParts } from "@/lib/server/ai/image-data";
 
 type GeminiResponse = {
   candidates?: Array<{
@@ -42,15 +42,17 @@ export async function extractWithGemini(
     throw new Error("인식할 이미지가 없습니다.");
   }
 
-  const imageParts = urls.map((url) => {
-    const { mimeType, base64 } = parseImageDataUrl(url);
-    return {
-      inline_data: {
-        mime_type: mimeType,
-        data: base64,
-      },
-    };
-  });
+  const imageParts = await Promise.all(
+    urls.map(async (url) => {
+      const { mimeType, base64 } = await resolveImageParts(url);
+      return {
+        inline_data: {
+          mime_type: mimeType,
+          data: base64,
+        },
+      };
+    }),
+  );
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,

@@ -266,6 +266,9 @@ export async function updateQuestion(
     update.reflection_memo = patch.reflectionMemo || null;
   }
   if (patch.answerText !== undefined) update.answer_text = patch.answerText || null;
+  if (patch.problemLatex !== undefined) {
+    update.problem_latex = patch.problemLatex?.trim() || null;
+  }
 
   const { data, error } = await supabase
     .from("questions")

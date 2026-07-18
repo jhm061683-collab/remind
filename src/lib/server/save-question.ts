@@ -235,6 +235,25 @@ export async function updateReflectionOnServer(
   return rowToStored(data as QuestionRow);
 }
 
+export async function updateProblemLatexOnServer(
+  userId: string,
+  input: { questionId: string; problemLatex: string },
+): Promise<StoredQuestion> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("questions")
+    .update({
+      problem_latex: input.problemLatex.trim() || null,
+    })
+    .eq("id", input.questionId)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return rowToStored(data as QuestionRow);
+}
+
 async function getReviewSettingsOnServer(
   userId: string,
   subjectId: string,

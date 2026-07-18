@@ -4,7 +4,7 @@ import {
   type QuestionExtractInput,
   type QuestionExtractResult,
 } from "@/lib/server/ai/extract-types";
-import { parseImageDataUrl } from "@/lib/server/ai/image-data";
+import { resolveImageParts } from "@/lib/server/ai/image-data";
 
 type OpenAIResponse = {
   choices?: Array<{
@@ -32,16 +32,18 @@ export async function extractWithOpenAI(
     throw new Error("인식할 이미지가 없습니다.");
   }
 
-  const imageContent = urls.map((url) => {
-    const { mimeType, base64 } = parseImageDataUrl(url);
-    return {
-      type: "image_url" as const,
-      image_url: {
-        url: `data:${mimeType};base64,${base64}`,
-        detail: "high" as const,
-      },
-    };
-  });
+  const imageContent = await Promise.all(
+    urls.map(async (url) => {
+      const { mimeType, base64 } = await resolveImageParts(url);
+      return {
+        type: "image_url" as const,
+        image_url: {
+          url: `data:${mimeType};base64,${base64}`,
+          detail: "high" as const,
+        },
+      };
+    }),
+  );
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

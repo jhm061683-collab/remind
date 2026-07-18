@@ -56,9 +56,10 @@ function toErrorMessage(err: unknown): string {
   if (
     record.code === "PGRST204" ||
     message.includes("wrong_keywords") ||
+    message.includes("problem_latex") ||
     message.includes("schema cache")
   ) {
-    return "DB 설정이 오래됐어요. Supabase에서 wrong_keywords SQL을 실행한 뒤 다시 시도해 주세요.";
+    return "DB 설정이 오래됐어요. Supabase에서 problem_latex SQL을 실행한 뒤 다시 시도해 주세요.";
   }
 
   return "등록 실패. 사진을 다시 선택해 주세요.";
@@ -167,5 +168,44 @@ export async function updateReflectionAction(input: {
   } catch (err) {
     console.error("[updateReflectionAction]", err);
     return { error: "저장에 실패했습니다. 다시 시도해 주세요." };
+  }
+}
+
+export type UpdateProblemLatexState = {
+  error?: string;
+  question?: import("@/lib/storage/questions").StoredQuestion;
+};
+
+/** 보관함에서 AI가 만든 문제 문구를 저장·수정 */
+export async function updateProblemLatexAction(input: {
+  questionId: string;
+  problemLatex: string;
+}): Promise<UpdateProblemLatexState> {
+  if (!isSupabaseEnabled()) {
+    return { error: "Supabase가 설정되지 않았습니다." };
+  }
+
+  const session = await getSession();
+  if (!session || !isSupabaseUserId(session.id)) {
+    return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
+  }
+
+  const latex = input.problemLatex?.trim() ?? "";
+  if (!latex) {
+    return { error: "문제 내용을 입력해 주세요." };
+  }
+
+  try {
+    const { updateProblemLatexOnServer } = await import(
+      "@/lib/server/save-question"
+    );
+    const question = await updateProblemLatexOnServer(session.id, {
+      questionId: input.questionId,
+      problemLatex: latex,
+    });
+    return { question };
+  } catch (err) {
+    console.error("[updateProblemLatexAction]", err);
+    return { error: toErrorMessage(err) };
   }
 }
