@@ -88,6 +88,24 @@ export function AccountMenu({ userName }: Props) {
             과목 설정
           </Link>
           <Link
+            href="/help"
+            role="menuitem"
+            prefetch={false}
+            onClick={() => setOpen(false)}
+            className="block px-3.5 py-2.5 text-sm font-medium text-[var(--rm-text)] hover:bg-[var(--rm-surface)]"
+          >
+            사용법
+          </Link>
+          <Link
+            href="/patch-notes"
+            role="menuitem"
+            prefetch={false}
+            onClick={() => setOpen(false)}
+            className="block px-3.5 py-2.5 text-sm font-medium text-[var(--rm-text)] hover:bg-[var(--rm-surface)]"
+          >
+            패치노트
+          </Link>
+          <Link
             href="/suggestions"
             role="menuitem"
             prefetch={false}

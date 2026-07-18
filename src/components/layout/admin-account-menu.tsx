@@ -87,6 +87,15 @@ export function AdminAccountMenu({
           >
             계정 설정
           </Link>
+          <Link
+            href="/admin/patch-notes"
+            role="menuitem"
+            prefetch={false}
+            onClick={() => setOpen(false)}
+            className="block px-3.5 py-2.5 text-sm font-medium text-[var(--rm-text)] hover:bg-[var(--rm-accent-muted)]"
+          >
+            패치노트
+          </Link>
           {showSuggestions ? (
             <Link
               href="/admin/suggestions"

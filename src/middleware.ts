@@ -15,6 +15,8 @@ const STUDENT_PREFIXES = [
   "/records",
   "/account",
   "/suggestions",
+  "/help",
+  "/patch-notes",
 ];
 const ADMIN_PREFIXES = ["/admin"];
 const PLATFORM_PREFIXES = ["/platform"];
@@ -145,6 +147,10 @@ export const config = {
     "/account",
     "/suggestions/:path*",
     "/suggestions",
+    "/help",
+    "/help/:path*",
+    "/patch-notes",
+    "/patch-notes/:path*",
     "/admin/:path*",
     "/sub-admin/:path*",
     "/platform",
