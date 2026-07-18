@@ -27,12 +27,12 @@ export async function extractQuestion(
   if (engine === "gpt-4o") {
     return extractWithOpenAI({ ...input, engine });
   }
-  return extractWithGemini({ ...input, engine: "gemini-2.0-flash" });
+  return extractWithGemini({ ...input, engine: "gemini-2.5-flash" });
 }
 
 function resolveRunnableEngine(preferred: AiEngine): AiEngine {
   if (preferred === "gpt-4o" && getOpenAIApiKey()) return "gpt-4o";
-  if (getGeminiApiKey()) return "gemini-2.0-flash";
+  if (getGeminiApiKey()) return "gemini-2.5-flash";
   if (getOpenAIApiKey()) return "gpt-4o";
   throw new Error(
     "AI API 키가 없습니다. GEMINI_API_KEY 또는 OPENAI_API_KEY를 설정해 주세요.",

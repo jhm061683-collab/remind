@@ -140,8 +140,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       const engineLabel =
         result.engine === "gpt-4o"
           ? "GPT-4o"
-          : result.engine === "gemini-2.0-flash"
-            ? "Gemini"
+          : result.engine === "gemini-2.5-flash"
+            ? "Gemini 2.5 Flash"
             : "";
       const dailyHint =
         result.limit != null && result.used != null

@@ -835,7 +835,7 @@ set
   ocr_daily_limit = 30,
   ai_monthly_limit = 400,
   ai_gold_monthly_limit = 0,
-  description = 'AI 문제 분석 월 400건 (하루 최대 30건, Gemini 2.0 Flash)'
+  description = 'AI 문제 분석 월 400건 (하루 최대 30건, Gemini 2.5 Flash)'
 where code = 'pro';
 
 update public.subscription_plans

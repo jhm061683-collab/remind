@@ -107,7 +107,7 @@ export async function extractWithGemini(
   }
 
   return {
-    engine: "gemini-2.0-flash",
+    engine: "gemini-2.5-flash",
     provider: "gemini",
     problemLatex: parsed.problemLatex,
     answerGuess: parsed.answerGuess,

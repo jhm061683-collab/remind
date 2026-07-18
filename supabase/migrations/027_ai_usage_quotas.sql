@@ -2,7 +2,7 @@
 --
 -- 정책 요약
 --   Basic  : AI 분석 없음
---   Pro    : 월 400건, 일 30건, 전량 Gemini 2.0 Flash
+--   Pro    : 월 400건, 일 30건, 전량 Gemini 2.5 Flash
 --   Premium: 월 400건, 일 30건, 그중 100건은 GPT-4o 골드 티켓
 --            (골드 소진 시 자동으로 Gemini Flash로 전환)
 --
@@ -29,7 +29,7 @@ set
   ocr_daily_limit = 30,
   ai_monthly_limit = 400,
   ai_gold_monthly_limit = 0,
-  description = 'AI 문제 분석 월 400건 (하루 최대 30건, Gemini 2.0 Flash)'
+  description = 'AI 문제 분석 월 400건 (하루 최대 30건, Gemini 2.5 Flash)'
 where code = 'pro';
 
 update public.subscription_plans
