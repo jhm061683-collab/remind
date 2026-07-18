@@ -811,10 +811,42 @@ export async function getStudentDetailForStaff(
     .map(([reason, count]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+
+  // AI 엔진 설정: 학생 프로필 토글 + 학원 플랜 코드
+  let aiEngine: StudentDetailData["aiEngine"] = null;
+  const { data: studentProfile } = await supabase
+    .from("profiles")
+    .select("academy_id, ai_prefer_gpt4o")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (studentProfile) {
+    let academyPlanCode: string | null = null;
+    if (studentProfile.academy_id) {
+      const { data: sub } = await supabase
+        .from("academy_subscriptions")
+        .select("plan_id")
+        .eq("academy_id", studentProfile.academy_id as string)
+        .maybeSingle();
+      if (sub?.plan_id) {
+        const { data: plan } = await supabase
+          .from("subscription_plans")
+          .select("code")
+          .eq("id", sub.plan_id)
+          .maybeSingle();
+        academyPlanCode = (plan?.code as string | null) ?? null;
+      }
+    }
+    aiEngine = {
+      academyPlanCode,
+      preferGpt4o: studentProfile.ai_prefer_gpt4o !== false,
+    };
+  }
+
   return {
     student,
     weeklyReviews: weekly,
     topWeaknesses,
+    aiEngine,
   };
 }
 

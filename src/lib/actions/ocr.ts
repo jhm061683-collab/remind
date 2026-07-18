@@ -4,14 +4,23 @@ import { getSession } from "@/lib/auth/session";
 import { ocrExtract, isOcrMockMode } from "@/lib/ocr/extract";
 import type { OcrExtractResult } from "@/lib/ocr/types";
 import { createServiceClient } from "@/lib/supabase/service";
-import { consumeOcrQuota } from "@/lib/server/billing/queries";
+import {
+  getAvailableEngineAndDeductQuota,
+  type AiEngine,
+} from "@/lib/server/ai/engine-quota";
 
 export type OcrActionState = {
   error?: string;
   result?: OcrExtractResult;
   mock?: boolean;
+  /** 오늘 사용 건수 / 일일 한도 */
   used?: number;
   limit?: number;
+  /** 이번 달 사용 건수 / 월 한도 */
+  monthlyUsed?: number;
+  monthlyLimit?: number;
+  /** 이번 요청에 배정된 엔진 */
+  engine?: AiEngine;
 };
 
 export async function ocrFromImageAction(input: {
@@ -38,15 +47,19 @@ export async function ocrFromImageAction(input: {
     .eq("id", session.id)
     .maybeSingle();
 
-  const quota = await consumeOcrQuota({
+  // B타입(업로드 즉시 추출) 1건 차감 + 엔진 결정
+  const quota = await getAvailableEngineAndDeductQuota({
     userId: session.id,
     academyId: (profile?.academy_id as string | null) ?? null,
+    kind: "extract",
   });
   if (quota.error) {
     return {
       error: quota.error,
-      used: quota.used,
-      limit: quota.limit,
+      used: quota.dailyUsed,
+      limit: quota.dailyLimit,
+      monthlyUsed: quota.monthlyUsed,
+      monthlyLimit: quota.monthlyLimit,
     };
   }
 
@@ -55,8 +68,11 @@ export async function ocrFromImageAction(input: {
     return {
       result,
       mock: isOcrMockMode(),
-      used: quota.used,
-      limit: quota.limit,
+      used: quota.dailyUsed,
+      limit: quota.dailyLimit,
+      monthlyUsed: quota.monthlyUsed,
+      monthlyLimit: quota.monthlyLimit,
+      engine: quota.engine,
     };
   } catch (err) {
     return {

@@ -25,14 +25,14 @@ function featuresFor(plan: PlanCardModel): string[] {
   if (plan.features?.length) return plan.features;
   const def = PLAN_DEFINITIONS.find((d) => d.code === plan.code);
   if (def) return def.features;
-  const ocr =
+  const ai =
     plan.ocrDailyLimit <= 0
-      ? "AI로 읽기(OCR) 없음"
-      : `AI로 읽기 하루 최대 ${plan.ocrDailyLimit}문제`;
+      ? "AI 문제 분석 없음"
+      : `AI 문제 분석 하루 최대 ${plan.ocrDailyLimit}건`;
   return [
     `학생당 월 ${formatKrw(plan.pricePerStudentKrw)}`,
     "오답 등록·복습 무제한",
-    ocr,
+    ai,
   ];
 }
 

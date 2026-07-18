@@ -67,6 +67,11 @@ export type StudentDetailData = {
   student: AdminStudentRow;
   weeklyReviews: DailyActivity[];
   topWeaknesses: { reason: string; count: number }[];
+  /** AI 엔진 설정 (Premium 학원에서만 토글 노출) */
+  aiEngine: {
+    academyPlanCode: string | null;
+    preferGpt4o: boolean;
+  } | null;
 };
 
 export type ClassStudentBrief = {

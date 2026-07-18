@@ -4,8 +4,12 @@ export type PlanDefinition = {
   code: PlanCode;
   name: string;
   pricePerStudentKrw: number;
-  /** 0이면 OCR 불가. null이면 제한 없음(현재 미사용) */
+  /** AI 이용 일일 한도 (학생 1인). 0이면 AI 사용 불가 */
   ocrDailyLimit: number;
+  /** AI 이용 월 한도 (학생 1인). 0이면 AI 사용 불가 */
+  aiMonthlyLimit: number;
+  /** 월 한도 중 GPT-4o 골드 티켓 수 (Premium 전용) */
+  aiGoldMonthlyLimit: number;
   description: string;
   highlight: boolean;
   features: string[];
@@ -17,38 +21,46 @@ export const PLAN_DEFINITIONS: PlanDefinition[] = [
     name: "Basic",
     pricePerStudentKrw: 9900,
     ocrDailyLimit: 0,
-    description: "OCR 없이 오답·복습을 무제한으로",
+    aiMonthlyLimit: 0,
+    aiGoldMonthlyLimit: 0,
+    description: "AI 분석 없이 오답·복습을 무제한으로",
     highlight: false,
     features: [
       "학생당 월 9,900원",
       "오답 등록·복습 무제한",
-      "AI로 읽기(OCR) 없음",
+      "AI 문제 분석 없음",
     ],
   },
   {
     code: "pro",
     name: "Pro",
     pricePerStudentKrw: 29000,
-    ocrDailyLimit: 10,
-    description: "OCR을 하루 최대 10문제까지",
+    ocrDailyLimit: 30,
+    aiMonthlyLimit: 400,
+    aiGoldMonthlyLimit: 0,
+    description: "AI 문제 분석 월 400건 (Gemini 2.0 Flash)",
     highlight: true,
     features: [
       "학생당 월 29,000원",
-      "오답 등록·복습 무제한",
-      "AI로 읽기 하루 최대 10문제",
+      "AI 문제 분석 월 400건 · 하루 최대 30건",
+      "Gemini 2.0 Flash 엔진 (빠르고 안정적)",
     ],
   },
   {
     code: "premium",
     name: "Premium",
     pricePerStudentKrw: 49000,
-    ocrDailyLimit: 20,
-    description: "OCR을 하루 최대 20문제까지",
+    ocrDailyLimit: 30,
+    aiMonthlyLimit: 400,
+    aiGoldMonthlyLimit: 100,
+    description: "GPT-4o 골드 티켓 100건 + Gemini 하이브리드",
     highlight: false,
     features: [
       "학생당 월 49,000원",
-      "오답 등록·복습 무제한",
-      "AI로 읽기 하루 최대 20문제",
+      "AI 문제 분석 월 400건 · 하루 최대 30건",
+      "GPT-4o 골드 티켓 월 100건 (킬러 문항용)",
+      "골드 소진 시 Gemini Flash 자동 전환",
+      "학생별 GPT-4o 우선 여부 설정",
     ],
   },
 ];

@@ -7,6 +7,7 @@ import {
   resetStudentPasswordAction,
   saveStudentDetailAction,
   sendAdminNotificationAction,
+  setStudentAiEnginePreferenceAction,
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { StudentDetailData } from "@/lib/types/admin";
@@ -23,6 +24,9 @@ export function StudentDetailPanel({ detail }: Props) {
   const [schoolLevel, setSchoolLevel] = useState(student.schoolLevel ?? "middle");
   const [gradeNumber, setGradeNumber] = useState(student.gradeNumber ?? 1);
   const [password, setPassword] = useState("");
+  const [preferGpt4o, setPreferGpt4o] = useState(
+    detail.aiEngine?.preferGpt4o ?? true,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -158,6 +162,52 @@ export function StudentDetailPanel({ detail }: Props) {
           </button>
         </div>
       </section>
+
+      {detail.aiEngine?.academyPlanCode === "premium" ? (
+        <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
+          <h3 className="font-semibold text-[var(--rm-text)]">
+            AI 엔진 설정 (Premium)
+          </h3>
+          <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+            켜면 GPT-4o 골드 티켓(월 100건)이 남아 있을 때 GPT-4o를 먼저
+            씁니다. 끄면 골드 티켓을 아끼고 Gemini만 씁니다.
+          </p>
+          <label className="mt-3 flex cursor-pointer items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={preferGpt4o}
+              disabled={pending}
+              onClick={() => {
+                const next = !preferGpt4o;
+                setPreferGpt4o(next);
+                startTransition(async () => {
+                  const res = await setStudentAiEnginePreferenceAction(
+                    student.id,
+                    next,
+                  );
+                  if (res.error) {
+                    setPreferGpt4o(!next);
+                  }
+                  setMessage(res.error ?? res.success ?? null);
+                });
+              }}
+              className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                preferGpt4o ? "bg-blue-600" : "bg-[var(--rm-border)]"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                  preferGpt4o ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </button>
+            <span className="text-sm text-[var(--rm-text)]">
+              {preferGpt4o ? "GPT-4o 우선 (골드 티켓 사용)" : "Gemini만 사용"}
+            </span>
+          </label>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
         <h3 className="font-semibold text-[var(--rm-text)]">즉시 알림 발송</h3>

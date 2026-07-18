@@ -814,3 +814,130 @@ create table if not exists public.ocr_daily_usage (
 );
 
 alter table public.ocr_daily_usage enable row level security;
+
+-- -----------------------------------------------------------------------------
+-- AI 이용 쿼터: 월 400건 / 일 30건 / Premium GPT-4o 골드 티켓 100건 (027)
+-- -----------------------------------------------------------------------------
+alter table public.subscription_plans
+  add column if not exists ai_monthly_limit int not null default 0,
+  add column if not exists ai_gold_monthly_limit int not null default 0;
+
+update public.subscription_plans
+set
+  ocr_daily_limit = 0,
+  ai_monthly_limit = 0,
+  ai_gold_monthly_limit = 0,
+  description = 'AI 분석 없이 오답·복습을 무제한으로 쓰는 기본 요금제'
+where code = 'basic';
+
+update public.subscription_plans
+set
+  ocr_daily_limit = 30,
+  ai_monthly_limit = 400,
+  ai_gold_monthly_limit = 0,
+  description = 'AI 문제 분석 월 400건 (하루 최대 30건, Gemini 2.0 Flash)'
+where code = 'pro';
+
+update public.subscription_plans
+set
+  ocr_daily_limit = 30,
+  ai_monthly_limit = 400,
+  ai_gold_monthly_limit = 100,
+  description = '월 400건 중 100건은 GPT-4o 골드 티켓, 이후 Gemini 자동 전환'
+where code = 'premium';
+
+alter table public.profiles
+  add column if not exists ai_prefer_gpt4o boolean not null default true;
+
+create table if not exists public.ai_usage_monthly (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  usage_month date not null,
+  used_count int not null default 0 check (used_count >= 0),
+  gold_used_count int not null default 0 check (gold_used_count >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, usage_month)
+);
+
+alter table public.ai_usage_monthly enable row level security;
+
+create or replace function public.consume_ai_quota(
+  p_user_id uuid,
+  p_daily_limit int,
+  p_monthly_limit int,
+  p_gold_limit int,
+  p_want_gold boolean
+) returns table (
+  allowed boolean,
+  use_gold boolean,
+  daily_used int,
+  monthly_used int,
+  gold_used int,
+  reason text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_today date := (timezone('Asia/Seoul', now()))::date;
+  v_month date := (date_trunc('month', timezone('Asia/Seoul', now())))::date;
+  v_daily int;
+  v_monthly int;
+  v_gold int;
+  v_use_gold boolean := false;
+begin
+  insert into public.ocr_daily_usage (user_id, usage_date, used_count)
+  values (p_user_id, v_today, 0)
+  on conflict (user_id, usage_date) do nothing;
+
+  insert into public.ai_usage_monthly (user_id, usage_month, used_count, gold_used_count)
+  values (p_user_id, v_month, 0, 0)
+  on conflict (user_id, usage_month) do nothing;
+
+  select d.used_count into v_daily
+  from public.ocr_daily_usage d
+  where d.user_id = p_user_id and d.usage_date = v_today
+  for update;
+
+  select m.used_count, m.gold_used_count into v_monthly, v_gold
+  from public.ai_usage_monthly m
+  where m.user_id = p_user_id and m.usage_month = v_month
+  for update;
+
+  if p_daily_limit > 0 and v_daily >= p_daily_limit then
+    return query select false, false, v_daily, v_monthly, v_gold, 'daily_limit'::text;
+    return;
+  end if;
+
+  if p_monthly_limit > 0 and v_monthly >= p_monthly_limit then
+    return query select false, false, v_daily, v_monthly, v_gold, 'monthly_limit'::text;
+    return;
+  end if;
+
+  v_use_gold := p_want_gold and p_gold_limit > 0 and v_gold < p_gold_limit;
+
+  update public.ocr_daily_usage
+  set used_count = used_count + 1
+  where user_id = p_user_id and usage_date = v_today;
+
+  update public.ai_usage_monthly
+  set
+    used_count = used_count + 1,
+    gold_used_count = gold_used_count + (case when v_use_gold then 1 else 0 end),
+    updated_at = now()
+  where user_id = p_user_id and usage_month = v_month;
+
+  return query select
+    true,
+    v_use_gold,
+    v_daily + 1,
+    v_monthly + 1,
+    v_gold + (case when v_use_gold then 1 else 0 end),
+    'ok'::text;
+end;
+$$;
+
+revoke all on function public.consume_ai_quota(uuid, int, int, int, boolean) from public;
+revoke all on function public.consume_ai_quota(uuid, int, int, int, boolean) from anon;
+revoke all on function public.consume_ai_quota(uuid, int, int, int, boolean) from authenticated;
+grant execute on function public.consume_ai_quota(uuid, int, int, int, boolean) to service_role;

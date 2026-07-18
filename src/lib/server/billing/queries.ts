@@ -24,6 +24,8 @@ export type AcademyBillingSummary = {
   planCode: PlanCode | string | null;
   planName: string | null;
   ocrDailyLimit: number;
+  aiMonthlyLimit: number;
+  aiGoldMonthlyLimit: number;
 };
 
 export type PublicPlanRow = {
@@ -32,6 +34,8 @@ export type PublicPlanRow = {
   name: string;
   pricePerStudentKrw: number;
   ocrDailyLimit: number;
+  aiMonthlyLimit: number;
+  aiGoldMonthlyLimit: number;
   description: string | null;
   highlight: boolean;
   sortOrder: number;
@@ -81,18 +85,24 @@ export async function getAcademyBillingSummary(
   let planCode: string | null = null;
   let planName: string | null = null;
   let ocrDailyLimit = 0;
+  let aiMonthlyLimit = 0;
+  let aiGoldMonthlyLimit = 0;
   let unit = Number(sub?.price_per_student_krw ?? 0);
 
   if (sub?.plan_id) {
     const { data: plan } = await supabase
       .from("subscription_plans")
-      .select("code, name, price_per_student_krw, ocr_daily_limit")
+      .select(
+        "code, name, price_per_student_krw, ocr_daily_limit, ai_monthly_limit, ai_gold_monthly_limit",
+      )
       .eq("id", sub.plan_id)
       .maybeSingle();
     if (plan) {
       planCode = (plan.code as string) ?? null;
       planName = (plan.name as string) ?? null;
       ocrDailyLimit = Number(plan.ocr_daily_limit ?? 0);
+      aiMonthlyLimit = Number(plan.ai_monthly_limit ?? 0);
+      aiGoldMonthlyLimit = Number(plan.ai_gold_monthly_limit ?? 0);
       if (!unit) unit = Number(plan.price_per_student_krw ?? 0);
     }
   }
@@ -122,6 +132,8 @@ export async function getAcademyBillingSummary(
     planCode,
     planName,
     ocrDailyLimit,
+    aiMonthlyLimit,
+    aiGoldMonthlyLimit,
   };
 }
 
@@ -130,7 +142,7 @@ export async function listActivePlans(): Promise<PublicPlanRow[]> {
   const { data } = await supabase
     .from("subscription_plans")
     .select(
-      "id, code, name, price_per_student_krw, ocr_daily_limit, description, highlight, sort_order",
+      "id, code, name, price_per_student_krw, ocr_daily_limit, ai_monthly_limit, ai_gold_monthly_limit, description, highlight, sort_order",
     )
     .eq("is_active", true)
     .in("code", ["basic", "pro", "premium"])
@@ -142,6 +154,8 @@ export async function listActivePlans(): Promise<PublicPlanRow[]> {
     name: p.name as string,
     pricePerStudentKrw: Number(p.price_per_student_krw ?? 0),
     ocrDailyLimit: Number(p.ocr_daily_limit ?? 0),
+    aiMonthlyLimit: Number(p.ai_monthly_limit ?? 0),
+    aiGoldMonthlyLimit: Number(p.ai_gold_monthly_limit ?? 0),
     description: (p.description as string | null) ?? null,
     highlight: Boolean(p.highlight),
     sortOrder: Number(p.sort_order ?? 0),
@@ -254,64 +268,6 @@ export async function changeAcademyPlan(input: {
 }
 
 /** Asia/Seoul 기준 오늘 OCR 사용량 확인·증가 */
-export async function consumeOcrQuota(input: {
-  userId: string;
-  academyId: string | null;
-}): Promise<{ error?: string; used?: number; limit?: number }> {
-  const supabase = createServiceClient();
-
-  let limit = 0;
-  if (input.academyId) {
-    const summary = await getAcademyBillingSummary(input.academyId);
-    limit = summary?.ocrDailyLimit ?? 0;
-  }
-
-  if (limit <= 0) {
-    return {
-      error:
-        "현재 요금제에서는 AI로 읽기(OCR)를 쓸 수 없습니다. Pro 또는 Premium으로 바꿔 주세요.",
-      limit: 0,
-      used: 0,
-    };
-  }
-
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-
-  const { data: row } = await supabase
-    .from("ocr_daily_usage")
-    .select("used_count")
-    .eq("user_id", input.userId)
-    .eq("usage_date", today)
-    .maybeSingle();
-
-  const used = Number(row?.used_count ?? 0);
-  if (used >= limit) {
-    return {
-      error: `오늘 OCR 한도(${limit}회)를 모두 썼습니다. 내일 다시 시도해 주세요.`,
-      used,
-      limit,
-    };
-  }
-
-  const next = used + 1;
-  const { error } = await supabase.from("ocr_daily_usage").upsert(
-    {
-      user_id: input.userId,
-      usage_date: today,
-      used_count: next,
-    },
-    { onConflict: "user_id,usage_date" },
-  );
-  if (error) return { error: error.message, used, limit };
-
-  return { used: next, limit };
-}
-
 export async function ensureCustomerKey(
   academyId: string,
 ): Promise<{ error?: string; customerKey?: string }> {

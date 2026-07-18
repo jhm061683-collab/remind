@@ -128,9 +128,12 @@ export function BillingPanel({
         <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
           {summary.planName ? `${summary.planName} · ` : null}
           학생 {summary.studentCount}명 × {formatKrw(summary.pricePerStudentKrw)}
-          {summary.ocrDailyLimit > 0
-            ? ` · OCR 하루 ${summary.ocrDailyLimit}회`
-            : " · OCR 없음"}
+          {summary.aiMonthlyLimit > 0
+            ? ` · AI 월 ${summary.aiMonthlyLimit}건 (하루 ${summary.ocrDailyLimit}건)`
+            : " · AI 분석 없음"}
+          {summary.aiGoldMonthlyLimit > 0
+            ? ` · GPT-4o 골드 ${summary.aiGoldMonthlyLimit}건`
+            : null}
         </p>
         <p className="mt-1 text-xs text-[var(--rm-text-faint)]">
           학생 수가 바뀌면 월 요금도 바뀝니다. 카드 번호는 우리 서버에 저장하지

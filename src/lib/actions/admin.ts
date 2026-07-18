@@ -457,6 +457,47 @@ export async function saveStudentDetailAction(
   return { success: "학생 정보를 저장했습니다." };
 }
 
+/**
+ * Premium 학원용: 학생별 GPT-4o 우선 사용 여부 토글
+ * (골드 티켓이 남아 있을 때 GPT-4o를 먼저 쓸지 결정)
+ */
+export async function setStudentAiEnginePreferenceAction(
+  studentId: string,
+  preferGpt4o: boolean,
+): Promise<{ error?: string; success?: string }> {
+  const session = await requireAdmin();
+  const supabase = createServiceClient();
+
+  const academyId = await getAcademyIdForAdmin(session.id);
+  if (!academyId) return { error: "학원 정보가 없습니다." };
+
+  const { data: studentProfile } = await supabase
+    .from("profiles")
+    .select("academy_id, role")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (
+    !studentProfile ||
+    studentProfile.role !== "student" ||
+    studentProfile.academy_id !== academyId
+  ) {
+    return { error: "우리 학원 학생만 설정할 수 있습니다." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ ai_prefer_gpt4o: preferGpt4o })
+    .eq("id", studentId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/students/${studentId}`);
+  return {
+    success: preferGpt4o
+      ? "이 학생은 골드 티켓이 남아 있으면 GPT-4o를 먼저 씁니다."
+      : "이 학생은 골드 티켓을 아끼고 Gemini만 씁니다.",
+  };
+}
+
 export async function createClassRoomAction(payload: {
   name: string;
   schoolLevel: "elementary" | "middle" | "high" | "adult";

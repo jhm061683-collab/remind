@@ -124,9 +124,17 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         });
         setShowExtras(true);
       }
-      const quotaHint =
+      const dailyHint =
         result.limit != null && result.used != null
-          ? ` (오늘 ${result.used}/${result.limit})`
+          ? `오늘 ${result.used}/${result.limit}`
+          : "";
+      const monthlyHint =
+        result.monthlyLimit != null && result.monthlyUsed != null
+          ? `이번 달 ${result.monthlyUsed}/${result.monthlyLimit}`
+          : "";
+      const quotaHint =
+        dailyHint || monthlyHint
+          ? ` (${[dailyHint, monthlyHint].filter(Boolean).join(" · ")})`
           : "";
       setOcrNote(
         (data.note ||
