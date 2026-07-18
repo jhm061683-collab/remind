@@ -9,6 +9,7 @@ import {
 import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
 import { LatexContent } from "@/components/math/latex-content";
 import { KeywordPicker } from "@/components/student/keyword-picker";
@@ -63,7 +64,10 @@ export function QuestionArchiveCard({
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [aiPending, startAi] = useTransition();
+
+  const imageUrls = getQuestionImageUrls(question);
 
   const hasAnswer = Boolean(question.answerText || question.answerImageDataUrl);
   const hasReflection = Boolean(
@@ -244,13 +248,24 @@ export function QuestionArchiveCard({
       />
       <li className="remind-card overflow-hidden">
         {displayLatex ? (
-          <div className="relative max-h-64 overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)]">
+          <button
+            type="button"
+            onClick={() => {
+              if (imageUrls.length > 0) setLightboxOpen(true);
+            }}
+            className="relative block max-h-64 w-full overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)] text-left"
+          >
             <LatexContent
               content={displayLatex}
               className="px-4 py-3.5 text-[15px]"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--rm-surface)] to-transparent" />
-          </div>
+            {imageUrls.length > 0 ? (
+              <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white">
+                <span aria-hidden>🔍</span> 원본 사진
+              </span>
+            ) : null}
+          </button>
         ) : (
           <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
             <QuestionImages
@@ -575,6 +590,12 @@ export function QuestionArchiveCard({
           </div>
         ) : null}
       </li>
+      <ImageLightbox
+        urls={imageUrls}
+        alt="문제 원본"
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </>
   );
 }
