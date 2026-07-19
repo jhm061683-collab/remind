@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ocrFromImageAction } from "@/lib/actions/ocr";
-import { saveQuestionAction } from "@/lib/actions/questions";
+import { saveQuestionsBatchAction } from "@/lib/actions/questions";
 import {
   MultiImagePicker,
   type ImagePage,
@@ -56,6 +56,7 @@ export function QuestionUploadForm({
   defaultSubjectId,
   initialAiQuota = null,
 }: Props) {
+  const saveRequestIdRef = useRef<string | null>(null);
   const router = useRouter();
   const { subjects, getSubjectName, loading: subjectsLoading } = useSubjects();
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? "");
@@ -121,6 +122,7 @@ export function QuestionUploadForm({
 
     startOcr(async () => {
       const result = await ocrFromImageAction({
+        requestId: crypto.randomUUID(),
         imageDataUrl: preview,
         extraImageDataUrls,
         subjectId,
@@ -343,14 +345,19 @@ export function QuestionUploadForm({
             },
           ];
 
-      for (const payload of toSave) {
-        if (isSupabaseEnabled()) {
-          const result = await saveQuestionAction(payload);
-          if (result.error) {
-            setError(result.error);
-            return;
-          }
-        } else {
+      if (isSupabaseEnabled()) {
+        // 응답이 유실되어 사용자가 다시 눌러도 같은 UUID를 재사용해 중복 저장을 막는다.
+        saveRequestIdRef.current ??= crypto.randomUUID();
+        const result = await saveQuestionsBatchAction({
+          requestId: saveRequestIdRef.current,
+          questions: toSave,
+        });
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+      } else {
+        for (const payload of toSave) {
           await saveQuestion(userId, {
             ...payload,
             userId,
@@ -368,6 +375,7 @@ export function QuestionUploadForm({
         void recordKeywordUsage(userId, "wrong", wrongKeywords);
       }
 
+      saveRequestIdRef.current = null;
       setRegisteredCount(toSave.length);
       setSuccess(true);
     } catch (err) {
@@ -521,6 +529,8 @@ export function QuestionUploadForm({
               촬영하거나 앨범에서 최대 5장을 선택하세요.
             </p>
           </div>
+
+          <PhotoTips />
 
           <label className="block">
             <span className="remind-field-label">과목</span>
@@ -882,5 +892,27 @@ export function QuestionUploadForm({
         </section>
       ) : null}
     </div>
+  );
+}
+
+/** 사진 실패를 줄이는 컴팩트 촬영 가이드 — 접었다 펼 수 있게 */
+function PhotoTips() {
+  return (
+    <details className="group rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] open:pb-2">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-[var(--rm-text)] [&::-webkit-details-marker]:hidden">
+        <span>사진 잘 찍는 법 (안 읽히면 횟수만 줄어요)</span>
+        <span className="text-xs text-[var(--rm-text-muted)] transition-transform group-open:rotate-180">
+          ▾
+        </span>
+      </summary>
+      <div className="grid gap-1.5 px-3 pb-1 text-xs leading-5 text-[var(--rm-text-on-info)]">
+        <p>✅ 문제 하나가 화면에 꽉 차게, 반듯하게 찍어요.</p>
+        <p>✅ 밝은 곳에서, 그림자와 손가락이 안 들어가게.</p>
+        <p>✅ 글자가 또렷하게 보일 때까지 가까이.</p>
+        <p className="text-[var(--rm-text-muted)]">
+          ❌ 흐릿하거나 기울거나 어두운 사진은 AI가 못 읽어요.
+        </p>
+      </div>
+    </details>
   );
 }

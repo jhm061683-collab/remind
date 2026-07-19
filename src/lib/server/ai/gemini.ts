@@ -1,7 +1,9 @@
 import {
+  AiExtractError,
   EXTRACT_RESPONSE_SCHEMA,
   EXTRACT_SYSTEM_PROMPT,
   normalizeExtractJson,
+  type AiTokenUsage,
   type QuestionExtractInput,
   type QuestionExtractResult,
 } from "@/lib/server/ai/extract-types";
@@ -110,6 +112,14 @@ export async function extractWithGemini(
     );
   }
 
+  // 여기까지 왔다면 제공자가 사진을 처리했고 입력 토큰은 이미 청구된 상태다.
+  // 이후 실패(빈 응답·파싱 실패)는 과금된 실패로 표시해 환불하지 않는다.
+  const billedUsage: AiTokenUsage = {
+    promptTokens: Number(body.usageMetadata?.promptTokenCount ?? 0),
+    outputTokens: Number(body.usageMetadata?.candidatesTokenCount ?? 0),
+    thoughtsTokens: Number(body.usageMetadata?.thoughtsTokenCount ?? 0),
+  };
+
   const text =
     body.candidates?.[0]?.content?.parts
       ?.map((p) => p.text ?? "")
@@ -117,14 +127,20 @@ export async function extractWithGemini(
       .trim() ?? "";
 
   if (!text) {
-    throw new Error("AI가 문제를 읽지 못했습니다. 사진을 다시 찍어 주세요.");
+    throw new AiExtractError(
+      "AI가 문제를 읽지 못했습니다. 사진을 더 밝고 또렷하게 다시 찍어 주세요.",
+      { billed: true, engine: "gemini-3.5-flash", usage: billedUsage },
+    );
   }
 
   let parsed;
   try {
     parsed = normalizeExtractJson(text);
   } catch {
-    throw new Error("AI가 정리한 내용을 읽지 못했습니다. 다시 시도해 주세요.");
+    throw new AiExtractError(
+      "AI가 정리한 내용을 읽지 못했습니다. 사진을 다시 확인해 주세요.",
+      { billed: true, engine: "gemini-3.5-flash", usage: billedUsage },
+    );
   }
 
   const first = parsed.problems[0]!;

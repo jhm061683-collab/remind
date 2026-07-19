@@ -3,6 +3,7 @@
 import { getSession } from "@/lib/auth/session";
 import {
   saveQuestionOnServer,
+  saveQuestionsBatchOnServer,
   type SaveQuestionInput,
 } from "@/lib/server/save-question";
 import {
@@ -12,6 +13,11 @@ import {
 
 export type SaveQuestionState = {
   error?: string;
+};
+
+export type SaveQuestionsBatchState = {
+  error?: string;
+  savedCount?: number;
 };
 
 export type DeleteQuestionState = {
@@ -95,6 +101,47 @@ export async function saveQuestionAction(
     return {};
   } catch (err) {
     console.error("[saveQuestionAction]", err);
+    return { error: toErrorMessage(err) };
+  }
+}
+
+export async function saveQuestionsBatchAction(input: {
+  requestId: string;
+  questions: SaveQuestionInput[];
+}): Promise<SaveQuestionsBatchState> {
+  if (!isSupabaseEnabled()) {
+    return { error: "Supabase가 설정되지 않았습니다." };
+  }
+
+  const session = await getSession();
+  if (!session || !isSupabaseUserId(session.id)) {
+    return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
+  }
+  if (
+    session.role !== "student" &&
+    session.role !== "admin" &&
+    session.role !== "sub_admin"
+  ) {
+    return { error: "이 역할로는 문제를 등록할 수 없습니다." };
+  }
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      input.requestId,
+    )
+  ) {
+    return { error: "잘못된 저장 요청입니다. 다시 시도해 주세요." };
+  }
+
+  try {
+    const questions = await saveQuestionsBatchOnServer(
+      session.id,
+      input.requestId,
+      input.questions,
+      { id: session.id, role: session.role },
+    );
+    return { savedCount: questions.length };
+  } catch (err) {
+    console.error("[saveQuestionsBatchAction]", err);
     return { error: toErrorMessage(err) };
   }
 }

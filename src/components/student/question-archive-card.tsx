@@ -171,6 +171,7 @@ export function QuestionArchiveCard({
     setShowProblemSection(true);
     startAi(async () => {
       const result = await ocrFromImageAction({
+        requestId: crypto.randomUUID(),
         imageDataUrl: urls[0]!,
         extraImageDataUrls: urls.slice(1),
         subjectId: question.subjectId,

@@ -39,9 +39,10 @@
   --rm-text-on-elevated: #eceef2;
 
   /* 배경에 따라 자동 혼합되는 보조 글자 */
-  --rm-text-muted: color-mix(in srgb, var(--rm-text) 70%, var(--rm-bg-base));
-  --rm-text-subtle: color-mix(in srgb, var(--rm-text) 50%, var(--rm-bg-base));
-  --rm-text-faint: color-mix(in srgb, var(--rm-text) 36%, var(--rm-bg-base));
+  --rm-text-muted: color-mix(in srgb, var(--rm-text) 74%, var(--rm-bg-base));
+  --rm-text-subtle: color-mix(in srgb, var(--rm-text) 60%, var(--rm-bg-base));
+  /* 11~12px 보조 문구도 어두운 배경에서 WCAG AA 대비를 유지한다. */
+  --rm-text-faint: color-mix(in srgb, var(--rm-text) 50%, var(--rm-bg-base));
 
   /* 틴트 배경 위 글자 */
   --rm-text-on-info: color-mix(in srgb, var(--rm-text) 92%, var(--rm-brand-bright));
@@ -115,6 +116,19 @@
 
 [data-theme] .rm-page-header .rm-display {
   font-size: 1.25rem;
+}
+
+/* 긴 국어·영어 지문과 수식을 장시간 읽어도 번지지 않는 본문 규격 */
+[data-theme] .latex-content {
+  color: var(--rm-text-on-surface);
+  font-weight: 400;
+  line-height: 2;
+  text-rendering: optimizeLegibility;
+}
+
+[data-theme] .latex-content .katex {
+  color: inherit;
+  font-size: 1.04em;
 }
 
 /* ─── Glass surface ─── */

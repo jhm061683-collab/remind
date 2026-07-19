@@ -1,5 +1,6 @@
 import { uploadDataUrlOnServer } from "@/lib/server/upload-image";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   DEFAULT_REVIEW_SETTINGS,
   GLOBAL_SETTINGS_KEY,
@@ -99,6 +100,87 @@ export type UpdateReflectionInput = {
   reflectionMemo?: string;
 };
 
+export async function saveQuestionsBatchOnServer(
+  userId: string,
+  requestId: string,
+  inputs: SaveQuestionInput[],
+  actor: {
+    id: string;
+    role: "student" | "admin" | "sub_admin";
+  },
+): Promise<StoredQuestion[]> {
+  if (inputs.length < 1 || inputs.length > 20) {
+    throw new Error("INVALID_QUESTION_BATCH");
+  }
+  if (actor.id !== userId) {
+    throw new Error("QUESTION_SAVE_FORBIDDEN");
+  }
+
+  const rows = [];
+  for (const input of inputs) {
+    const answerText = input.answerText?.trim();
+    if (!answerText) throw new Error("ANSWER_TEXT_REQUIRED");
+
+    const settings = await getReviewSettingsOnServer(userId, input.subjectId);
+    const nextReviewDate = new Date();
+    nextReviewDate.setDate(
+      nextReviewDate.getDate() + settings.shortIntervalDays,
+    );
+
+    const imageUrl = input.imageDataUrl.startsWith("data:")
+      ? await uploadDataUrlOnServer(input.imageDataUrl, userId, "question")
+      : input.imageDataUrl;
+    const extraImageUrls = await Promise.all(
+      (input.extraImageDataUrls ?? []).map((url) =>
+        url.startsWith("data:")
+          ? uploadDataUrlOnServer(url, userId, "question")
+          : Promise.resolve(url),
+      ),
+    );
+    const answerImageUrl = input.answerImageDataUrl
+      ? input.answerImageDataUrl.startsWith("data:")
+        ? await uploadDataUrlOnServer(
+            input.answerImageDataUrl,
+            userId,
+            "answer",
+          )
+        : input.answerImageDataUrl
+      : null;
+    const wrongReasonDetail =
+      input.wrongReasonDetail ??
+      (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null);
+
+    rows.push({
+      subject_id: input.subjectId,
+      image_url: imageUrl,
+      extra_image_urls: extraImageUrls,
+      problem_latex: input.problemLatex?.trim() || null,
+      ocr_text: input.ocrText?.trim() || null,
+      entry_mode: input.entryMode ?? (input.problemLatex ? "ai" : "manual"),
+      answer_text: answerText,
+      answer_image_url: answerImageUrl,
+      keywords: input.keywords,
+      source: input.source?.trim() || null,
+      wrong_reason: input.wrongReason ?? null,
+      wrong_keywords: input.wrongKeywords ?? [],
+      wrong_reason_detail: wrongReasonDetail,
+      reflection_memo: input.reflectionMemo?.trim() || null,
+      next_review_date: nextReviewDate.toISOString(),
+    });
+  }
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc("save_question_batch", {
+    p_request_id: requestId,
+    p_user_id: userId,
+    p_actor_role: actor.role,
+    p_questions: rows,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data)) throw new Error("INVALID_BATCH_RESPONSE");
+  return (data as QuestionRow[]).map(rowToStored);
+}
+
 export async function saveQuestionOnServer(
   userId: string,
   input: SaveQuestionInput,
@@ -125,7 +207,6 @@ export async function saveQuestionOnServer(
       : input.answerImageDataUrl;
   }
 
-  const { uploadDataUrlsIfNeeded } = await import("@/lib/utils/question-images");
   const extraImageUrls = input.extraImageDataUrls?.length
     ? await Promise.all(
         input.extraImageDataUrls.map(async (url) =>

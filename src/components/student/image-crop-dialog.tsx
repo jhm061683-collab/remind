@@ -32,15 +32,24 @@ export function ImageCropDialog({
   onApply,
 }: Props) {
   const imageRef = useRef<HTMLImageElement>(null);
+  const startRef = useRef<Point | null>(null);
+  const draggingRef = useRef(false);
+  const frameRef = useRef<number | null>(null);
+  const pendingPointRef = useRef<Point | null>(null);
   const [crop, setCrop] = useState<CropRect | null>(null);
-  const [start, setStart] = useState<Point | null>(null);
-  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setCrop(null);
-    setStart(null);
-    setDragging(false);
+    startRef.current = null;
+    draggingRef.current = false;
+    pendingPointRef.current = null;
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
   }, [open, source]);
 
   if (!open) return null;
@@ -58,28 +67,40 @@ export function ImageCropDialog({
   function beginCrop(event: ReactPointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointInImage(event);
-    setStart(point);
+    startRef.current = point;
     setCrop({ x: point.x, y: point.y, width: 0, height: 0 });
-    setDragging(true);
+    draggingRef.current = true;
   }
 
   function updateCrop(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!dragging || !start) return;
-    const point = pointInImage(event);
-    setCrop({
-      x: Math.min(start.x, point.x),
-      y: Math.min(start.y, point.y),
-      width: Math.abs(point.x - start.x),
-      height: Math.abs(point.y - start.y),
+    if (!draggingRef.current || !startRef.current) return;
+    pendingPointRef.current = pointInImage(event);
+    // 고주사율 터치 기기에서 pointermove마다 React 렌더링하지 않고
+    // 화면 프레임당 한 번만 선택 영역을 갱신한다.
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      const start = startRef.current;
+      const point = pendingPointRef.current;
+      if (!start || !point) return;
+      setCrop(rectFromPoints(start, point));
     });
   }
 
   function finishCrop(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = startRef.current;
+    const point = pointInImage(event);
+    if (start) setCrop(rectFromPoints(start, point));
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    setDragging(false);
-    setStart(null);
+    draggingRef.current = false;
+    startRef.current = null;
+    pendingPointRef.current = null;
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
   }
 
   function selectWholeImage() {
@@ -239,4 +260,13 @@ export function ImageCropDialog({
       </div>
     </div>
   );
+}
+
+function rectFromPoints(start: Point, end: Point): CropRect {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
 }

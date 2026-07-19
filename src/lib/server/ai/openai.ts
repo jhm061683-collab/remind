@@ -1,6 +1,8 @@
 import {
+  AiExtractError,
   EXTRACT_SYSTEM_PROMPT,
   normalizeExtractJson,
+  type AiTokenUsage,
   type QuestionExtractInput,
   type QuestionExtractResult,
 } from "@/lib/server/ai/extract-types";
@@ -80,16 +82,29 @@ export async function extractWithOpenAI(
     throw new Error(body.error?.message || "OpenAI API 호출에 실패했습니다.");
   }
 
+  // 제공자가 이미지를 처리했으므로 입력 토큰은 청구됨. 이후 실패는 과금된 실패.
+  const billedUsage: AiTokenUsage = {
+    promptTokens: Number(body.usage?.prompt_tokens ?? 0),
+    outputTokens: Number(body.usage?.completion_tokens ?? 0),
+    thoughtsTokens: 0,
+  };
+
   const text = body.choices?.[0]?.message?.content?.trim() ?? "";
   if (!text) {
-    throw new Error("AI가 문제를 읽지 못했습니다. 사진을 다시 찍어 주세요.");
+    throw new AiExtractError(
+      "AI가 문제를 읽지 못했습니다. 사진을 더 밝고 또렷하게 다시 찍어 주세요.",
+      { billed: true, engine: "gpt-4o", usage: billedUsage },
+    );
   }
 
   let parsed;
   try {
     parsed = normalizeExtractJson(text);
   } catch {
-    throw new Error("AI가 정리한 내용을 읽지 못했습니다. 다시 시도해 주세요.");
+    throw new AiExtractError(
+      "AI가 정리한 내용을 읽지 못했습니다. 사진을 다시 확인해 주세요.",
+      { billed: true, engine: "gpt-4o", usage: billedUsage },
+    );
   }
 
   const first = parsed.problems[0]!;

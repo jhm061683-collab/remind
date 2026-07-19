@@ -47,6 +47,40 @@ export type QuestionExtractInput = {
   engine: AiEngine;
 };
 
+export type AiTokenUsage = {
+  promptTokens: number;
+  outputTokens: number;
+  thoughtsTokens: number;
+};
+
+/**
+ * AI 추출 실패를 "과금 여부"로 구분하는 에러.
+ *  - billed=false: 호출이 과금되기 전에 실패(키 없음, 이미지 오류, 제공자 거부).
+ *                  → 학생 쿼터를 환불한다.
+ *  - billed=true : 제공자가 사진을 처리해 토큰이 이미 청구됨(빈 응답·파싱 실패).
+ *                  → 환불하지 않고 실제 비용을 기록한다.
+ */
+export class AiExtractError extends Error {
+  readonly billed: boolean;
+  readonly engine: AiEngine;
+  readonly usage: AiTokenUsage | null;
+
+  constructor(
+    message: string,
+    options: {
+      billed: boolean;
+      engine: AiEngine;
+      usage?: AiTokenUsage | null;
+    },
+  ) {
+    super(message);
+    this.name = "AiExtractError";
+    this.billed = options.billed;
+    this.engine = options.engine;
+    this.usage = options.usage ?? null;
+  }
+}
+
 const PROBLEM_ITEM_SCHEMA = {
   type: "object",
   properties: {

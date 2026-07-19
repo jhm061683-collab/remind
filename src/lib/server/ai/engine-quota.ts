@@ -9,8 +9,8 @@ import { createServiceClient } from "@/lib/supabase/service";
  *  - Premium: 월 400건 / 일 30건, 그중 100건은 GPT-4o 골드 티켓
  *             골드 소진(또는 학생별 우선 설정 off) 시 Gemini로 자동 전환
  *
- * 검증·차감은 DB 함수 consume_ai_quota 한 번의 호출로 원자적으로 처리한다.
- * (동시 업로드로 한도를 넘겨 차감되는 경쟁 상태 방지)
+ * 검증·차감은 DB 함수 reserve_ai_quota 한 번의 호출로 원자적으로 처리한다.
+ * 요청 UUID를 기준으로 멱등 처리하며, AI 실패 시 refundAiQuota로 환불한다.
  */
 
 export type AiEngine = "gemini-3.5-flash" | "gpt-4o";
@@ -28,6 +28,9 @@ export type EngineQuotaResult = {
   monthlyLimit: number;
   goldUsed: number;
   goldLimit: number;
+  requestStatus?: "reserved" | "completed" | "refunded" | "rejected";
+  /** 동일 요청이 이미 완료된 경우 재사용할 AI 응답 */
+  cachedPayload?: unknown;
 };
 
 type PlanLimits = {
@@ -78,6 +81,7 @@ const EMPTY_USAGE = {
  * 플랜·잔여 쿼터를 확인해 엔진을 정하고, 통과하면 즉시 1건을 차감한다.
  */
 export async function getAvailableEngineAndDeductQuota(input: {
+  requestId: string;
   userId: string;
   academyId: string | null;
   kind: AiTaskKind;
@@ -111,8 +115,11 @@ export async function getAvailableEngineAndDeductQuota(input: {
     input.allowGold !== false &&
     input.preferGold === true;
 
-  const { data, error } = await supabase.rpc("consume_ai_quota", {
+  const { data, error } = await supabase.rpc("reserve_ai_quota", {
+    p_request_id: input.requestId,
     p_user_id: input.userId,
+    p_academy_id: input.academyId,
+    p_kind: input.kind,
     p_daily_limit: limits.dailyLimit,
     p_monthly_limit: limits.monthlyLimit,
     p_gold_limit: limits.goldLimit,
@@ -135,13 +142,31 @@ export async function getAvailableEngineAndDeductQuota(input: {
     monthlyLimit: limits.monthlyLimit,
     goldUsed: Number(row.gold_used ?? 0),
     goldLimit: limits.goldLimit,
+    requestStatus: row.request_status as EngineQuotaResult["requestStatus"],
   };
+
+  if (row.request_status === "completed" && row.response_payload) {
+    return {
+      engine: row.use_gold ? "gpt-4o" : "gemini-3.5-flash",
+      cachedPayload: row.response_payload,
+      ...usage,
+    };
+  }
+
+  if (row.request_status === "reserved" && row.reason === "duplicate") {
+    return {
+      error: "같은 AI 요청을 처리하고 있습니다. 잠시 후 다시 확인해 주세요.",
+      ...usage,
+    };
+  }
 
   if (!row.allowed) {
     const message =
       row.reason === "daily_limit"
         ? `오늘 AI 이용 한도(${limits.dailyLimit}건)를 모두 썼습니다. 내일 다시 시도해 주세요.`
-        : `이번 달 AI 이용 한도(${limits.monthlyLimit}건)를 모두 썼습니다. 다음 달에 초기화됩니다.`;
+        : row.reason === "monthly_limit"
+          ? `이번 달 AI 이용 한도(${limits.monthlyLimit}건)를 모두 썼습니다. 다음 달에 초기화됩니다.`
+          : "이 AI 요청은 취소되었습니다. 다시 시도해 주세요.";
     return { error: message, ...usage };
   }
 
@@ -149,6 +174,40 @@ export async function getAvailableEngineAndDeductQuota(input: {
     engine: row.use_gold ? "gpt-4o" : "gemini-3.5-flash",
     ...usage,
   };
+}
+
+/** AI 성공 결과를 요청 UUID에 저장하여 네트워크 재전송 시 재사용한다. */
+export async function completeAiRequest(input: {
+  requestId: string;
+  userId: string;
+  responsePayload: unknown;
+}): Promise<void> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc("complete_ai_request", {
+    p_request_id: input.requestId,
+    p_user_id: input.userId,
+    p_response_payload: input.responsePayload,
+  });
+  if (error || data !== true) {
+    throw new Error(error?.message ?? "AI_REQUEST_COMPLETE_FAILED");
+  }
+}
+
+/** 외부 AI 호출이 실패하면 해당 요청이 예약한 쿼터를 정확히 한 번 환불한다. */
+export async function refundAiQuota(input: {
+  requestId: string;
+  userId: string;
+  reason?: string;
+}): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await supabase.rpc("refund_ai_quota", {
+    p_request_id: input.requestId,
+    p_user_id: input.userId,
+    p_error_reason: input.reason ?? "ai_failed",
+  });
+  if (error) {
+    console.error("[refundAiQuota]", error.message);
+  }
 }
 
 /** 차감 없이 현재 사용량만 조회 (마이페이지·관리자 화면 표시용) */

@@ -62,16 +62,17 @@ export function MultiImagePicker({
     setStatus("사진 불러오는 중...");
 
     try {
-      let dataUrl = await readFileAsDataUrl(file);
       try {
         const compressed = await compressImage(file);
         if (compressed.size > 0 && compressed.size < file.size) {
-          dataUrl = await readFileAsDataUrl(compressed);
           file = compressed;
         }
       } catch {
         // 원본 사용
       }
+      // 원본 전체를 base64로 읽은 뒤 압축하면 iOS에서 원본+압축본이 동시에
+      // 메모리에 남는다. 반드시 압축할 파일을 결정한 다음 한 번만 읽는다.
+      const dataUrl = await readFileAsDataUrl(file);
 
       const page: Page = { id: nextPageId(), preview: dataUrl, file };
 
@@ -106,22 +107,23 @@ export function MultiImagePicker({
 
     setStatus(`${selected.length}장 불러오는 중...`);
     try {
-      const added = await Promise.all(
-        selected.map(async (original) => {
-          let file = original;
-          let dataUrl = await readFileAsDataUrl(file);
-          try {
-            const compressed = await compressImage(file);
-            if (compressed.size > 0 && compressed.size < file.size) {
-              file = compressed;
-              dataUrl = await readFileAsDataUrl(compressed);
-            }
-          } catch {
-            // 원본 사용
+      const added: Page[] = [];
+      // Promise.all로 5장을 동시에 디코딩하면 iOS Safari의 메모리 상한을
+      // 쉽게 넘는다. 한 장씩 압축·직렬화하여 피크 메모리를 제한한다.
+      for (const original of selected) {
+        let file = original;
+        try {
+          const compressed = await compressImage(file);
+          if (compressed.size > 0 && compressed.size < file.size) {
+            file = compressed;
           }
-          return { id: nextPageId(), preview: dataUrl, file };
-        }),
-      );
+        } catch {
+          // 압축을 지원하지 않는 형식은 원본을 사용한다.
+        }
+        const dataUrl = await readFileAsDataUrl(file);
+        added.push({ id: nextPageId(), preview: dataUrl, file });
+        setStatus(`${added.length}/${selected.length}장 불러오는 중...`);
+      }
 
       const next = [...pages, ...added];
       emit(next);
@@ -174,6 +176,12 @@ export function MultiImagePicker({
       ) : null}
       {hint ? (
         <p className="mb-2 text-xs text-[var(--rm-text-muted)]">{hint}</p>
+      ) : null}
+
+      {pages.length === 0 ? (
+        <p className="mb-2 rounded-lg bg-[var(--rm-info-bg)] px-3 py-2 text-xs font-medium text-[var(--rm-text-on-info)]">
+          밝은 곳에서 문제가 화면에 꽉 차게, 또렷하게 찍어 주세요.
+        </p>
       ) : null}
 
       {status ? (

@@ -100,7 +100,9 @@ export function embedProblemFigures(
     if (!replaced) unused.push(marker);
   });
 
-  next = next.replace(/\[\[FIGURE_\d+\]\]/gi, "").trim();
+  // 좌표 오류·이미지 로드 실패 시 표식을 지우면 사용자는 그림이 빠진 사실을
+  // 알 수 없다. 렌더러가 명확한 원본 확인 안내를 보여주도록 보존한다.
+  next = next.replace(/\[\[FIGURE_\d+\]\]/gi, "[[FIGURE_MISSING]]").trim();
   return unused.length > 0
     ? `${next}\n\n${unused.join("\n\n")}`
     : next;

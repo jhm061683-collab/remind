@@ -10,7 +10,8 @@ const MATH_PATTERN =
   /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g;
 
 const UNDERLINE_PATTERN = /<u>([\s\S]*?)<\/u>/g;
-const FIGURE_PATTERN = /\[\[FIGURE:([^\]]+)\]\]/g;
+const FIGURE_PATTERN =
+  /\[\[FIGURE:([^\]]+)\]\]|\[\[FIGURE_MISSING\]\]/g;
 
 /** 일반 텍스트 안의 <u>...</u> 를 실제 밑줄로 렌더링 */
 function renderTextWithUnderline(
@@ -132,6 +133,18 @@ export function LatexContent({ content, className = "" }: Props) {
             className="mx-auto max-h-[28rem] max-w-full object-contain"
           />
         </figure>,
+      );
+    } else {
+      // 잘못된 좌표, 업로드 실패, 안전하지 않은 URL 때문에 그림을 표시하지
+      // 못해도 문제 본문 전체가 깨지지 않도록 원본 확인 안내를 남긴다.
+      nodes.push(
+        <aside
+          key={`figure-fallback-${figureKey++}`}
+          className="my-4 rounded-xl border border-dashed border-[var(--rm-warning)] bg-[color-mix(in_srgb,var(--rm-warning)_10%,transparent)] px-4 py-3 font-sans text-sm leading-6 text-[var(--rm-text)]"
+          role="note"
+        >
+          그림을 불러오지 못했어요. 원본 사진에서 그래프·도표를 확인해 주세요.
+        </aside>,
       );
     }
     cursor = index + match[0].length;
