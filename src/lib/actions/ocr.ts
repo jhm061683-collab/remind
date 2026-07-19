@@ -107,6 +107,8 @@ export async function ocrFromImageAction(input: {
     const result: OcrExtractResult = {
       provider: extracted.provider,
       rawText: extracted.rawText,
+      sharedPassage: extracted.sharedPassage,
+      problems: extracted.problems,
       problemLatex: extracted.problemLatex,
       answerGuess: extracted.answerGuess,
       keywords: extracted.keywords,

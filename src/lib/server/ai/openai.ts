@@ -4,6 +4,7 @@ import {
   type QuestionExtractInput,
   type QuestionExtractResult,
 } from "@/lib/server/ai/extract-types";
+import { composeProblemLatex } from "@/lib/utils/problem-latex";
 import { resolveImageParts } from "@/lib/server/ai/image-data";
 
 type OpenAIResponse = {
@@ -67,7 +68,7 @@ export async function extractWithOpenAI(
           content: [
             {
               type: "text",
-              text: '이 문제 사진을 분석해서 JSON으로 답하세요. 키: problemLatex, answer, keywords',
+              text: "이 문제 사진을 분석해서 JSON으로 답하세요. 키: sharedPassage, problems[{number, problemLatex, answer, keywords}]. 여러 문항이면 problems로 최대 5개 분리.",
             },
             ...imageContent,
           ],
@@ -93,20 +94,29 @@ export async function extractWithOpenAI(
     throw new Error("GPT-4o 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
   }
 
+  const first = parsed.problems[0]!;
+  const count = parsed.problems.length;
+  const note =
+    count > 1
+      ? `사진에서 ${count}개 문항을 나눴어요. 등록할 문항을 확인하고 수정해 주세요.`
+      : first.answerGuess
+        ? "GPT-4o(골드 티켓)가 읽은 결과입니다. 정답·문장을 확인해 주세요."
+        : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.";
+
   return {
     engine: "gpt-4o",
     provider: "openai",
-    problemLatex: parsed.problemLatex,
-    answerGuess: parsed.answerGuess,
-    keywords: parsed.keywords,
+    sharedPassage: parsed.sharedPassage,
+    problems: parsed.problems,
+    problemLatex: composeProblemLatex(parsed.sharedPassage, first.problemLatex),
+    answerGuess: first.answerGuess,
+    keywords: first.keywords,
     rawText: text,
     usage: {
       promptTokens: Number(body.usage?.prompt_tokens ?? 0),
       outputTokens: Number(body.usage?.completion_tokens ?? 0),
       thoughtsTokens: 0,
     },
-    note: parsed.answerGuess
-      ? "GPT-4o(골드 티켓)가 읽은 결과입니다. 정답·문장을 확인해 주세요."
-      : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.",
+    note,
   };
 }

@@ -60,6 +60,8 @@ export function QuestionArchiveCard({
     question.problemLatex ?? "",
   );
   const [editingLatex, setEditingLatex] = useState(false);
+  const [showProblemSection, setShowProblemSection] = useState(false);
+  const [showPhotoSection, setShowPhotoSection] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -161,6 +163,7 @@ export function QuestionArchiveCard({
 
     setMessage(null);
     setExpanded(true);
+    setShowProblemSection(true);
     startAi(async () => {
       const result = await ocrFromImageAction({
         imageDataUrl: urls[0]!,
@@ -346,90 +349,44 @@ export function QuestionArchiveCard({
         </div>
 
         {expanded ? (
-          <div className="space-y-3 border-t border-[var(--rm-border)] px-3.5 pb-3.5">
-            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
-              <div className="flex items-center justify-between border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
-                <p className="text-sm font-bold text-[var(--rm-text)]">문제</p>
-                {displayLatex || editingLatex ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!editingLatex) {
-                        setProblemLatexDraft(displayLatex || problemLatexDraft);
-                      }
-                      setEditingLatex((v) => !v);
-                    }}
-                    className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
-                  >
-                    {editingLatex ? "미리보기" : "수정"}
-                  </button>
-                ) : null}
-              </div>
-
-              {editingLatex ? (
-                <div className="space-y-2 p-3">
-                  <textarea
-                    rows={8}
-                    value={problemLatexDraft}
-                    onChange={(e) => setProblemLatexDraft(e.target.value)}
-                    className="remind-input w-full font-mono text-sm leading-6"
-                    placeholder="문제 내용 (수식은 $...$ 로)"
-                  />
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void handleSaveLatex()}
-                    className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
-                  >
-                    {saving ? "저장 중…" : "문제 문구 저장"}
-                  </button>
-                </div>
-              ) : displayLatex ? (
-                <LatexContent
-                  content={displayLatex}
-                  className="px-4 py-3 text-base"
-                />
-              ) : (
-                <div className="space-y-2 p-3">
-                  <p className="text-sm text-[var(--rm-text-muted)]">
-                    아직 깔끔한 문제 문구가 없어요. 아래 버튼으로 AI가 사진을
-                    읽어 만들어 줍니다.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={aiPending}
-                    onClick={handleRebuildWithAi}
-                    className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
-                  >
-                    {aiPending
-                      ? "AI가 문제 만드는 중…"
-                      : "사진 → 깔끔한 문제로 바꾸기"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)]">
-              <p className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-bold text-[var(--rm-text-muted)]">
-                원본 사진
-              </p>
-              <div className="relative h-56 bg-[var(--rm-accent-muted)] sm:h-64">
-                <QuestionImages
-                  question={question}
-                  alt="문제 원본"
-                  thumbnail
-                  fill
-                  imageClassName="object-contain"
-                />
-              </div>
-            </div>
-
+          <div className="space-y-3 border-t border-[var(--rm-border)] px-3.5 pb-3.5 pt-3">
             {message ? (
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
                 {message}
               </p>
             ) : null}
 
+            {/* 1) 정답·해설 — 가장 먼저 */}
+            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
+              <p className="text-sm font-bold text-[var(--rm-text)]">정답 · 해설</p>
+              {!hasAnswer ? (
+                <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
+                  등록할 때 넣은 해설이 없어요.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {question.answerText ? (
+                    <LatexContent
+                      content={question.answerText}
+                      className="text-base"
+                    />
+                  ) : null}
+                  {question.answerImageDataUrl ? (
+                    <div className="relative overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)]">
+                      <ZoomableQuestionImage
+                        src={question.answerImageDataUrl}
+                        alt="해설"
+                        width={800}
+                        height={400}
+                        className="max-h-64 w-full object-contain"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            {/* 2) 오답 분석 */}
             <div className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-[var(--rm-text-on-info)]">
@@ -546,33 +503,113 @@ export function QuestionArchiveCard({
               )}
             </div>
 
-            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
-              <p className="text-sm font-bold text-[var(--rm-text)]">정답 · 해설</p>
-              {!hasAnswer ? (
-                <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
-                  등록할 때 넣은 해설이 없어요.
-                </p>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  {question.answerImageDataUrl ? (
-                    <div className="relative overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)]">
-                      <ZoomableQuestionImage
-                        src={question.answerImageDataUrl}
-                        alt="해설"
-                        width={800}
-                        height={400}
-                        className="max-h-64 w-full object-contain"
-                      />
+            {/* 3) 문제 — 보고 싶을 때만 펼침 */}
+            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
+              <button
+                type="button"
+                onClick={() => setShowProblemSection((v) => !v)}
+                className="flex min-h-[44px] w-full items-center justify-between bg-[var(--rm-surface-raised)] px-3 py-2.5 text-left touch-manipulation"
+              >
+                <span className="text-sm font-bold text-[var(--rm-text)]">
+                  문제 보기
+                </span>
+                <span className="text-xs font-semibold text-[var(--rm-text-muted)]">
+                  {showProblemSection ? "접기 ↑" : "펼치기 ↓"}
+                </span>
+              </button>
+
+              {showProblemSection ? (
+                <div className="border-t border-[var(--rm-border)]">
+                  {displayLatex || editingLatex ? (
+                    <div className="flex justify-end border-b border-[var(--rm-border)] px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!editingLatex) {
+                            setProblemLatexDraft(
+                              displayLatex || problemLatexDraft,
+                            );
+                          }
+                          setEditingLatex((v) => !v);
+                        }}
+                        className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
+                      >
+                        {editingLatex ? "미리보기" : "수정"}
+                      </button>
                     </div>
                   ) : null}
-                  {question.answerText ? (
+
+                  {editingLatex ? (
+                    <div className="space-y-2 p-3">
+                      <textarea
+                        rows={8}
+                        value={problemLatexDraft}
+                        onChange={(e) => setProblemLatexDraft(e.target.value)}
+                        className="remind-input w-full font-mono text-sm leading-6"
+                        placeholder="문제 내용 (수식은 $...$ 로)"
+                      />
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void handleSaveLatex()}
+                        className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+                      >
+                        {saving ? "저장 중…" : "문제 문구 저장"}
+                      </button>
+                    </div>
+                  ) : displayLatex ? (
                     <LatexContent
-                      content={question.answerText}
-                      className="text-base"
+                      content={displayLatex}
+                      className="px-4 py-3 text-base"
                     />
-                  ) : null}
+                  ) : (
+                    <div className="space-y-2 p-3">
+                      <p className="text-sm text-[var(--rm-text-muted)]">
+                        아직 깔끔한 문제 문구가 없어요. 아래 버튼으로 AI가
+                        사진을 읽어 만들어 줍니다.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={aiPending}
+                        onClick={handleRebuildWithAi}
+                        className="w-full rounded-xl bg-[var(--rm-nav-active)] py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+                      >
+                        {aiPending
+                          ? "AI가 문제 만드는 중…"
+                          : "사진 → 깔끔한 문제로 바꾸기"}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : null}
+            </div>
+
+            {/* 4) 원본 사진 — 보고 싶을 때만 펼침 */}
+            <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
+              <button
+                type="button"
+                onClick={() => setShowPhotoSection((v) => !v)}
+                className="flex min-h-[44px] w-full items-center justify-between bg-[var(--rm-surface-raised)] px-3 py-2.5 text-left touch-manipulation"
+              >
+                <span className="text-sm font-bold text-[var(--rm-text)]">
+                  원본 사진 보기
+                </span>
+                <span className="text-xs font-semibold text-[var(--rm-text-muted)]">
+                  {showPhotoSection ? "접기 ↑" : "펼치기 ↓"}
+                </span>
+              </button>
+
+              {showPhotoSection ? (
+                <div className="relative h-56 border-t border-[var(--rm-border)] bg-[var(--rm-accent-muted)] sm:h-64">
+                  <QuestionImages
+                    question={question}
+                    alt="문제 원본"
+                    thumbnail
+                    fill
+                    imageClassName="object-contain"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <button

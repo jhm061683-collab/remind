@@ -22,7 +22,11 @@ import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { fileOrPreviewToDataUrl } from "@/lib/utils/compress-image";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
-import { LatexContent } from "@/components/math/latex-content";
+import {
+  ProblemDraftList,
+  type ProblemDraft,
+} from "@/components/student/problem-draft-list";
+import { composeProblemLatex } from "@/lib/utils/problem-latex";
 
 type Props = {
   userId: string;
@@ -35,28 +39,10 @@ function canPersist(userId: string): boolean {
   return isLocalStorageAvailable();
 }
 
-function resetFormFields(setters: {
-  setQuestionPages: (v: ImagePage[]) => void;
-  setQuestionReady: (v: boolean) => void;
-  setAnswerFile: (v: File | null) => void;
-  setAnswerPreview: (v: string | null) => void;
-  setAnswerText: (v: string) => void;
-  setKeywords: (v: string[]) => void;
-  setSource: (v: string) => void;
-  setWrongReason: (v: string) => void;
-  setWrongKeywords: (v: string[]) => void;
-  setReflectionMemo: (v: string) => void;
-}) {
-  setters.setQuestionPages([]);
-  setters.setQuestionReady(false);
-  setters.setAnswerFile(null);
-  setters.setAnswerPreview(null);
-  setters.setAnswerText("");
-  setters.setKeywords([]);
-  setters.setSource("");
-  setters.setWrongReason("");
-  setters.setWrongKeywords([]);
-  setters.setReflectionMemo("");
+let draftIdCounter = 0;
+function nextDraftId() {
+  draftIdCounter += 1;
+  return `draft-${draftIdCounter}`;
 }
 
 export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
@@ -79,8 +65,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [success, setSuccess] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
-  const [problemLatex, setProblemLatex] = useState<string | null>(null);
-  const [editingLatex, setEditingLatex] = useState(false);
+  const [sharedPassage, setSharedPassage] = useState("");
+  const [drafts, setDrafts] = useState<ProblemDraft[]>([]);
   const [ocrPending, startOcr] = useTransition();
 
   useEffect(() => {
@@ -96,11 +82,15 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     setQuestionReady(ready);
   }, []);
 
+  function clearAiDrafts() {
+    setSharedPassage("");
+    setDrafts([]);
+    setOcrNote(null);
+  }
+
   function runOcr() {
     setError(null);
-    setOcrNote(null);
-    setProblemLatex(null);
-    setEditingLatex(false);
+    clearAiDrafts();
     const preview = questionPages[0]?.preview;
     if (!preview) {
       setError("문제 사진을 먼저 선택해 주세요.");
@@ -124,22 +114,55 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       const data = result.result;
       if (!data) return;
 
-      if (data.problemLatex) {
-        setProblemLatex(data.problemLatex);
+      const problems =
+        data.problems && data.problems.length > 0
+          ? data.problems
+          : data.problemLatex
+            ? [
+                {
+                  number: "",
+                  problemLatex: data.problemLatex,
+                  answerGuess: data.answerGuess,
+                  keywords: data.keywords,
+                },
+              ]
+            : [];
+
+      if (problems.length === 0) {
+        setError("AI가 문제를 읽지 못했어요. 사진을 다시 확인해 주세요.");
+        return;
       }
-      if (data.answerGuess) {
-        setAnswerText((prev) => prev || data.answerGuess);
-      }
-      if (data.keywords.length > 0) {
+
+      setSharedPassage(data.sharedPassage?.trim() ?? "");
+      setDrafts(
+        problems.map((p) => ({
+          id: nextDraftId(),
+          selected: true,
+          number: p.number ?? "",
+          bodyLatex: p.problemLatex,
+          answerText: p.answerGuess ?? "",
+          keywords: p.keywords ?? [],
+          editing: false,
+        })),
+      );
+
+      const mergedKeywords = problems.flatMap((p) => p.keywords ?? []);
+      if (mergedKeywords.length > 0) {
         setKeywords((prev) => {
-          const merged = [...prev];
-          for (const k of data.keywords) {
-            if (!merged.includes(k)) merged.push(k);
+          const next = [...prev];
+          for (const k of mergedKeywords) {
+            if (!next.includes(k)) next.push(k);
           }
-          return merged.slice(0, 12);
+          return next.slice(0, 12);
         });
         setShowExtras(true);
       }
+
+      // 문항이 하나면 기존 정답 칸과도 맞춤 (수동 등록 흐름 호환)
+      if (problems.length === 1) {
+        setAnswerText(problems[0]!.answerGuess || "");
+      }
+
       const engineLabel =
         result.engine === "gpt-4o"
           ? "GPT-4o"
@@ -190,8 +213,22 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       return;
     }
 
-    const trimmedAnswer = answerText.trim();
-    if (!trimmedAnswer) {
+    const selectedDrafts = drafts.filter((d) => d.selected);
+    const useDrafts = drafts.length > 0;
+
+    if (useDrafts) {
+      if (selectedDrafts.length === 0) {
+        setError("등록할 문항을 하나 이상 선택해 주세요.");
+        return;
+      }
+      const missing = selectedDrafts.find((d) => !d.answerText.trim());
+      if (missing) {
+        setError(
+          `${missing.number ? `${missing.number}번` : "선택한 문항"}의 정답을 입력해 주세요.`,
+        );
+        return;
+      }
+    } else if (!answerText.trim()) {
       setError("정답을 입력해 주세요. (해설 사진은 없어도 돼요)");
       return;
     }
@@ -227,14 +264,11 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         answerImageDataUrl = await uploadIfNeeded(answerImageDataUrl, "answer");
       }
 
-      const payload = {
+      const base = {
         subjectId,
         imageDataUrl,
         extraImageDataUrls,
-        problemLatex: problemLatex?.trim() || undefined,
-        answerText: trimmedAnswer,
         answerImageDataUrl,
-        keywords,
         source: source.trim() || undefined,
         wrongReason: wrongReason || undefined,
         wrongKeywords,
@@ -243,27 +277,53 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         reflectionMemo: reflectionMemo.trim() || undefined,
       };
 
-      if (isSupabaseEnabled()) {
-        const result = await saveQuestionAction(payload);
-        if (result.error) {
-          setError(result.error);
-          return;
+      const toSave = useDrafts
+        ? selectedDrafts.map((d) => ({
+            ...base,
+            problemLatex: composeProblemLatex(sharedPassage, d.bodyLatex),
+            answerText: d.answerText.trim(),
+            keywords:
+              d.keywords.length > 0
+                ? d.keywords
+                : keywords.length > 0
+                  ? keywords
+                  : [],
+          }))
+        : [
+            {
+              ...base,
+              problemLatex: undefined,
+              answerText: answerText.trim(),
+              keywords,
+            },
+          ];
+
+      for (const payload of toSave) {
+        if (isSupabaseEnabled()) {
+          const result = await saveQuestionAction(payload);
+          if (result.error) {
+            setError(result.error);
+            return;
+          }
+        } else {
+          await saveQuestion(userId, {
+            ...payload,
+            userId,
+          });
         }
-      } else {
-        await saveQuestion(userId, {
-          ...payload,
-          userId,
-        });
       }
 
-      if (keywords.length > 0) {
-        void recordKeywordUsage(userId, "problem", keywords);
+      const allKeywords = [
+        ...new Set(toSave.flatMap((p) => p.keywords ?? [])),
+      ];
+      if (allKeywords.length > 0) {
+        void recordKeywordUsage(userId, "problem", allKeywords);
       }
       if (wrongKeywords.length > 0) {
         void recordKeywordUsage(userId, "wrong", wrongKeywords);
       }
 
-      setRegisteredCount((c) => c + 1);
+      setRegisteredCount(toSave.length);
       setSuccess(true);
     } catch (err) {
       if (err instanceof StorageQuotaError) {
@@ -286,21 +346,17 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   function handleContinue() {
     setSuccess(false);
     setShowExtras(false);
-    setProblemLatex(null);
-    setEditingLatex(false);
-    setOcrNote(null);
-    resetFormFields({
-      setQuestionPages,
-      setQuestionReady,
-      setAnswerFile,
-      setAnswerPreview,
-      setAnswerText,
-      setKeywords,
-      setSource,
-      setWrongReason,
-      setWrongKeywords,
-      setReflectionMemo,
-    });
+    clearAiDrafts();
+    setQuestionPages([]);
+    setQuestionReady(false);
+    setAnswerFile(null);
+    setAnswerPreview(null);
+    setAnswerText("");
+    setKeywords([]);
+    setSource("");
+    setWrongReason("");
+    setWrongKeywords([]);
+    setReflectionMemo("");
   }
 
   if (success) {
@@ -336,11 +392,16 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     );
   }
 
+  const selectedDrafts = drafts.filter((d) => d.selected);
+  const useDrafts = drafts.length > 0;
   const canSubmit =
     Boolean(subjectId) &&
     questionReady &&
     questionPages.length > 0 &&
-    answerText.trim().length > 0;
+    (useDrafts
+      ? selectedDrafts.length > 0 &&
+        selectedDrafts.every((d) => d.answerText.trim().length > 0)
+      : answerText.trim().length > 0);
 
   return (
     <div className="space-y-3">
@@ -350,7 +411,6 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         </p>
       ) : null}
 
-      {/* 필수 3단계만 먼저 보여 부담을 줄임 */}
       <section className="remind-card space-y-3 p-3.5">
         <p className="text-xs font-semibold text-[var(--rm-text-muted)]">
           필수 · 3가지만 하면 돼요
@@ -385,11 +445,15 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           <p className="remind-field-label mb-1">2. 문제 사진</p>
           <MultiImagePicker
             label=""
-            hint="최대 5장 · 촬영은 한 장씩, 앨범에서는 여러 장을 한 번에 고를 수 있어요"
+            hint="최대 5장 · 한 장에 여러 문항이 있으면 AI가 나눠 줘요"
             required
             maxImages={5}
             onReadyChange={handleQuestionReady}
-            onChange={setQuestionPages}
+            onChange={(pages) => {
+              setQuestionPages(pages);
+              clearAiDrafts();
+              setAnswerText("");
+            }}
           />
           {questionReady && questionPages.length > 0 ? (
             <button
@@ -398,63 +462,45 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               disabled={ocrPending}
               className="mt-2 min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm font-semibold text-[var(--rm-text)] touch-manipulation disabled:opacity-60"
             >
-              {ocrPending ? "AI 분석 중…" : "AI로 읽기 (문제·정답 채우기)"}
+              {ocrPending
+                ? "AI 분석 중…"
+                : "AI로 읽기 (여러 문항이면 자동 분리)"}
             </button>
           ) : null}
           {ocrNote ? (
             <p className="mt-1.5 text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
           ) : null}
-          {problemLatex ? (
-            <div className="mt-2 overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)]">
-              <div className="flex items-center justify-between border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2">
-                <p className="text-xs font-bold text-[var(--rm-text)]">
-                  AI가 다시 만든 문제
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEditingLatex((v) => !v)}
-                  className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
-                >
-                  {editingLatex ? "미리보기" : "수정"}
-                </button>
-              </div>
-              {editingLatex ? (
-                <div className="p-3">
-                  <textarea
-                    rows={8}
-                    value={problemLatex}
-                    onChange={(e) => setProblemLatex(e.target.value)}
-                    className="remind-input w-full font-mono text-sm leading-6"
-                    placeholder="문제 내용 (수식은 $...$ 로)"
-                  />
-                  <p className="mt-1 text-[11px] text-[var(--rm-text-faint)]">
-                    수식은 $...$ 안에 쓰면 자동으로 예쁘게 바뀝니다. 저장하면 이
-                    내용이 문제로 함께 등록돼요.
-                  </p>
-                </div>
-              ) : (
-                <LatexContent
-                  content={problemLatex}
-                  className="max-h-80 overflow-auto px-4 py-3 text-[15px]"
-                />
-              )}
-            </div>
-          ) : null}
+
+          <ProblemDraftList
+            sharedPassage={sharedPassage}
+            drafts={drafts}
+            onChange={setDrafts}
+            onSharedPassageChange={setSharedPassage}
+          />
         </div>
 
-        <label className="block">
-          <span className="remind-field-label">
-            3. 정답 <span className="text-[var(--rm-danger)]">*</span>
-          </span>
-          <input
-            type="text"
-            value={answerText}
-            onChange={(e) => setAnswerText(e.target.value)}
-            placeholder="예: ③ 또는 x=2"
-            className="remind-input mt-1 text-base"
-            autoComplete="off"
-          />
-        </label>
+        {!useDrafts ? (
+          <label className="block">
+            <span className="remind-field-label">
+              3. 정답 <span className="text-[var(--rm-danger)]">*</span>
+            </span>
+            <input
+              type="text"
+              value={answerText}
+              onChange={(e) => setAnswerText(e.target.value)}
+              placeholder="예: ③ 또는 x=2"
+              className="remind-input mt-1 text-base"
+              autoComplete="off"
+            />
+            <p className="mt-1 text-[11px] text-[var(--rm-text-faint)]">
+              AI로 읽으면 문항별로 정답을 입력할 수 있어요.
+            </p>
+          </label>
+        ) : (
+          <p className="text-xs text-[var(--rm-text-muted)]">
+            3. 정답은 위에서 선택한 문항마다 입력해 주세요.
+          </p>
+        )}
       </section>
 
       <button
@@ -523,7 +569,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
       <button
         type="button"
-        onClick={handleSubmit}
+        onClick={() => void handleSubmit()}
         disabled={isSaving || !canSubmit}
         className={`min-h-[48px] w-full rounded-xl py-3 text-base font-bold text-white touch-manipulation ${
           canSubmit ? "bg-[var(--rm-brand)]" : "bg-[var(--rm-text-faint)]"
@@ -532,10 +578,16 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         {isSaving
           ? "등록 중..."
           : canSubmit
-            ? "등록하기"
-            : !answerText.trim()
-              ? "정답을 입력하세요"
-              : "사진과 과목을 선택하세요"}
+            ? useDrafts && selectedDrafts.length > 1
+              ? `${selectedDrafts.length}개 등록하기`
+              : "등록하기"
+            : useDrafts
+              ? selectedDrafts.length === 0
+                ? "등록할 문항을 선택하세요"
+                : "선택한 문항의 정답을 입력하세요"
+              : !answerText.trim()
+                ? "정답을 입력하세요"
+                : "사진과 과목을 선택하세요"}
       </button>
     </div>
   );
