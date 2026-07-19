@@ -32,6 +32,8 @@ export async function ocrFromImageAction(input: {
   imageDataUrl: string;
   /** 여러 장일 때 추가 페이지 (선택) */
   extraImageDataUrls?: string[];
+  /** 업로드 화면에서 선택한 과목 (비용 분석용) */
+  subjectId?: string;
 }): Promise<OcrActionState> {
   const session = await getSession();
   if (!session || session.role !== "student") {
@@ -96,12 +98,15 @@ export async function ocrFromImageAction(input: {
       engine: quota.engine,
     });
 
-    void logAiCost({
+    await logAiCost({
       userId: session.id,
       academyId: (profile?.academy_id as string | null) ?? null,
       engine: extracted.engine,
       kind: "extract",
       usage: extracted.usage,
+      subjectId: input.subjectId?.trim() || null,
+      imageCount: allImages.length,
+      problemCount: Math.max(1, extracted.problems?.length ?? 1),
     });
 
     const result: OcrExtractResult = {

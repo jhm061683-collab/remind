@@ -168,6 +168,7 @@ export function QuestionArchiveCard({
       const result = await ocrFromImageAction({
         imageDataUrl: urls[0]!,
         extraImageDataUrls: urls.slice(1),
+        subjectId: question.subjectId,
       });
       if (result.error) {
         setMessage(result.error);

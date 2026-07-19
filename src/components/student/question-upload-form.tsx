@@ -106,6 +106,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       const result = await ocrFromImageAction({
         imageDataUrl: preview,
         extraImageDataUrls,
+        subjectId,
       });
       if (result.error) {
         setError(result.error);
