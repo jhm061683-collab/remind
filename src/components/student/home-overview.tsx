@@ -95,6 +95,23 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
     return Math.round((stats.archived / stats.total) * 100);
   }, [stats]);
 
+  const recentQuestions = useMemo(() => {
+    const nameOf = new Map(subjects.map((s) => [s.id, s.name]));
+    return [...allQuestions]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      .slice(0, 4)
+      .map((q) => ({
+        id: q.id,
+        subjectName: nameOf.get(q.subjectId) ?? "과목",
+        source: q.source,
+        createdAt: q.createdAt,
+        done: isArchived(q),
+      }));
+  }, [allQuestions, subjects]);
+
   const loading = todayCount === null;
 
   return (
@@ -151,6 +168,46 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
         />
       </div>
 
+      {!loading && recentQuestions.length > 0 ? (
+        <section className="rm-glass rm-glass--compact">
+          <div className="flex items-center justify-between gap-2">
+            <p className="rm-label">최근 등록한 문제</p>
+            <Link
+              href="/archive"
+              className="text-[11px] font-semibold text-[var(--rm-nav-active)]"
+            >
+              전체 보기
+              <IconChevronRight size={12} className="ml-0.5 inline align-[-1px]" />
+            </Link>
+          </div>
+          <ul className="mt-2 divide-y divide-[var(--rm-border)] overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)]">
+            {recentQuestions.map((q) => (
+              <li
+                key={q.id}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <span className="min-w-0 truncate text-sm text-[var(--rm-text)]">
+                  <span className="font-semibold">{q.subjectName}</span>
+                  {q.source ? (
+                    <span className="ml-1.5 text-[var(--rm-text-muted)]">
+                      {q.source}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--rm-text-muted)]">
+                  {q.done ? (
+                    <span className="font-semibold text-[var(--rm-success)]">
+                      정복
+                    </span>
+                  ) : null}
+                  {formatShortDate(q.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="rm-inline-links">
         <Link href="/archive" className="rm-inline-link">
           <IconArchive size={14} />
@@ -196,6 +253,12 @@ function QuickStat({
       </p>
     </div>
   );
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function toDateKey(date: Date): string {

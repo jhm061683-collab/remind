@@ -9,7 +9,7 @@ export default async function ArchivePage() {
   const userId = session?.id ?? "guest";
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-2xl">
       <BackBar href="/dashboard" label="홈" />
       <PageHeader
         title="보관함"
@@ -19,6 +19,6 @@ export default async function ArchivePage() {
       <Suspense fallback={<p className="text-sm text-[var(--rm-text-muted)]">불러오는 중...</p>}>
         <ArchiveList userId={userId} />
       </Suspense>
-    </>
+    </div>
   );
 }

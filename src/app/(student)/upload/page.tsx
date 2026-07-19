@@ -17,7 +17,7 @@ export default async function UploadPage({ searchParams }: Props) {
       : null;
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-2xl">
       <BackBar href="/dashboard" label="홈" />
       <PageHeader
         title="문제 등록"
@@ -29,6 +29,6 @@ export default async function UploadPage({ searchParams }: Props) {
         defaultSubjectId={subject}
         initialAiQuota={aiQuota}
       />
-    </>
+    </div>
   );
 }

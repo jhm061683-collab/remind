@@ -9,7 +9,7 @@ export default async function TodayStudyPage() {
   const userId = session?.id ?? "guest";
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-2xl">
       <BackBar href="/dashboard" label="홈" />
       <PageHeader
         title={UI_LABELS.studyPageTitle}
@@ -17,6 +17,6 @@ export default async function TodayStudyPage() {
         compact
       />
       <TodayStudySession userId={userId} />
-    </>
+    </div>
   );
 }
