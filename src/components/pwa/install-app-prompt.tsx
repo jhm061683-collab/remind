@@ -38,6 +38,24 @@ function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+function isAndroid(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
+/** 카카오톡·네이버·인스타 등 인앱 브라우저는 PWA 설치가 불가능 */
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /kakaotalk|naver|instagram|fbav|fban|line\/|everytimeapp|daumapps/i.test(
+    navigator.userAgent,
+  );
+}
+
+function isKakaoTalk(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /kakaotalk/i.test(navigator.userAgent);
+}
+
 function isMobileWeb(): boolean {
   if (typeof window === "undefined") return false;
   const narrow = window.matchMedia("(max-width: 767px)").matches;
@@ -117,7 +135,10 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
   const [installed, setInstalled] = useState(false);
   const [bannerAllowed, setBannerAllowed] = useState(true);
   const [iosSheetOpen, setIosSheetOpen] = useState(false);
+  const [guideSheetOpen, setGuideSheetOpen] = useState(false);
   const [iosDevice, setIosDevice] = useState(false);
+  const [androidDevice, setAndroidDevice] = useState(false);
+  const [inApp, setInApp] = useState(false);
   const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
@@ -128,6 +149,8 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
     const onMobile = isMobileWeb();
     setMobile(onMobile);
     setIosDevice(isIos());
+    setAndroidDevice(isAndroid());
+    setInApp(isInAppBrowser());
     if (!onMobile) return;
 
     if (cachedPrompt) setDeferred(cachedPrompt);
@@ -157,8 +180,11 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
   }, [variant]);
 
   const canNativeInstall = Boolean(deferred);
-  const canIosInstall = iosDevice;
-  const canShow = !installed && mobile && (canNativeInstall || canIosInstall);
+  // 인앱 브라우저(카카오톡 등)와 안드로이드는 이벤트가 없어도 안내를 띄운다.
+  const canShow =
+    !installed &&
+    mobile &&
+    (canNativeInstall || iosDevice || androidDevice || inApp);
 
   if (!canShow) return null;
   if (variant === "banner" && !bannerAllowed) return null;
@@ -171,9 +197,22 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
     }
     setBannerAllowed(false);
     setIosSheetOpen(false);
+    setGuideSheetOpen(false);
   };
 
   const handleInstall = async () => {
+    // 카카오톡 등 인앱 브라우저: 설치가 막혀 있어 외부 브라우저로 유도
+    if (inApp) {
+      if (isKakaoTalk()) {
+        window.location.href =
+          "kakaotalk://web/openExternal?url=" +
+          encodeURIComponent(window.location.href);
+        return;
+      }
+      setGuideSheetOpen(true);
+      return;
+    }
+
     const promptEvent = deferred ?? cachedPrompt;
     if (promptEvent) {
       await promptEvent.prompt();
@@ -184,10 +223,19 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
       return;
     }
     // iOS: 브라우저가 설치 API를 안 열어서, 홈 화면 추가 시트만 표시
-    if (iosDevice) setIosSheetOpen(true);
+    if (iosDevice) {
+      setIosSheetOpen(true);
+      return;
+    }
+    // 안드로이드인데 설치 이벤트가 아직/전혀 없을 때: 메뉴 안내
+    setGuideSheetOpen(true);
   };
 
-  const installLabel = iosDevice ? "홈 화면 추가" : "앱 설치";
+  const installLabel = inApp
+    ? "브라우저에서 열기"
+    : iosDevice
+      ? "홈 화면 추가"
+      : "앱 설치";
 
   return (
     <>
@@ -280,7 +328,114 @@ export function InstallAppPrompt({ variant = "banner", className = "" }: Props) 
       {iosSheetOpen ? (
         <IosHomeScreenSheet onClose={() => setIosSheetOpen(false)} />
       ) : null}
+
+      {guideSheetOpen ? (
+        <InstallGuideSheet
+          inApp={inApp}
+          onClose={() => setGuideSheetOpen(false)}
+        />
+      ) : null}
     </>
+  );
+}
+
+/** 안드로이드 크롬 메뉴 안내 + 인앱 브라우저 탈출 안내 */
+function InstallGuideSheet({
+  inApp,
+  onClose,
+}: {
+  inApp: boolean;
+  onClose: () => void;
+}) {
+  const steps = inApp
+    ? [
+        {
+          title: "오른쪽 위 ⋮ (또는 공유) 누르기",
+          desc: "카카오톡·인앱 브라우저에서는 앱 설치가 막혀 있어요.",
+        },
+        {
+          title: "「다른 브라우저로 열기」 선택",
+          desc: "Chrome 또는 Safari로 열어 주세요.",
+        },
+        {
+          title: "브라우저에서 「앱 설치」 다시 누르기",
+          desc: "그러면 홈 화면에 Re:mind가 설치돼요.",
+        },
+      ]
+    : [
+        {
+          title: "오른쪽 위 ⋮ 메뉴 누르기",
+          desc: "Chrome 주소창 옆 점 3개 버튼이에요.",
+        },
+        {
+          title: "「홈 화면에 추가」 또는 「앱 설치」 선택",
+          desc: "목록 중간쯤에 있어요.",
+        },
+        {
+          title: "「설치」 누르기",
+          desc: "홈 화면에 Re:mind 아이콘이 생겨요.",
+        },
+      ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="install-guide-title"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full rounded-t-3xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl sm:max-w-md sm:rounded-3xl sm:pb-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
+
+        <div className="flex items-center gap-3">
+          <AppMark size={48} />
+          <div>
+            <h2
+              id="install-guide-title"
+              className="text-base font-bold text-slate-900"
+            >
+              {inApp ? "브라우저에서 열어 주세요" : "홈 화면에 추가"}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {inApp
+                ? "카카오톡 안에서는 설치가 안 돼요"
+                : "메뉴에서 바로 추가할 수 있어요"}
+            </p>
+          </div>
+        </div>
+
+        <ol className="mt-5 space-y-3">
+          {steps.map((step, i) => (
+            <li
+              key={step.title}
+              className="flex items-start gap-3 rounded-2xl bg-slate-50 px-3 py-3"
+            >
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  {step.title}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">{step.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white"
+        >
+          확인했어요
+        </button>
+      </div>
+    </div>
   );
 }
 
