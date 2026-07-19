@@ -62,7 +62,7 @@ export default async function AdminLayout({
           <AdminSidebar role={navRole} />
           <div className="flex min-w-0 flex-1 flex-col">
             <main className="flex-1 px-3 py-2.5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-3 md:px-4 md:py-3 md:pb-4">
-              <div className="mx-auto w-full">{children}</div>
+              <div className="mx-auto w-full max-w-4xl">{children}</div>
             </main>
           </div>
         </div>

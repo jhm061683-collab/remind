@@ -24,7 +24,7 @@ export default async function StudentLayout({
     <SubjectProvider userId={userId}>
       <StudentThemeProvider userId={userId} initialTheme={initialTheme}>
         <StudentHeader userName={session?.name ?? "학생"} />
-        <div className="relative z-[1] mx-auto w-full flex-1 px-3 py-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-4 md:py-3 md:pb-4">
+        <div className="relative z-[1] mx-auto w-full max-w-4xl flex-1 px-3 py-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-5 md:py-3 md:pb-4">
           <StorageNotice />
           {children}
         </div>
