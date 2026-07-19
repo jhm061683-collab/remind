@@ -9,9 +9,43 @@ type Props = {
 const MATH_PATTERN =
   /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g;
 
+const UNDERLINE_PATTERN = /<u>([\s\S]*?)<\/u>/g;
+
+/** 일반 텍스트 안의 <u>...</u> 를 실제 밑줄로 렌더링 */
+function renderTextWithUnderline(
+  text: string,
+  keyPrefix: string,
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let key = 0;
+
+  for (const match of text.matchAll(UNDERLINE_PATTERN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) {
+      nodes.push(text.slice(cursor, index));
+    }
+    nodes.push(
+      <u
+        key={`${keyPrefix}-u-${key++}`}
+        className="underline decoration-[1.5px] underline-offset-[3px]"
+      >
+        {match[1]}
+      </u>,
+    );
+    cursor = index + match[0].length;
+  }
+
+  if (cursor < text.length) {
+    nodes.push(text.slice(cursor));
+  }
+  return nodes;
+}
+
 /**
  * 일반 문장과 LaTeX 수식이 섞인 AI 추출 결과를 KaTeX로 조판한다.
  * 원문 텍스트는 React가 이스케이프하고, 수식 HTML만 KaTeX가 생성한다.
+ * 텍스트 구간의 <u>...</u> 는 밑줄로 표시한다.
  */
 export function LatexContent({ content, className = "" }: Props) {
   const nodes: ReactNode[] = [];
@@ -21,7 +55,9 @@ export function LatexContent({ content, className = "" }: Props) {
   for (const match of content.matchAll(MATH_PATTERN)) {
     const index = match.index ?? 0;
     if (index > cursor) {
-      nodes.push(content.slice(cursor, index));
+      nodes.push(
+        ...renderTextWithUnderline(content.slice(cursor, index), `t-${key}`),
+      );
     }
 
     const expression = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
@@ -45,7 +81,9 @@ export function LatexContent({ content, className = "" }: Props) {
   }
 
   if (cursor < content.length) {
-    nodes.push(content.slice(cursor));
+    nodes.push(
+      ...renderTextWithUnderline(content.slice(cursor), `t-end-${key}`),
+    );
   }
 
   return (

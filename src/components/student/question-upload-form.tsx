@@ -385,8 +385,9 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           <p className="remind-field-label mb-1">2. 문제 사진</p>
           <MultiImagePicker
             label=""
-            hint="카메라나 앨범에서 고르면 됩니다"
+            hint="최대 5장 · 촬영은 한 장씩, 앨범에서는 여러 장을 한 번에 고를 수 있어요"
             required
+            maxImages={5}
             onReadyChange={handleQuestionReady}
             onChange={setQuestionPages}
           />

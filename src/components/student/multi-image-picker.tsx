@@ -16,6 +16,7 @@ type Props = {
   onChange: (pages: Page[]) => void;
   onReadyChange?: (ready: boolean) => void;
   required?: boolean;
+  maxImages?: number;
 };
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -42,6 +43,7 @@ export function MultiImagePicker({
   onChange,
   onReadyChange,
   required = false,
+  maxImages = 5,
 }: Props) {
   const [pages, setPages] = useState<Page[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -84,6 +86,49 @@ export function MultiImagePicker({
           ? `✓ ${replaceIndex !== undefined ? "교체" : "추가"}됨`
           : "✓ 사진 선택됨",
       );
+    } catch {
+      setError("사진을 불러오지 못했습니다. 다시 시도해 주세요.");
+      setStatus(null);
+    }
+  }
+
+  async function handleSelectMany(files: File[]) {
+    setError(null);
+    const remaining = Math.max(0, maxImages - pages.length);
+    const selected = files.slice(0, remaining);
+
+    if (selected.length === 0) {
+      setError(`사진은 최대 ${maxImages}장까지 등록할 수 있어요.`);
+      return;
+    }
+
+    setStatus(`${selected.length}장 불러오는 중...`);
+    try {
+      const added = await Promise.all(
+        selected.map(async (original) => {
+          let file = original;
+          let dataUrl = await readFileAsDataUrl(file);
+          try {
+            const compressed = await compressImage(file);
+            if (compressed.size > 0 && compressed.size < file.size) {
+              file = compressed;
+              dataUrl = await readFileAsDataUrl(compressed);
+            }
+          } catch {
+            // 원본 사용
+          }
+          return { id: nextPageId(), preview: dataUrl, file };
+        }),
+      );
+
+      const next = [...pages, ...added];
+      emit(next);
+      setStatus(`✓ ${next.length}장 선택됨`);
+      if (files.length > selected.length) {
+        setError(
+          `최대 ${maxImages}장까지만 등록되어 나머지 ${files.length - selected.length}장은 제외했어요.`,
+        );
+      }
     } catch {
       setError("사진을 불러오지 못했습니다. 다시 시도해 주세요.");
       setStatus(null);
@@ -155,7 +200,7 @@ export function MultiImagePicker({
             </div>
           ))}
 
-          {pages.length < 2 ? (
+          {pages.length < maxImages ? (
             <div className="grid grid-cols-2 gap-2">
               <ImagePickButton
                 text="장 추가 촬영"
@@ -167,11 +212,13 @@ export function MultiImagePicker({
                 text="앨범에서 추가"
                 variant="secondary"
                 onPick={(f) => void handleSelect(f)}
+                onPickMany={(files) => void handleSelectMany(files)}
+                multiple
               />
             </div>
           ) : (
             <p className="text-center text-xs text-[var(--rm-text-muted)]">
-              최대 2장까지 올릴 수 있어요
+              최대 {maxImages}장까지 올릴 수 있어요
             </p>
           )}
         </div>
@@ -187,6 +234,8 @@ export function MultiImagePicker({
             text="앨범"
             variant="secondary"
             onPick={(f) => void handleSelect(f)}
+            onPickMany={(files) => void handleSelectMany(files)}
+            multiple
           />
         </div>
       )}
