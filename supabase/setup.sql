@@ -151,6 +151,12 @@ alter table public.questions
   add column if not exists reflection_memo text,
   add column if not exists extra_image_urls text[] not null default '{}',
   add column if not exists problem_latex text,
+  add column if not exists ocr_text text,
+  add column if not exists entry_mode text not null default 'manual'
+    check (entry_mode in ('manual', 'ai')),
+  add column if not exists created_by uuid references public.profiles (id) on delete set null,
+  add column if not exists created_by_role text
+    check (created_by_role in ('student', 'admin', 'sub_admin')),
   add column if not exists wrong_reason_detail text,
   add column if not exists wrong_keywords text[] not null default '{}';
 
@@ -158,6 +164,28 @@ create index if not exists questions_user_subject_idx
   on public.questions (user_id, subject_id);
 create index if not exists questions_next_review_idx
   on public.questions (user_id, next_review_date);
+
+-- -----------------------------------------------------------------------------
+-- 원장/강사 수동 학부모 보고서
+-- -----------------------------------------------------------------------------
+create table if not exists public.parent_reports (
+  id uuid primary key default gen_random_uuid(),
+  academy_id uuid not null references public.academies (id) on delete cascade,
+  student_id uuid not null references public.profiles (id) on delete cascade,
+  created_by uuid references public.profiles (id) on delete set null,
+  token_hash text not null unique,
+  title text not null,
+  period_start date not null,
+  period_end date not null,
+  snapshot jsonb not null,
+  expires_at timestamptz,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists parent_reports_student_created_idx
+  on public.parent_reports (student_id, created_at desc);
+create index if not exists parent_reports_academy_created_idx
+  on public.parent_reports (academy_id, created_at desc);
 
 -- -----------------------------------------------------------------------------
 -- 로그인 / 활동
@@ -345,6 +373,7 @@ alter table public.profiles enable row level security;
 alter table public.review_settings enable row level security;
 alter table public.custom_preset_overrides enable row level security;
 alter table public.questions enable row level security;
+alter table public.parent_reports enable row level security;
 alter table public.login_events enable row level security;
 alter table public.activity_events enable row level security;
 alter table public.student_assignments enable row level security;

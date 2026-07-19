@@ -12,6 +12,13 @@ export type StoredQuestion = {
   extraImageDataUrls?: string[];
   /** AI가 원본 문제를 다시 조판한 LaTeX 혼합 문서 */
   problemLatex?: string;
+  /** AI가 사진에서 읽은 원문 OCR 텍스트 */
+  ocrText?: string;
+  /** 학생 수동 입력 또는 AI 추출 */
+  entryMode?: "manual" | "ai";
+  /** 이 오답 레코드를 실제로 만든 계정 */
+  createdBy?: string;
+  createdByRole?: "student" | "admin" | "sub_admin";
   answerText?: string;
   answerImageDataUrl?: string;
   keywords: string[];

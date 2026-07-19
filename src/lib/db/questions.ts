@@ -11,6 +11,10 @@ type QuestionRow = {
   image_url: string;
   extra_image_urls: string[] | null;
   problem_latex: string | null;
+  ocr_text: string | null;
+  entry_mode: "manual" | "ai";
+  created_by: string | null;
+  created_by_role: "student" | "admin" | "sub_admin" | null;
   answer_text: string | null;
   answer_image_url: string | null;
   keywords: string[] | null;
@@ -35,6 +39,10 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     imageDataUrl: row.image_url,
     extraImageDataUrls: row.extra_image_urls ?? [],
     problemLatex: row.problem_latex ?? undefined,
+    ocrText: row.ocr_text ?? undefined,
+    entryMode: row.entry_mode,
+    createdBy: row.created_by ?? undefined,
+    createdByRole: row.created_by_role ?? undefined,
     answerText: row.answer_text ?? undefined,
     answerImageDataUrl: row.answer_image_url ?? undefined,
     keywords: row.keywords ?? [],
@@ -190,12 +198,22 @@ export async function saveQuestion(
     (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null);
 
   const supabase = createClient();
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("academy_id")
+    .eq("id", userId)
+    .maybeSingle();
   const baseRow = {
     user_id: userId,
+    academy_id: ownerProfile?.academy_id ?? null,
     subject_id: input.subjectId,
     image_url: imageUrl,
     extra_image_urls: extraImageUrls,
     problem_latex: input.problemLatex?.trim() || null,
+    ocr_text: input.ocrText?.trim() || null,
+    entry_mode: input.entryMode ?? (input.problemLatex ? "ai" : "manual"),
+    created_by: input.createdBy ?? userId,
+    created_by_role: input.createdByRole ?? "student",
     answer_text: answerText,
     answer_image_url: answerImageUrl ?? null,
     keywords: input.keywords,

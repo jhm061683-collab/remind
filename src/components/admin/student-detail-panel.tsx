@@ -10,6 +10,7 @@ import {
   setStudentAiEnginePreferenceAction,
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ParentReportGenerator } from "@/components/admin/parent-report-generator";
 import type { StudentDetailData } from "@/lib/types/admin";
 import { useRouter } from "next/navigation";
 
@@ -125,6 +126,11 @@ export function StudentDetailPanel({ detail }: Props) {
           학생 정보 저장
         </button>
       </section>
+
+      <ParentReportGenerator
+        studentId={student.id}
+        studentName={student.displayName}
+      />
 
       <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
         <h3 className="font-semibold text-[var(--rm-text)]">비밀번호</h3>

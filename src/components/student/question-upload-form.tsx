@@ -59,12 +59,14 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [wrongReason, setWrongReason] = useState("");
   const [wrongKeywords, setWrongKeywords] = useState<string[]>([]);
   const [reflectionMemo, setReflectionMemo] = useState("");
-  const [showExtras, setShowExtras] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [entryChoice, setEntryChoice] = useState<"manual" | "ai" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrText, setOcrText] = useState("");
   const [sharedPassage, setSharedPassage] = useState("");
   const [drafts, setDrafts] = useState<ProblemDraft[]>([]);
   const [ocrPending, startOcr] = useTransition();
@@ -85,6 +87,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   function clearAiDrafts() {
     setSharedPassage("");
     setDrafts([]);
+    setOcrText("");
     setOcrNote(null);
   }
 
@@ -135,6 +138,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       }
 
       setSharedPassage(data.sharedPassage?.trim() ?? "");
+      setOcrText(data.rawText?.trim() ?? "");
       setDrafts(
         problems.map((p) => ({
           id: nextDraftId(),
@@ -156,7 +160,6 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           }
           return next.slice(0, 12);
         });
-        setShowExtras(true);
       }
 
       // 문항이 하나면 기존 정답 칸과도 맞춤 (수동 등록 흐름 호환)
@@ -282,6 +285,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         ? selectedDrafts.map((d) => ({
             ...base,
             problemLatex: composeProblemLatex(sharedPassage, d.bodyLatex),
+            ocrText,
+            entryMode: "ai" as const,
             answerText: d.answerText.trim(),
             keywords:
               d.keywords.length > 0
@@ -294,6 +299,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
             {
               ...base,
               problemLatex: undefined,
+              ocrText: undefined,
+              entryMode: "manual" as const,
               answerText: answerText.trim(),
               keywords,
             },
@@ -346,7 +353,8 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
   function handleContinue() {
     setSuccess(false);
-    setShowExtras(false);
+    setStep(1);
+    setEntryChoice(null);
     clearAiDrafts();
     setQuestionPages([]);
     setQuestionReady(false);
@@ -395,14 +403,17 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
   const selectedDrafts = drafts.filter((d) => d.selected);
   const useDrafts = drafts.length > 0;
-  const canSubmit =
-    Boolean(subjectId) &&
-    questionReady &&
-    questionPages.length > 0 &&
-    (useDrafts
-      ? selectedDrafts.length > 0 &&
-        selectedDrafts.every((d) => d.answerText.trim().length > 0)
-      : answerText.trim().length > 0);
+  const canContinueStep1 =
+    Boolean(subjectId) && questionReady && questionPages.length > 0;
+  const canContinueStep2 =
+    entryChoice === "ai"
+      ? useDrafts &&
+        selectedDrafts.length > 0 &&
+        selectedDrafts.every((draft) => draft.answerText.trim().length > 0)
+      : entryChoice === "manual"
+        ? answerText.trim().length > 0
+        : false;
+  const canSubmit = canContinueStep1 && canContinueStep2;
 
   return (
     <div className="space-y-3">
@@ -412,41 +423,82 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         </p>
       ) : null}
 
-      <section className="remind-card space-y-3 p-3.5">
-        <p className="text-xs font-semibold text-[var(--rm-text-muted)]">
-          필수 · 3가지만 하면 돼요
-        </p>
+      <section className="remind-card p-3.5">
+        <div className="grid grid-cols-4 gap-2" aria-label="등록 진행 단계">
+          {[
+            ["1", "사진"],
+            ["2", "정답·AI"],
+            ["3", "추가 내용"],
+            ["4", "완료"],
+          ].map(([number, label], index) => {
+            const itemStep = (index + 1) as 1 | 2 | 3 | 4;
+            const active = itemStep === step;
+            const done = itemStep < step;
+            return (
+              <div key={number} className="min-w-0 text-center">
+                <div
+                  className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
+                    active || done
+                      ? "bg-[var(--rm-brand)] text-white"
+                      : "bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]"
+                  }`}
+                >
+                  {done ? "✓" : number}
+                </div>
+                <p
+                  className={`mt-1 truncate text-[10px] font-semibold ${
+                    active
+                      ? "text-[var(--rm-brand)]"
+                      : "text-[var(--rm-text-muted)]"
+                  }`}
+                >
+                  {label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-        <label className="block">
-          <span className="remind-field-label">1. 과목</span>
-          {subjectsLoading ? (
-            <p className="mt-1 text-sm text-[var(--rm-text-muted)]">
-              과목 불러오는 중...
+      {step === 1 ? (
+        <section className="remind-card space-y-4 p-3.5">
+          <div>
+            <h2 className="text-base font-bold text-[var(--rm-text)]">
+              1단계 · 문제 사진
+            </h2>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              촬영하거나 앨범에서 최대 5장을 선택하세요.
             </p>
-          ) : subjects.length === 0 ? (
-            <p className="mt-1 text-sm text-[var(--rm-danger)]">
-              과목이 없어요. 「과목 설정」에서 먼저 추가해 주세요.
-            </p>
-          ) : (
-            <select
-              value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              className="remind-input mt-1 text-base"
-            >
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </label>
+          </div>
 
-        <div>
-          <p className="remind-field-label mb-1">2. 문제 사진</p>
+          <label className="block">
+            <span className="remind-field-label">과목</span>
+            {subjectsLoading ? (
+              <p className="mt-1 text-sm text-[var(--rm-text-muted)]">
+                과목 불러오는 중...
+              </p>
+            ) : subjects.length === 0 ? (
+              <p className="mt-1 text-sm text-[var(--rm-danger)]">
+                과목이 없어요. 「과목 설정」에서 먼저 추가해 주세요.
+              </p>
+            ) : (
+              <select
+                value={subjectId}
+                onChange={(event) => setSubjectId(event.target.value)}
+                className="remind-input mt-1 text-base"
+              >
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
+
           <MultiImagePicker
-            label=""
-            hint="최대 5장 · 한 장에 여러 문항이 있으면 AI가 나눠 줘요"
+            label="문제 사진"
+            hint="한 장에 여러 문항이 있어도 AI가 나눌 수 있어요"
             required
             maxImages={5}
             onReadyChange={handleQuestionReady}
@@ -454,69 +506,141 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               setQuestionPages(pages);
               clearAiDrafts();
               setAnswerText("");
+              setEntryChoice(null);
             }}
           />
-          {questionReady && questionPages.length > 0 ? (
+
+          <button
+            type="button"
+            disabled={!canContinueStep1}
+            onClick={() => setStep(2)}
+            className="min-h-[48px] w-full rounded-xl bg-[var(--rm-brand)] py-3 text-base font-bold text-white disabled:opacity-40"
+          >
+            다음 · 정답 입력 방법 선택
+          </button>
+        </section>
+      ) : null}
+
+      {step === 2 ? (
+        <section className="remind-card space-y-4 p-3.5">
+          <div>
+            <h2 className="text-base font-bold text-[var(--rm-text)]">
+              2단계 · 정답 입력 또는 AI로 만들기
+            </h2>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              빠르게 정답만 적거나, AI가 문제를 정갈하게 만들도록 선택하세요.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={runOcr}
-              disabled={ocrPending}
-              className="mt-2 min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm font-semibold text-[var(--rm-text)] touch-manipulation disabled:opacity-60"
+              onClick={() => {
+                setEntryChoice("manual");
+                clearAiDrafts();
+              }}
+              className={`min-h-[76px] rounded-xl border p-3 text-left ${
+                entryChoice === "manual"
+                  ? "border-[var(--rm-brand)] bg-[var(--rm-info-bg)]"
+                  : "border-[var(--rm-border)] bg-[var(--rm-surface)]"
+              }`}
             >
-              {ocrPending
-                ? "AI 분석 중…"
-                : "AI로 읽기 (여러 문항이면 자동 분리)"}
+              <span className="block text-sm font-bold">정답만 입력</span>
+              <span className="mt-1 block text-[11px] text-[var(--rm-text-muted)]">
+                빠르고 AI 비용 없음
+              </span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEntryChoice("ai");
+                runOcr();
+              }}
+              disabled={ocrPending}
+              className={`min-h-[76px] rounded-xl border p-3 text-left disabled:opacity-60 ${
+                entryChoice === "ai"
+                  ? "border-[var(--rm-brand)] bg-[var(--rm-info-bg)]"
+                  : "border-[var(--rm-border)] bg-[var(--rm-surface)]"
+              }`}
+            >
+              <span className="block text-sm font-bold">
+                {ocrPending ? "AI 분석 중…" : "AI로 문제 만들기"}
+              </span>
+              <span className="mt-1 block text-[11px] text-[var(--rm-text-muted)]">
+                OCR·LaTeX를 함께 저장
+              </span>
+            </button>
+          </div>
+
+          {entryChoice === "manual" ? (
+            <label className="block">
+              <span className="remind-field-label">
+                정답 <span className="text-[var(--rm-danger)]">*</span>
+              </span>
+              <input
+                type="text"
+                value={answerText}
+                onChange={(event) => setAnswerText(event.target.value)}
+                placeholder="예: ③ 또는 x=2"
+                className="remind-input mt-1 text-base"
+                autoComplete="off"
+              />
+            </label>
           ) : null}
-          {ocrNote ? (
-            <p className="mt-1.5 text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
+
+          {entryChoice === "ai" ? (
+            <>
+              {ocrNote ? (
+                <p className="text-xs text-[var(--rm-text-muted)]">{ocrNote}</p>
+              ) : null}
+              <ProblemDraftList
+                sharedPassage={sharedPassage}
+                drafts={drafts}
+                onChange={setDrafts}
+                onSharedPassageChange={setSharedPassage}
+              />
+              {!ocrPending && drafts.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={runOcr}
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] text-sm font-semibold"
+                >
+                  AI 분석 다시 시도
+                </button>
+              ) : null}
+            </>
           ) : null}
 
-          <ProblemDraftList
-            sharedPassage={sharedPassage}
-            drafts={drafts}
-            onChange={setDrafts}
-            onSharedPassageChange={setSharedPassage}
-          />
-        </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="min-h-[46px] rounded-xl border border-[var(--rm-border)] font-semibold"
+            >
+              이전
+            </button>
+            <button
+              type="button"
+              disabled={!canContinueStep2 || ocrPending}
+              onClick={() => setStep(3)}
+              className="min-h-[46px] rounded-xl bg-[var(--rm-brand)] font-bold text-white disabled:opacity-40"
+            >
+              다음 · 추가 내용
+            </button>
+          </div>
+        </section>
+      ) : null}
 
-        {!useDrafts ? (
-          <label className="block">
-            <span className="remind-field-label">
-              3. 정답 <span className="text-[var(--rm-danger)]">*</span>
-            </span>
-            <input
-              type="text"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="예: ③ 또는 x=2"
-              className="remind-input mt-1 text-base"
-              autoComplete="off"
-            />
-            <p className="mt-1 text-[11px] text-[var(--rm-text-faint)]">
-              AI로 읽으면 문항별로 정답을 입력할 수 있어요.
-            </p>
-          </label>
-        ) : (
-          <p className="text-xs text-[var(--rm-text-muted)]">
-            3. 정답은 위에서 선택한 문항마다 입력해 주세요.
-          </p>
-        )}
-      </section>
-
-      <button
-        type="button"
-        onClick={() => setShowExtras((v) => !v)}
-        className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface)] px-3.5 py-2 text-left text-sm font-medium text-[var(--rm-text-muted)] touch-manipulation"
-      >
-        <span>{showExtras ? "추가입력 접기" : "추가입력"}</span>
-        <span className="text-xs text-[var(--rm-text-faint)]">
-          키워드 · 오답 메모 · 해설 사진
-        </span>
-      </button>
-
-      {showExtras ? (
+      {step === 3 ? (
         <section className="remind-card space-y-3 p-3.5">
+          <div>
+            <h2 className="text-base font-bold text-[var(--rm-text)]">
+              3단계 · 추가 내용
+            </h2>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              모두 선택 사항이에요. 바로 건너뛰어도 됩니다.
+            </p>
+          </div>
           <KeywordPicker
             userId={userId}
             kind="problem"
@@ -565,31 +689,91 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               setAnswerPreview(preview);
             }}
           />
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="min-h-[46px] rounded-xl border border-[var(--rm-border)] font-semibold"
+            >
+              이전
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(4)}
+              className="min-h-[46px] rounded-xl bg-[var(--rm-brand)] font-bold text-white"
+            >
+              {source || wrongReason || reflectionMemo || keywords.length > 0
+                ? "다음 · 확인"
+                : "건너뛰고 확인"}
+            </button>
+          </div>
         </section>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => void handleSubmit()}
-        disabled={isSaving || !canSubmit}
-        className={`min-h-[48px] w-full rounded-xl py-3 text-base font-bold text-white touch-manipulation ${
-          canSubmit ? "bg-[var(--rm-brand)]" : "bg-[var(--rm-text-faint)]"
-        }`}
-      >
-        {isSaving
-          ? "등록 중..."
-          : canSubmit
-            ? useDrafts && selectedDrafts.length > 1
-              ? `${selectedDrafts.length}개 등록하기`
-              : "등록하기"
-            : useDrafts
-              ? selectedDrafts.length === 0
-                ? "등록할 문항을 선택하세요"
-                : "선택한 문항의 정답을 입력하세요"
-              : !answerText.trim()
-                ? "정답을 입력하세요"
-                : "사진과 과목을 선택하세요"}
-      </button>
+      {step === 4 ? (
+        <section className="remind-card space-y-4 p-3.5">
+          <div>
+            <h2 className="text-base font-bold text-[var(--rm-text)]">
+              4단계 · 확인하고 완료
+            </h2>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              아래 내용으로 저장하고 강사·원장 대시보드에 반영합니다.
+            </p>
+          </div>
+
+          <dl className="space-y-2 rounded-xl bg-[var(--rm-surface-raised)] p-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-[var(--rm-text-muted)]">과목</dt>
+              <dd className="font-semibold">{getSubjectName(subjectId)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-[var(--rm-text-muted)]">사진</dt>
+              <dd className="font-semibold">{questionPages.length}장</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-[var(--rm-text-muted)]">입력 방식</dt>
+              <dd className="font-semibold">
+                {entryChoice === "ai" ? "AI 문제 만들기" : "정답만 입력"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-[var(--rm-text-muted)]">등록 문항</dt>
+              <dd className="font-semibold">
+                {useDrafts ? selectedDrafts.length : 1}개
+              </dd>
+            </div>
+            {source ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--rm-text-muted)]">출처</dt>
+                <dd className="text-right font-semibold">{source}</dd>
+              </div>
+            ) : null}
+          </dl>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              className="min-h-[48px] rounded-xl border border-[var(--rm-border)] font-semibold"
+            >
+              이전
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={isSaving || !canSubmit}
+              className="min-h-[48px] rounded-xl bg-[var(--rm-brand)] text-base font-bold text-white disabled:opacity-40"
+            >
+              {isSaving
+                ? "등록 중..."
+                : useDrafts && selectedDrafts.length > 1
+                  ? `${selectedDrafts.length}개 등록 완료`
+                  : "등록 완료"}
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -57,9 +57,12 @@ function toErrorMessage(err: unknown): string {
     record.code === "PGRST204" ||
     message.includes("wrong_keywords") ||
     message.includes("problem_latex") ||
+    message.includes("ocr_text") ||
+    message.includes("entry_mode") ||
+    message.includes("created_by") ||
     message.includes("schema cache")
   ) {
-    return "DB 설정이 오래됐어요. Supabase에서 problem_latex SQL을 실행한 뒤 다시 시도해 주세요.";
+    return "DB 설정이 오래됐어요. Supabase에서 031 마이그레이션을 실행한 뒤 다시 시도해 주세요.";
   }
 
   return "등록 실패. 사진을 다시 선택해 주세요.";
@@ -78,7 +81,17 @@ export async function saveQuestionAction(
   }
 
   try {
-    await saveQuestionOnServer(session.id, input);
+    if (
+      session.role !== "student" &&
+      session.role !== "admin" &&
+      session.role !== "sub_admin"
+    ) {
+      return { error: "이 역할로는 문제를 등록할 수 없습니다." };
+    }
+    await saveQuestionOnServer(session.id, input, {
+      id: session.id,
+      role: session.role,
+    });
     return {};
   } catch (err) {
     console.error("[saveQuestionAction]", err);

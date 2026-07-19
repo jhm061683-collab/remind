@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ImagePickButton } from "@/components/student/image-pick-button";
+import { ImageCropDialog } from "@/components/student/image-crop-dialog";
 import { compressImage } from "@/lib/utils/compress-image";
 
 type Page = {
@@ -48,6 +49,7 @@ export function MultiImagePicker({
   const [pages, setPages] = useState<Page[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
 
   function emit(next: Page[]) {
     setPages(next);
@@ -143,6 +145,25 @@ export function MultiImagePicker({
 
   return (
     <div>
+      <ImageCropDialog
+        open={cropIndex !== null}
+        source={cropIndex !== null ? (pages[cropIndex]?.preview ?? "") : ""}
+        onCancel={() => setCropIndex(null)}
+        onApply={(croppedDataUrl) => {
+          if (cropIndex === null) return;
+          const next = [...pages];
+          const current = next[cropIndex];
+          if (!current) return;
+          next[cropIndex] = {
+            ...current,
+            preview: croppedDataUrl,
+            file: null,
+          };
+          emit(next);
+          setCropIndex(null);
+          setStatus("✓ 사진을 잘랐어요");
+        }}
+      />
       {label ? (
         <p className="mb-1 text-sm font-medium text-[var(--rm-text)]">
           {label}
@@ -177,7 +198,7 @@ export function MultiImagePicker({
                 alt={`${label || "문제"} ${index + 1}`}
                 className="max-h-52 w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] object-contain"
               />
-              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+              <div className="mt-1.5 grid grid-cols-4 gap-1.5">
                 <ImagePickButton
                   text="다시 찍기"
                   capture
@@ -189,6 +210,13 @@ export function MultiImagePicker({
                   variant="outline"
                   onPick={(f) => void handleSelect(f, index)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setCropIndex(index)}
+                  className="min-h-11 rounded-[var(--rm-radius-md)] border border-[var(--rm-border)] bg-[var(--rm-surface)] text-sm font-bold text-[var(--rm-text)]"
+                >
+                  자르기
+                </button>
                 <button
                   type="button"
                   onClick={() => removePage(index)}
