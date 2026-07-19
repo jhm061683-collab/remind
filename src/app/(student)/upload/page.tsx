@@ -2,6 +2,7 @@ import { BackBar } from "@/components/ui/back-bar";
 import { PageHeader } from "@/components/ui/page-header";
 import { QuestionUploadForm } from "@/components/student/question-upload-form";
 import { getSession } from "@/lib/auth/session";
+import { getStudentAiQuotaStatus } from "@/lib/server/ai/engine-quota";
 
 type Props = {
   searchParams: Promise<{ subject?: string }>;
@@ -10,6 +11,10 @@ type Props = {
 export default async function UploadPage({ searchParams }: Props) {
   const { subject } = await searchParams;
   const session = await getSession();
+  const aiQuota =
+    session?.role === "student"
+      ? await getStudentAiQuotaStatus(session.id)
+      : null;
 
   return (
     <>
@@ -22,6 +27,7 @@ export default async function UploadPage({ searchParams }: Props) {
       <QuestionUploadForm
         userId={session?.id ?? "guest"}
         defaultSubjectId={subject}
+        initialAiQuota={aiQuota}
       />
     </>
   );

@@ -38,12 +38,12 @@ export const PLAN_DEFINITIONS: PlanDefinition[] = [
     ocrDailyLimit: 30,
     aiMonthlyLimit: 400,
     aiGoldMonthlyLimit: 0,
-    description: "AI 문제 분석 월 400건 (Gemini 3.5 Flash)",
+    description: "빠른 AI 문제 정리 월 400건",
     highlight: true,
     features: [
       "학생당 월 29,000원",
       "AI 문제 분석 월 400건 · 하루 최대 30건",
-      "Gemini 3.5 Flash 엔진 (빠르고 안정적)",
+      "빠르고 안정적인 AI 문제 정리",
     ],
   },
   {
@@ -53,14 +53,14 @@ export const PLAN_DEFINITIONS: PlanDefinition[] = [
     ocrDailyLimit: 30,
     aiMonthlyLimit: 400,
     aiGoldMonthlyLimit: 100,
-    description: "GPT-4o 골드 티켓 100건 + Gemini 하이브리드",
+    description: "정밀 AI 정리 100건 + 빠른 AI 정리",
     highlight: false,
     features: [
       "학생당 월 49,000원",
       "AI 문제 분석 월 400건 · 하루 최대 30건",
-      "GPT-4o 골드 티켓 월 100건 (킬러 문항용)",
-      "골드 소진 시 Gemini Flash 자동 전환",
-      "학생별 GPT-4o 우선 여부 설정",
+      "정밀 AI 정리 월 100건 (복잡한 문항용)",
+      "정밀 정리 소진 시 빠른 AI 정리로 자동 전환",
+      "학생이 문제마다 정리 방식 선택",
     ],
   },
 ];

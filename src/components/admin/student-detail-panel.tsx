@@ -26,7 +26,7 @@ export function StudentDetailPanel({ detail }: Props) {
   const [gradeNumber, setGradeNumber] = useState(student.gradeNumber ?? 1);
   const [password, setPassword] = useState("");
   const [preferGpt4o, setPreferGpt4o] = useState(
-    detail.aiEngine?.preferGpt4o ?? true,
+    detail.aiEngine?.preferGpt4o ?? false,
   );
   const [message, setMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -172,11 +172,11 @@ export function StudentDetailPanel({ detail }: Props) {
       {detail.aiEngine?.academyPlanCode === "premium" ? (
         <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
           <h3 className="font-semibold text-[var(--rm-text)]">
-            AI 엔진 설정 (Premium)
+            AI 정리 기본 선택
           </h3>
           <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-            켜면 GPT-4o 골드 티켓(월 100건)이 남아 있을 때 GPT-4o를 먼저
-            씁니다. 끄면 골드 티켓을 아끼고 Gemini만 씁니다.
+            학생이 등록할 때 직접 정리 방식을 고를 수 있습니다. 여기서는 처음
+            표시할 기본 선택만 정합니다.
           </p>
           <label className="mt-3 flex cursor-pointer items-center gap-3">
             <button
@@ -209,7 +209,7 @@ export function StudentDetailPanel({ detail }: Props) {
               />
             </button>
             <span className="text-sm text-[var(--rm-text)]">
-              {preferGpt4o ? "GPT-4o 우선 (골드 티켓 사용)" : "Gemini만 사용"}
+              {preferGpt4o ? "정밀 AI 정리 우선" : "빠른 AI 정리 우선"}
             </span>
           </label>
         </section>

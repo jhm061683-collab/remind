@@ -10,6 +10,7 @@ const MATH_PATTERN =
   /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g;
 
 const UNDERLINE_PATTERN = /<u>([\s\S]*?)<\/u>/g;
+const FIGURE_PATTERN = /\[\[FIGURE:([^\]]+)\]\]/g;
 
 /** 일반 텍스트 안의 <u>...</u> 를 실제 밑줄로 렌더링 */
 function renderTextWithUnderline(
@@ -47,7 +48,7 @@ function renderTextWithUnderline(
  * 원문 텍스트는 React가 이스케이프하고, 수식 HTML만 KaTeX가 생성한다.
  * 텍스트 구간의 <u>...</u> 는 밑줄로 표시한다.
  */
-export function LatexContent({ content, className = "" }: Props) {
+function renderTextAndMath(content: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let cursor = 0;
   let key = 0;
@@ -56,7 +57,10 @@ export function LatexContent({ content, className = "" }: Props) {
     const index = match.index ?? 0;
     if (index > cursor) {
       nodes.push(
-        ...renderTextWithUnderline(content.slice(cursor, index), `t-${key}`),
+        ...renderTextWithUnderline(
+          content.slice(cursor, index),
+          `${keyPrefix}-t-${key}`,
+        ),
       );
     }
 
@@ -72,7 +76,7 @@ export function LatexContent({ content, className = "" }: Props) {
     const Tag = displayMode ? "div" : "span";
     nodes.push(
       <Tag
-        key={`math-${key++}`}
+        key={`${keyPrefix}-math-${key++}`}
         className={displayMode ? "my-3 overflow-x-auto py-1 text-center" : ""}
         dangerouslySetInnerHTML={{ __html: html }}
       />,
@@ -82,7 +86,60 @@ export function LatexContent({ content, className = "" }: Props) {
 
   if (cursor < content.length) {
     nodes.push(
-      ...renderTextWithUnderline(content.slice(cursor), `t-end-${key}`),
+      ...renderTextWithUnderline(
+        content.slice(cursor),
+        `${keyPrefix}-t-end-${key}`,
+      ),
+    );
+  }
+  return nodes;
+}
+
+function isSafeFigureUrl(url: string): boolean {
+  return (
+    /^https:\/\//i.test(url) ||
+    /^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(url)
+  );
+}
+
+export function LatexContent({ content, className = "" }: Props) {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let figureKey = 0;
+
+  for (const match of content.matchAll(FIGURE_PATTERN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) {
+      nodes.push(
+        ...renderTextAndMath(
+          content.slice(cursor, index),
+          `segment-${figureKey}`,
+        ),
+      );
+    }
+
+    const url = match[1]?.trim() ?? "";
+    if (isSafeFigureUrl(url)) {
+      nodes.push(
+        <figure
+          key={`figure-${figureKey++}`}
+          className="my-4 overflow-hidden rounded-xl border border-[var(--rm-border)] bg-white p-2"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt="문제에 포함된 그래프 또는 그림"
+            className="mx-auto max-h-[28rem] max-w-full object-contain"
+          />
+        </figure>,
+      );
+    }
+    cursor = index + match[0].length;
+  }
+
+  if (cursor < content.length) {
+    nodes.push(
+      ...renderTextAndMath(content.slice(cursor), `segment-end-${figureKey}`),
     );
   }
 

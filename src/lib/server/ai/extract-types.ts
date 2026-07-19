@@ -1,5 +1,15 @@
 import type { AiEngine } from "@/lib/server/ai/engine-quota";
 
+export type ExtractedFigureRegion = {
+  /** 0부터 시작하는 사진 순서 */
+  pageIndex: number;
+  /** 사진 전체를 0~1000으로 본 영역 좌표 */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type ExtractedProblemItem = {
   /** 문항 번호 표시용. 예: "28", "37번" */
   number: string;
@@ -7,6 +17,8 @@ export type ExtractedProblemItem = {
   problemLatex: string;
   answerGuess: string;
   keywords: string[];
+  /** 그래프·도형·표처럼 원본 그림을 그대로 보여줄 영역 */
+  figures: ExtractedFigureRegion[];
 };
 
 export type QuestionExtractResult = {
@@ -56,8 +68,27 @@ const PROBLEM_ITEM_SCHEMA = {
       items: { type: "string" },
       description: "단원·개념 키워드 1~5개",
     },
+    figures: {
+      type: "array",
+      description:
+        "그래프·도형·지도·회로·표 등 원본 그림 영역. 없으면 빈 배열. 좌표는 각 사진 전체를 0~1000으로 환산.",
+      items: {
+        type: "object",
+        properties: {
+          pageIndex: {
+            type: "integer",
+            description: "그림이 있는 사진 순서. 첫 사진은 0.",
+          },
+          x: { type: "number", description: "왼쪽 좌표 0~1000" },
+          y: { type: "number", description: "위쪽 좌표 0~1000" },
+          width: { type: "number", description: "너비 1~1000" },
+          height: { type: "number", description: "높이 1~1000" },
+        },
+        required: ["pageIndex", "x", "y", "width", "height"],
+      },
+    },
   },
-  required: ["number", "problemLatex", "answer", "keywords"],
+  required: ["number", "problemLatex", "answer", "keywords", "figures"],
 } as const;
 
 export const EXTRACT_RESPONSE_SCHEMA = {
@@ -97,6 +128,14 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 7. keywords는 관련 단원/개념 한국어 키워드 최대 5개입니다.
 8. 확실하지 않으면 answer를 빈 문자열로 두고, 본문은 읽을 수 있는 만큼만 적으세요.
 9. JSON 외 다른 텍스트는 출력하지 마세요.
+
+그래프·그림·도형·표 처리 (매우 중요):
+- 원본에 그래프, 좌표평면, 기하 도형, 지도, 회로, 삽화, 표가 있으면 글로 풀어서 설명하거나 생략하지 마세요.
+- 해당 시각 자료의 경계 상자를 figures에 넣으세요. 사진 전체의 왼쪽 위가 (0,0), 오른쪽 아래가 (1000,1000)입니다.
+- 첫 번째 사진은 pageIndex 0, 두 번째 사진은 1입니다.
+- 축 이름, 범례, 눈금, 곡선, 도형의 라벨이 모두 들어가도록 약간 넉넉하게 잡되 문제 본문은 최대한 제외하세요.
+- problemLatex에서 원래 그림이 있던 위치에 [[FIGURE_1]], [[FIGURE_2]] 표시를 넣으세요.
+- figures가 없으면 빈 배열로 반환하세요.
 
 긴 지문·여러 장 사진:
 - 국어 지문은 sharedPassage에 전문을 넣으세요. 요약하지 마세요.
@@ -159,7 +198,34 @@ function normalizeProblemItem(raw: unknown): ExtractedProblemItem {
           .filter(Boolean)
           .slice(0, 8)
       : [],
+    figures: Array.isArray(obj.figures)
+      ? obj.figures
+          .map((figure) => normalizeFigureRegion(figure))
+          .filter((figure): figure is ExtractedFigureRegion => figure !== null)
+          .slice(0, 4)
+      : [],
   };
+}
+
+function normalizeFigureRegion(raw: unknown): ExtractedFigureRegion | null {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const pageIndex = Math.max(0, Math.floor(Number(obj.pageIndex ?? 0)));
+  const x = Math.max(0, Math.min(1000, Number(obj.x ?? 0)));
+  const y = Math.max(0, Math.min(1000, Number(obj.y ?? 0)));
+  const width = Math.max(0, Math.min(1000 - x, Number(obj.width ?? 0)));
+  const height = Math.max(0, Math.min(1000 - y, Number(obj.height ?? 0)));
+  if (
+    !Number.isFinite(pageIndex) ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width < 20 ||
+    height < 20
+  ) {
+    return null;
+  }
+  return { pageIndex, x, y, width, height };
 }
 
 function stripCodeFence(text: string): string {

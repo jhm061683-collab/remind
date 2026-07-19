@@ -493,8 +493,8 @@ export async function setStudentAiEnginePreferenceAction(
   revalidatePath(`/admin/students/${studentId}`);
   return {
     success: preferGpt4o
-      ? "이 학생은 골드 티켓이 남아 있으면 GPT-4o를 먼저 씁니다."
-      : "이 학생은 골드 티켓을 아끼고 Gemini만 씁니다.",
+      ? "이 학생의 기본 선택을 정밀 AI 정리로 바꿨습니다."
+      : "이 학생의 기본 선택을 빠른 AI 정리로 바꿨습니다.",
   };
 }
 

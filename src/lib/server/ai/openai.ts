@@ -28,9 +28,7 @@ export async function extractWithOpenAI(
 ): Promise<QuestionExtractResult> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) {
-    throw new Error(
-      "OPENAI_API_KEY 가 없습니다. Premium GPT-4o를 쓰려면 환경변수에 넣어 주세요.",
-    );
+    throw new Error("정밀 AI 연결 설정이 아직 완료되지 않았습니다.");
   }
 
   const urls = input.imageDataUrls.filter(Boolean);
@@ -68,7 +66,7 @@ export async function extractWithOpenAI(
           content: [
             {
               type: "text",
-              text: "이 문제 사진을 분석해서 JSON으로 답하세요. 키: sharedPassage, problems[{number, problemLatex, answer, keywords}]. 여러 문항이면 problems로 최대 5개 분리.",
+              text: "이 문제 사진을 분석해서 JSON으로 답하세요. 키: sharedPassage, problems[{number, problemLatex, answer, keywords, figures[{pageIndex,x,y,width,height}]}]. 여러 문항이면 problems로 최대 5개 분리. 그래프·도형·표는 설명으로 바꾸지 말고 원본 영역 좌표와 [[FIGURE_1]] 위치 표시를 반환하세요.",
             },
             ...imageContent,
           ],
@@ -84,14 +82,14 @@ export async function extractWithOpenAI(
 
   const text = body.choices?.[0]?.message?.content?.trim() ?? "";
   if (!text) {
-    throw new Error("GPT-4o가 빈 응답을 반환했습니다. 사진을 다시 찍어 주세요.");
+    throw new Error("AI가 문제를 읽지 못했습니다. 사진을 다시 찍어 주세요.");
   }
 
   let parsed;
   try {
     parsed = normalizeExtractJson(text);
   } catch {
-    throw new Error("GPT-4o 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
+    throw new Error("AI가 정리한 내용을 읽지 못했습니다. 다시 시도해 주세요.");
   }
 
   const first = parsed.problems[0]!;
@@ -100,7 +98,7 @@ export async function extractWithOpenAI(
     count > 1
       ? `사진에서 ${count}개 문항을 나눴어요. 등록할 문항을 확인하고 수정해 주세요.`
       : first.answerGuess
-        ? "GPT-4o(골드 티켓)가 읽은 결과입니다. 정답·문장을 확인해 주세요."
+        ? "정밀 AI가 읽은 결과입니다. 정답과 문장을 확인해 주세요."
         : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.";
 
   return {

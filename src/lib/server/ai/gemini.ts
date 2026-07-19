@@ -75,7 +75,7 @@ export async function extractWithGemini(
             role: "user",
             parts: [
               {
-                text: "이 문제 사진을 분석해서 JSON으로 답하세요. 여러 문항이면 problems 배열로 분리하세요.",
+                text: "이 문제 사진을 분석해서 JSON으로 답하세요. 여러 문항이면 problems 배열로 분리하세요. 그래프·도형·표는 글로 설명하지 말고 원본 영역 좌표를 figures에 반환하세요.",
               },
               ...imageParts,
             ],
@@ -117,14 +117,14 @@ export async function extractWithGemini(
       .trim() ?? "";
 
   if (!text) {
-    throw new Error("Gemini가 빈 응답을 반환했습니다. 사진을 다시 찍어 주세요.");
+    throw new Error("AI가 문제를 읽지 못했습니다. 사진을 다시 찍어 주세요.");
   }
 
   let parsed;
   try {
     parsed = normalizeExtractJson(text);
   } catch {
-    throw new Error("Gemini 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
+    throw new Error("AI가 정리한 내용을 읽지 못했습니다. 다시 시도해 주세요.");
   }
 
   const first = parsed.problems[0]!;
@@ -133,7 +133,7 @@ export async function extractWithGemini(
     count > 1
       ? `사진에서 ${count}개 문항을 나눴어요. 등록할 문항을 확인하고 수정해 주세요.`
       : first.answerGuess
-        ? "Gemini가 읽은 결과입니다. 정답·문장을 확인해 주세요."
+        ? "빠른 AI가 읽은 결과입니다. 정답과 문장을 확인해 주세요."
         : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.";
 
   return {

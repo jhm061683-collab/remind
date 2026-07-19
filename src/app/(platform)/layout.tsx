@@ -12,7 +12,7 @@ export default async function PlatformLayout({
   return (
     <div className="min-h-dvh bg-[var(--rm-bg)] text-[var(--rm-text)]">
       <header className="border-b border-[var(--rm-border)] bg-[var(--rm-surface)]">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <RemindLogo href="/platform" size="sm" />
             <div>
@@ -37,7 +37,7 @@ export default async function PlatformLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      <main className="mx-auto w-full px-4 py-4">{children}</main>
     </div>
   );
 }

@@ -838,7 +838,7 @@ export async function getStudentDetailForStaff(
     }
     aiEngine = {
       academyPlanCode,
-      preferGpt4o: studentProfile.ai_prefer_gpt4o !== false,
+      preferGpt4o: studentProfile.ai_prefer_gpt4o === true,
     };
   }
 

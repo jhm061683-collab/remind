@@ -20,6 +20,11 @@ import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import { formatDate } from "@/lib/utils/labels";
 import { getQuestionImageUrls } from "@/lib/utils/question-images";
+import {
+  cropExtractedFigures,
+  embedProblemFigures,
+} from "@/lib/utils/problem-figures";
+import { uploadDataUrl } from "@/lib/db/images";
 
 type Props = {
   question: StoredQuestion;
@@ -174,11 +179,26 @@ export function QuestionArchiveCard({
         setMessage(result.error);
         return;
       }
-      const latex = result.result?.problemLatex?.trim() ?? "";
-      if (!latex) {
+      const rawLatex = result.result?.problemLatex?.trim() ?? "";
+      if (!rawLatex) {
         setMessage("AI가 문제를 읽지 못했어요. 사진을 확인해 주세요.");
         return;
       }
+      const figureRegions = result.result?.problems?.[0]?.figures ?? [];
+      const croppedFigures = await cropExtractedFigures(urls, figureRegions);
+      let figureUrls = croppedFigures;
+      if (isSupabaseEnabled() && croppedFigures.length > 0) {
+        try {
+          figureUrls = await Promise.all(
+            croppedFigures.map((dataUrl) =>
+              uploadDataUrl(dataUrl, userId, "question"),
+            ),
+          );
+        } catch {
+          figureUrls = [];
+        }
+      }
+      const latex = embedProblemFigures(rawLatex, figureUrls);
 
       setProblemLatexDraft(latex);
       setEditingLatex(true);

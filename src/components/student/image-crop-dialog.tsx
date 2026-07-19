@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 type Props = {
   open: boolean;
@@ -9,45 +14,111 @@ type Props = {
   onApply: (croppedDataUrl: string) => void;
 };
 
+type CropRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type Point = { x: number; y: number };
+
+const MIN_SIZE = 24;
+
 export function ImageCropDialog({
   open,
   source,
   onCancel,
   onApply,
 }: Props) {
-  const [zoom, setZoom] = useState(1);
-  const [centerX, setCenterX] = useState(50);
-  const [centerY, setCenterY] = useState(50);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<CropRect | null>(null);
+  const [start, setStart] = useState<Point | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setZoom(1);
-    setCenterX(50);
-    setCenterY(50);
+    setCrop(null);
+    setStart(null);
+    setDragging(false);
   }, [open, source]);
 
   if (!open) return null;
 
+  function pointInImage(event: ReactPointerEvent<HTMLDivElement>): Point {
+    const image = imageRef.current;
+    if (!image) return { x: 0, y: 0 };
+    const rect = image.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+      y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)),
+    };
+  }
+
+  function beginCrop(event: ReactPointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = pointInImage(event);
+    setStart(point);
+    setCrop({ x: point.x, y: point.y, width: 0, height: 0 });
+    setDragging(true);
+  }
+
+  function updateCrop(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragging || !start) return;
+    const point = pointInImage(event);
+    setCrop({
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    });
+  }
+
+  function finishCrop(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDragging(false);
+    setStart(null);
+  }
+
+  function selectWholeImage() {
+    const image = imageRef.current;
+    if (!image) return;
+    setCrop({
+      x: 0,
+      y: 0,
+      width: image.clientWidth,
+      height: image.clientHeight,
+    });
+  }
+
   async function applyCrop() {
+    const displayed = imageRef.current;
+    if (
+      !displayed ||
+      !crop ||
+      crop.width < MIN_SIZE ||
+      crop.height < MIN_SIZE
+    ) {
+      return;
+    }
+
     const image = new Image();
     image.src = source;
     await image.decode();
 
-    const aspect = 4 / 3;
-    let cropWidth = image.naturalWidth / zoom;
-    let cropHeight = cropWidth / aspect;
-    if (cropHeight > image.naturalHeight / zoom) {
-      cropHeight = image.naturalHeight / zoom;
-      cropWidth = cropHeight * aspect;
-    }
-
-    const maxX = Math.max(0, image.naturalWidth - cropWidth);
-    const maxY = Math.max(0, image.naturalHeight - cropHeight);
-    const sx = (centerX / 100) * maxX;
-    const sy = (centerY / 100) * maxY;
+    const scaleX = image.naturalWidth / displayed.clientWidth;
+    const scaleY = image.naturalHeight / displayed.clientHeight;
+    const sx = Math.round(crop.x * scaleX);
+    const sy = Math.round(crop.y * scaleY);
+    const sourceWidth = Math.round(crop.width * scaleX);
+    const sourceHeight = Math.round(crop.height * scaleY);
     const maxOutputWidth = 1600;
-    const outputWidth = Math.min(maxOutputWidth, Math.round(cropWidth));
-    const outputHeight = Math.round(outputWidth / aspect);
+    const outputScale = Math.min(1, maxOutputWidth / sourceWidth);
+    const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
+    const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
+
     const canvas = document.createElement("canvas");
     canvas.width = outputWidth;
     canvas.height = outputHeight;
@@ -57,100 +128,112 @@ export function ImageCropDialog({
       image,
       sx,
       sy,
-      cropWidth,
-      cropHeight,
+      sourceWidth,
+      sourceHeight,
       0,
       0,
       outputWidth,
       outputHeight,
     );
-    onApply(canvas.toDataURL("image/jpeg", 0.9));
+    onApply(canvas.toDataURL("image/jpeg", 0.92));
   }
+
+  const hasValidCrop =
+    crop != null && crop.width >= MIN_SIZE && crop.height >= MIN_SIZE;
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex flex-col bg-black/85 p-3"
+      className="fixed inset-0 z-[120] flex flex-col bg-black/90 p-3"
       role="dialog"
       aria-modal="true"
       aria-label="문제 사진 자르기"
     >
-      <div className="mx-auto flex w-full max-w-xl items-center justify-between py-2 text-white">
-        <h2 className="font-bold">사진 자르기</h2>
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between py-2 text-white">
+        <div>
+          <h2 className="font-bold">사진 자르기</h2>
+          <p className="text-xs text-white/70">
+            남길 영역을 손가락이나 마우스로 사각형으로 그리세요.
+          </p>
+        </div>
         <button type="button" onClick={onCancel} className="px-2 py-1">
           닫기 ✕
         </button>
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col overflow-y-auto rounded-2xl bg-white p-4">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-950">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={source}
-            alt="자를 사진 미리보기"
-            className="h-full w-full object-cover"
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: `${centerX}% ${centerY}%`,
-            }}
-          />
-          <div className="pointer-events-none absolute inset-0 border-2 border-white/90" />
-          <div className="pointer-events-none absolute inset-x-0 top-1/3 border-t border-white/40" />
-          <div className="pointer-events-none absolute inset-x-0 top-2/3 border-t border-white/40" />
-          <div className="pointer-events-none absolute inset-y-0 left-1/3 border-l border-white/40" />
-          <div className="pointer-events-none absolute inset-y-0 left-2/3 border-l border-white/40" />
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl bg-slate-950 p-2">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+          <div className="relative inline-block max-h-full max-w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imageRef}
+              src={source}
+              alt="자를 사진"
+              onLoad={() => window.setTimeout(selectWholeImage, 0)}
+              className="block max-h-[68vh] max-w-full select-none object-contain"
+              draggable={false}
+            />
+            <div
+              className="absolute inset-0 cursor-crosshair touch-none"
+              onPointerDown={beginCrop}
+              onPointerMove={updateCrop}
+              onPointerUp={finishCrop}
+              onPointerCancel={finishCrop}
+            >
+              {crop ? (
+                <>
+                  <div
+                    className="absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.58)]"
+                    style={{
+                      left: crop.x,
+                      top: crop.y,
+                      width: crop.width,
+                      height: crop.height,
+                    }}
+                  >
+                    <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-sm bg-white" />
+                    <span className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-sm bg-white" />
+                    <span className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-sm bg-white" />
+                    <span className="absolute -bottom-1.5 -right-1.5 h-3 w-3 rounded-sm bg-white" />
+                  </div>
+                  {hasValidCrop ? (
+                    <span
+                      className="absolute rounded bg-black/70 px-2 py-1 text-[11px] font-semibold text-white"
+                      style={{
+                        left: crop.x,
+                        top: Math.max(0, crop.y - 28),
+                      }}
+                    >
+                      {Math.round(crop.width)} × {Math.round(crop.height)}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 space-y-3 text-sm">
-          <label className="block">
-            확대
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.05}
-              value={zoom}
-              onChange={(event) => setZoom(Number(event.target.value))}
-              className="mt-1 w-full"
-            />
-          </label>
-          <label className="block">
-            좌우 위치
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={centerX}
-              onChange={(event) => setCenterX(Number(event.target.value))}
-              className="mt-1 w-full"
-            />
-          </label>
-          <label className="block">
-            상하 위치
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={centerY}
-              onChange={(event) => setCenterY(Number(event.target.value))}
-              className="mt-1 w-full"
-            />
-          </label>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2 bg-slate-950">
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-[48px] rounded-xl border border-slate-300 font-semibold"
+            className="min-h-[48px] rounded-xl border border-white/30 font-semibold text-white"
           >
             취소
           </button>
           <button
             type="button"
-            onClick={() => void applyCrop()}
-            className="min-h-[48px] rounded-xl bg-blue-700 font-bold text-white"
+            onClick={selectWholeImage}
+            className="min-h-[48px] rounded-xl border border-white/30 font-semibold text-white"
           >
-            이대로 자르기
+            전체 선택
+          </button>
+          <button
+            type="button"
+            disabled={!hasValidCrop}
+            onClick={() => void applyCrop()}
+            className="min-h-[48px] rounded-xl bg-white font-bold text-slate-950 disabled:opacity-40"
+          >
+            이 영역 사용
           </button>
         </div>
       </div>

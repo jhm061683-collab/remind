@@ -64,6 +64,13 @@ html {
   text-size-adjust: 100%;
 }
 
+/* 데스크톱에서 크롬 125% 배율과 같은 체감 크기 (모바일은 기존 크기 유지) */
+@media (min-width: 768px) {
+  html {
+    font-size: 125%;
+  }
+}
+
 label[for] {
   -webkit-tap-highlight-color: transparent;
 }

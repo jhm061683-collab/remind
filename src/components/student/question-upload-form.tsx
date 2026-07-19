@@ -27,10 +27,16 @@ import {
   type ProblemDraft,
 } from "@/components/student/problem-draft-list";
 import { composeProblemLatex } from "@/lib/utils/problem-latex";
+import type { StudentAiQuotaStatus } from "@/lib/server/ai/engine-quota";
+import {
+  cropExtractedFigures,
+  embedProblemFigures,
+} from "@/lib/utils/problem-figures";
 
 type Props = {
   userId: string;
   defaultSubjectId?: string;
+  initialAiQuota?: StudentAiQuotaStatus | null;
 };
 
 function canPersist(userId: string): boolean {
@@ -45,7 +51,11 @@ function nextDraftId() {
   return `draft-${draftIdCounter}`;
 }
 
-export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
+export function QuestionUploadForm({
+  userId,
+  defaultSubjectId,
+  initialAiQuota = null,
+}: Props) {
   const router = useRouter();
   const { subjects, getSubjectName, loading: subjectsLoading } = useSubjects();
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? "");
@@ -61,6 +71,10 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
   const [reflectionMemo, setReflectionMemo] = useState("");
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [entryChoice, setEntryChoice] = useState<"manual" | "ai" | null>(null);
+  const [aiQuality, setAiQuality] = useState<"standard" | "advanced">(
+    initialAiQuota?.preferAdvanced ? "advanced" : "standard",
+  );
+  const [aiQuota, setAiQuota] = useState(initialAiQuota);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -91,7 +105,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     setOcrNote(null);
   }
 
-  function runOcr() {
+  function runOcr(mode: "standard" | "advanced" = aiQuality) {
     setError(null);
     clearAiDrafts();
     const preview = questionPages[0]?.preview;
@@ -110,6 +124,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         imageDataUrl: preview,
         extraImageDataUrls,
         subjectId,
+        aiMode: mode,
       });
       if (result.error) {
         setError(result.error);
@@ -128,6 +143,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
                   problemLatex: data.problemLatex,
                   answerGuess: data.answerGuess,
                   keywords: data.keywords,
+                  figures: [],
                 },
               ]
             : [];
@@ -139,17 +155,23 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
       setSharedPassage(data.sharedPassage?.trim() ?? "");
       setOcrText(data.rawText?.trim() ?? "");
-      setDrafts(
-        problems.map((p) => ({
+      const imageSources = [preview, ...extraImageDataUrls];
+      const nextDrafts = await Promise.all(
+        problems.map(async (p) => ({
           id: nextDraftId(),
           selected: true,
           number: p.number ?? "",
           bodyLatex: p.problemLatex,
           answerText: p.answerGuess ?? "",
           keywords: p.keywords ?? [],
+          figureDataUrls: await cropExtractedFigures(
+            imageSources,
+            p.figures ?? [],
+          ),
           editing: false,
         })),
       );
+      setDrafts(nextDrafts);
 
       const mergedKeywords = problems.flatMap((p) => p.keywords ?? []);
       if (mergedKeywords.length > 0) {
@@ -167,12 +189,16 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         setAnswerText(problems[0]!.answerGuess || "");
       }
 
-      const engineLabel =
-        result.engine === "gpt-4o"
-          ? "GPT-4o"
-          : result.engine === "gemini-3.5-flash"
-            ? "Gemini 3.5 Flash"
-            : "";
+      setAiQuota((current) =>
+        current
+          ? {
+              ...current,
+              dailyUsed: result.used ?? current.dailyUsed,
+              monthlyUsed: result.monthlyUsed ?? current.monthlyUsed,
+              advancedUsed: result.advancedUsed ?? current.advancedUsed,
+            }
+          : current,
+      );
       const dailyHint =
         result.limit != null && result.used != null
           ? `오늘 ${result.used}/${result.limit}`
@@ -187,7 +213,6 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
           : "";
       setOcrNote(
         (data.note || "인식 결과를 확인해 주세요.") +
-          (engineLabel ? ` · ${engineLabel}` : "") +
           quotaHint,
       );
     });
@@ -282,19 +307,31 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
       };
 
       const toSave = useDrafts
-        ? selectedDrafts.map((d) => ({
-            ...base,
-            problemLatex: composeProblemLatex(sharedPassage, d.bodyLatex),
-            ocrText,
-            entryMode: "ai" as const,
-            answerText: d.answerText.trim(),
-            keywords:
-              d.keywords.length > 0
-                ? d.keywords
-                : keywords.length > 0
-                  ? keywords
-                  : [],
-          }))
+        ? await Promise.all(
+            selectedDrafts.map(async (d) => {
+              const figureUrls = await Promise.all(
+                d.figureDataUrls.map((url) =>
+                  uploadIfNeeded(url, "question"),
+                ),
+              );
+              return {
+                ...base,
+                problemLatex: composeProblemLatex(
+                  sharedPassage,
+                  embedProblemFigures(d.bodyLatex, figureUrls),
+                ),
+                ocrText,
+                entryMode: "ai" as const,
+                answerText: d.answerText.trim(),
+                keywords:
+                  d.keywords.length > 0
+                    ? d.keywords
+                    : keywords.length > 0
+                      ? keywords
+                      : [],
+              };
+            }),
+          )
         : [
             {
               ...base,
@@ -355,6 +392,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
     setSuccess(false);
     setStep(1);
     setEntryChoice(null);
+    setAiQuality(aiQuota?.preferAdvanced ? "advanced" : "standard");
     clearAiDrafts();
     setQuestionPages([]);
     setQuestionReady(false);
@@ -414,6 +452,19 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         ? answerText.trim().length > 0
         : false;
   const canSubmit = canContinueStep1 && canContinueStep2;
+  const isPremium = aiQuota?.planCode === "premium";
+  const dailyRemaining = Math.max(
+    0,
+    (aiQuota?.dailyLimit ?? 0) - (aiQuota?.dailyUsed ?? 0),
+  );
+  const monthlyRemaining = Math.max(
+    0,
+    (aiQuota?.monthlyLimit ?? 0) - (aiQuota?.monthlyUsed ?? 0),
+  );
+  const advancedRemaining = Math.max(
+    0,
+    (aiQuota?.advancedLimit ?? 0) - (aiQuota?.advancedUsed ?? 0),
+  );
 
   return (
     <div className="space-y-3">
@@ -525,21 +576,36 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
         <section className="remind-card space-y-4 p-3.5">
           <div>
             <h2 className="text-base font-bold text-[var(--rm-text)]">
-              2단계 · 정답 입력 또는 AI로 만들기
+              2단계 · 정답 입력 또는 AI 정리
             </h2>
             <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-              빠르게 정답만 적거나, AI가 문제를 정갈하게 만들도록 선택하세요.
+              정답만 빠르게 적거나, 문제를 읽기 좋게 정리할 수 있어요.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          {aiQuota ? (
+            <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
+              <p className="text-xs font-bold text-[var(--rm-text)]">
+                이번 달 AI 정리 {monthlyRemaining}회 남음
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--rm-text-muted)]">
+                오늘 {dailyRemaining}회 남음
+                {isPremium
+                  ? ` · 정밀 AI 정리 ${advancedRemaining}회 남음`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
+
+          <div className={`grid gap-2 ${isPremium ? "sm:grid-cols-3" : "grid-cols-2"}`}>
             <button
               type="button"
+              disabled={ocrPending}
               onClick={() => {
                 setEntryChoice("manual");
                 clearAiDrafts();
               }}
-              className={`min-h-[76px] rounded-xl border p-3 text-left ${
+              className={`min-h-[76px] rounded-xl border p-3 text-left disabled:opacity-60 ${
                 entryChoice === "manual"
                   ? "border-[var(--rm-brand)] bg-[var(--rm-info-bg)]"
                   : "border-[var(--rm-border)] bg-[var(--rm-surface)]"
@@ -554,22 +620,56 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               type="button"
               onClick={() => {
                 setEntryChoice("ai");
-                runOcr();
+                setAiQuality("standard");
+                runOcr("standard");
               }}
               disabled={ocrPending}
               className={`min-h-[76px] rounded-xl border p-3 text-left disabled:opacity-60 ${
-                entryChoice === "ai"
+                entryChoice === "ai" && aiQuality === "standard"
                   ? "border-[var(--rm-brand)] bg-[var(--rm-info-bg)]"
                   : "border-[var(--rm-border)] bg-[var(--rm-surface)]"
               }`}
             >
               <span className="block text-sm font-bold">
-                {ocrPending ? "AI 분석 중…" : "AI로 문제 만들기"}
+                {ocrPending &&
+                entryChoice === "ai" &&
+                aiQuality === "standard"
+                  ? "정리 중…"
+                  : "빠른 AI 정리"}
               </span>
               <span className="mt-1 block text-[11px] text-[var(--rm-text-muted)]">
-                OCR·LaTeX를 함께 저장
+                문제와 수식을 깔끔하게 정돈
               </span>
             </button>
+            {isPremium ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEntryChoice("ai");
+                  setAiQuality("advanced");
+                  runOcr("advanced");
+                }}
+                disabled={ocrPending || advancedRemaining <= 0}
+                className={`min-h-[76px] rounded-xl border p-3 text-left disabled:opacity-50 ${
+                  entryChoice === "ai" && aiQuality === "advanced"
+                    ? "border-violet-500 bg-violet-50"
+                    : "border-[var(--rm-border)] bg-[var(--rm-surface)]"
+                }`}
+              >
+                <span className="block text-sm font-bold">
+                  {ocrPending &&
+                  entryChoice === "ai" &&
+                  aiQuality === "advanced"
+                    ? "정밀하게 읽는 중…"
+                    : "정밀 AI 정리"}
+                </span>
+                <span className="mt-1 block text-[11px] text-[var(--rm-text-muted)]">
+                  {advancedRemaining > 0
+                    ? "복잡한 문제를 더 깊게 읽고 정돈"
+                    : "이번 달 이용량을 모두 사용했어요"}
+                </span>
+              </button>
+            ) : null}
           </div>
 
           {entryChoice === "manual" ? (
@@ -602,7 +702,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               {!ocrPending && drafts.length === 0 ? (
                 <button
                   type="button"
-                  onClick={runOcr}
+                  onClick={() => runOcr(aiQuality)}
                   className="min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] text-sm font-semibold"
                 >
                   AI 분석 다시 시도
@@ -633,13 +733,22 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
 
       {step === 3 ? (
         <section className="remind-card space-y-3 p-3.5">
-          <div>
-            <h2 className="text-base font-bold text-[var(--rm-text)]">
-              3단계 · 추가 내용
-            </h2>
-            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-              모두 선택 사항이에요. 바로 건너뛰어도 됩니다.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-[var(--rm-text)]">
+                3단계 · 추가 내용
+              </h2>
+              <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+                모두 선택 사항이에요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep(4)}
+              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-1.5 text-xs font-bold text-[var(--rm-nav-active)]"
+            >
+              건너뛰기
+            </button>
           </div>
           <KeywordPicker
             userId={userId}
@@ -703,9 +812,7 @@ export function QuestionUploadForm({ userId, defaultSubjectId }: Props) {
               onClick={() => setStep(4)}
               className="min-h-[46px] rounded-xl bg-[var(--rm-brand)] font-bold text-white"
             >
-              {source || wrongReason || reflectionMemo || keywords.length > 0
-                ? "다음 · 확인"
-                : "건너뛰고 확인"}
+              다음 · 확인
             </button>
           </div>
         </section>

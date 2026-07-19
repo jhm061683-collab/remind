@@ -878,7 +878,9 @@ set
 where code = 'premium';
 
 alter table public.profiles
-  add column if not exists ai_prefer_gpt4o boolean not null default true;
+  add column if not exists ai_prefer_gpt4o boolean not null default false;
+alter table public.profiles
+  alter column ai_prefer_gpt4o set default false;
 
 create table if not exists public.ai_usage_monthly (
   user_id uuid not null references auth.users (id) on delete cascade,

@@ -1,6 +1,7 @@
 "use client";
 
 import { LatexContent } from "@/components/math/latex-content";
+import { embedProblemFigures } from "@/lib/utils/problem-figures";
 
 export type ProblemDraft = {
   id: string;
@@ -10,6 +11,8 @@ export type ProblemDraft = {
   bodyLatex: string;
   answerText: string;
   keywords: string[];
+  /** 원본 사진에서 잘라낸 그래프·도형·표 */
+  figureDataUrls: string[];
   editing: boolean;
 };
 
@@ -129,7 +132,10 @@ export function ProblemDraftList({
             </div>
           ) : (
             <LatexContent
-              content={draft.bodyLatex}
+              content={embedProblemFigures(
+                draft.bodyLatex,
+                draft.figureDataUrls,
+              )}
               className="max-h-56 overflow-auto px-4 py-3 text-[15px]"
             />
           )}

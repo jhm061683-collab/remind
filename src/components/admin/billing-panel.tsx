@@ -132,7 +132,7 @@ export function BillingPanel({
             ? ` · AI 월 ${summary.aiMonthlyLimit}건 (하루 ${summary.ocrDailyLimit}건)`
             : " · AI 분석 없음"}
           {summary.aiGoldMonthlyLimit > 0
-            ? ` · GPT-4o 골드 ${summary.aiGoldMonthlyLimit}건`
+            ? ` · 정밀 AI 정리 ${summary.aiGoldMonthlyLimit}건`
             : null}
         </p>
         <p className="mt-1 text-xs text-[var(--rm-text-faint)]">

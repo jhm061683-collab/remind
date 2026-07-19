@@ -5,6 +5,13 @@ export type OcrProblemDraft = {
   problemLatex: string;
   answerGuess: string;
   keywords: string[];
+  figures: Array<{
+    pageIndex: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
 };
 
 export type OcrExtractResult = {

@@ -24,6 +24,9 @@ export type OcrActionState = {
   /** 이번 달 사용 건수 / 월 한도 */
   monthlyUsed?: number;
   monthlyLimit?: number;
+  /** 이번 달 정밀 AI 사용량 / 한도 */
+  advancedUsed?: number;
+  advancedLimit?: number;
   /** 이번 요청에 배정된 엔진 */
   engine?: AiEngine;
 };
@@ -34,6 +37,8 @@ export async function ocrFromImageAction(input: {
   extraImageDataUrls?: string[];
   /** 업로드 화면에서 선택한 과목 (비용 분석용) */
   subjectId?: string;
+  /** 학생이 이번 요청에서 선택한 AI 정리 방식 */
+  aiMode?: "standard" | "advanced";
 }): Promise<OcrActionState> {
   const session = await getSession();
   if (!session || session.role !== "student") {
@@ -58,8 +63,7 @@ export async function ocrFromImageAction(input: {
 
   if (!hasAnyAiExtractKey()) {
     return {
-      error:
-        "AI 키가 아직 없습니다. 관리자에게 GEMINI_API_KEY(또는 OPENAI_API_KEY) 설정을 요청해 주세요.",
+      error: "AI 연결 설정이 아직 완료되지 않았습니다. 관리자에게 문의해 주세요.",
     };
   }
 
@@ -77,6 +81,7 @@ export async function ocrFromImageAction(input: {
     academyId: (profile?.academy_id as string | null) ?? null,
     kind: "extract",
     allowGold: canUseGpt4o(),
+    preferGold: input.aiMode === "advanced",
   });
   if (quota.error) {
     return {
@@ -85,6 +90,8 @@ export async function ocrFromImageAction(input: {
       limit: quota.dailyLimit,
       monthlyUsed: quota.monthlyUsed,
       monthlyLimit: quota.monthlyLimit,
+      advancedUsed: quota.goldUsed,
+      advancedLimit: quota.goldLimit,
     };
   }
 
@@ -127,6 +134,8 @@ export async function ocrFromImageAction(input: {
       limit: quota.dailyLimit,
       monthlyUsed: quota.monthlyUsed,
       monthlyLimit: quota.monthlyLimit,
+      advancedUsed: quota.goldUsed,
+      advancedLimit: quota.goldLimit,
       engine: extracted.engine,
     };
   } catch (err) {
@@ -136,6 +145,8 @@ export async function ocrFromImageAction(input: {
       limit: quota.dailyLimit,
       monthlyUsed: quota.monthlyUsed,
       monthlyLimit: quota.monthlyLimit,
+      advancedUsed: quota.goldUsed,
+      advancedLimit: quota.goldLimit,
       engine: quota.engine,
     };
   }

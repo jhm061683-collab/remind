@@ -83,6 +83,8 @@ export async function getAvailableEngineAndDeductQuota(input: {
   kind: AiTaskKind;
   /** false면 GPT-4o 골드 티켓을 쓰지 않음 (OpenAI 키 없을 때) */
   allowGold?: boolean;
+  /** 학생이 이번 요청에서 정밀 AI를 선택했는지 */
+  preferGold?: boolean;
 }): Promise<EngineQuotaResult> {
   if (!input.academyId) {
     return {
@@ -102,16 +104,12 @@ export async function getAvailableEngineAndDeductQuota(input: {
 
   const supabase = createServiceClient();
 
-  // Premium: 학생별 GPT-4o 우선 설정 + 실제 OpenAI 키 가능 여부
-  let wantGold = false;
-  if (limits.goldLimit > 0 && input.allowGold !== false) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("ai_prefer_gpt4o")
-      .eq("id", input.userId)
-      .maybeSingle();
-    wantGold = profile?.ai_prefer_gpt4o !== false;
-  }
+  // Premium: 학생이 이번 요청에서 고른 방식이 저장된 기본값보다 우선한다.
+  // 선택값이 없으면 비용 효율적인 기본 방식(false)을 사용한다.
+  const wantGold =
+    limits.goldLimit > 0 &&
+    input.allowGold !== false &&
+    input.preferGold === true;
 
   const { data, error } = await supabase.rpc("consume_ai_quota", {
     p_user_id: input.userId,
@@ -191,5 +189,44 @@ export async function getAiUsageSnapshot(userId: string): Promise<{
     dailyUsed: Number(daily?.used_count ?? 0),
     monthlyUsed: Number(monthly?.used_count ?? 0),
     goldUsed: Number(monthly?.gold_used_count ?? 0),
+  };
+}
+
+export type StudentAiQuotaStatus = {
+  planCode: string;
+  dailyUsed: number;
+  dailyLimit: number;
+  monthlyUsed: number;
+  monthlyLimit: number;
+  advancedUsed: number;
+  advancedLimit: number;
+  preferAdvanced: boolean;
+};
+
+/** 학생 업로드 화면에 표시할 플랜·잔여량 (차감 없음) */
+export async function getStudentAiQuotaStatus(
+  userId: string,
+): Promise<StudentAiQuotaStatus | null> {
+  const supabase = createServiceClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("academy_id, ai_prefer_gpt4o")
+    .eq("id", userId)
+    .maybeSingle();
+  const academyId = profile?.academy_id as string | null;
+  if (!academyId) return null;
+
+  const limits = await getPlanLimitsForAcademy(academyId);
+  if (!limits || limits.monthlyLimit <= 0) return null;
+  const usage = await getAiUsageSnapshot(userId);
+  return {
+    planCode: limits.planCode,
+    dailyUsed: usage.dailyUsed,
+    dailyLimit: limits.dailyLimit,
+    monthlyUsed: usage.monthlyUsed,
+    monthlyLimit: limits.monthlyLimit,
+    advancedUsed: usage.goldUsed,
+    advancedLimit: limits.goldLimit,
+    preferAdvanced: profile?.ai_prefer_gpt4o === true,
   };
 }
