@@ -133,20 +133,23 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
         <QuickStat label="예정" value={loading ? "—" : (upcomingCount ?? 0)} />
       </div>
 
-      <StudyPulseCard
-        streak={userStats?.studyStreak ?? 0}
-        longestStreak={userStats?.longestStreak ?? 0}
-        weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
-        weekly={userStats?.weekly ?? null}
-        totalReviews={userStats?.totalReviews ?? 0}
-        loading={loading}
-      />
+      {/* 데스크톱에서는 두 카드를 나란히 배치해 가로 공간을 활용 */}
+      <div className="grid grid-cols-1 gap-[var(--rm-stack)] md:grid-cols-2 md:items-start">
+        <StudyPulseCard
+          streak={userStats?.studyStreak ?? 0}
+          longestStreak={userStats?.longestStreak ?? 0}
+          weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
+          weekly={userStats?.weekly ?? null}
+          totalReviews={userStats?.totalReviews ?? 0}
+          loading={loading}
+        />
 
-      <MissionList
-        todayCount={todayCount ?? 0}
-        missions={todayBySubject}
-        loading={loading}
-      />
+        <MissionList
+          todayCount={todayCount ?? 0}
+          missions={todayBySubject}
+          loading={loading}
+        />
+      </div>
 
       <div className="rm-inline-links">
         <Link href="/archive" className="rm-inline-link">
