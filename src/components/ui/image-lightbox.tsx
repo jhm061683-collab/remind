@@ -92,12 +92,12 @@ export function ImageLightbox({
           onClick={onClose}
           className="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold backdrop-blur-sm"
         >
-          닫기
+          닫기 ✕
         </button>
       </div>
 
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-6"
+        className="relative flex min-h-0 flex-1 items-center justify-center px-2"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -132,9 +132,18 @@ export function ImageLightbox({
         ) : null}
       </div>
 
-      <p className="pb-4 text-center text-xs text-white/60">
-        배경을 탭하면 닫혀요
-      </p>
+      <div
+        className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="min-h-[48px] w-full rounded-2xl bg-white text-base font-bold text-black touch-manipulation"
+        >
+          작게 보기 (닫기)
+        </button>
+      </div>
     </div>,
     document.body,
   );

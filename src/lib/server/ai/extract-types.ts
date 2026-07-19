@@ -10,6 +10,11 @@ export type QuestionExtractResult = {
   keywords: string[];
   note?: string;
   rawText: string;
+  usage?: {
+    promptTokens: number;
+    outputTokens: number;
+    thoughtsTokens: number;
+  };
 };
 
 export type QuestionExtractInput = {
@@ -48,10 +53,16 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 3. 한국어 문장은 일반 텍스트로 쓰고, 수학 수식만 $...$ 또는 $$...$$ 안에 LaTeX로 쓰세요. 한국어 전체를 \\text{}로 감싸지 마세요.
 4. 각 문단과 각 보기는 줄바꿈으로 구분하세요. 긴 식이나 독립된 식은 $$...$$로 한 줄에 배치하세요.
 5. problemLatex 안에는 정답 표시, 풀이, 해설, 분석을 절대 넣지 마세요.
-6. answer에는 최종 정답만 쓰세요. 객관식이면 ①②③④⑤ 중 하나로 쓰세요.
+6. answer에는 최종 정답만 쓰세요. 객관식이면 ①②③④⑤ 중 하나로 쓰세요. 정답이 여러 문항이면 "37번: ③ / 38번: ②"처럼 적으세요.
 7. keywords는 관련 단원/개념 한국어 키워드 최대 5개입니다.
 8. 확실하지 않으면 answer를 빈 문자열로 두고, problemLatex는 읽을 수 있는 만큼만 적으세요.
-9. JSON 외 다른 텍스트는 출력하지 마세요.`;
+9. JSON 외 다른 텍스트는 출력하지 마세요.
+
+긴 지문·여러 장 사진:
+- 국어 독서/문학 지문처럼 길어도 지문 전문을 생략하지 말고 전부 옮기세요.
+- 사진이 여러 장이면 1장→2장 순서대로 이어 붙여 하나의 problemLatex로 만드세요.
+- 지문 + 문항이 같이 있으면 지문 다음에 문항을 이어서 적으세요.
+- 글자가 많더라도 요약하지 마세요.`;
 
 export function normalizeExtractJson(raw: unknown): {
   problemLatex: string;
@@ -64,7 +75,7 @@ export function normalizeExtractJson(raw: unknown): {
       : (raw as Record<string, unknown>);
 
   const problemLatex = String(obj.problemLatex ?? obj.problem_latex ?? "").trim();
-  const answerGuess = String(obj.answer ?? obj.answerGuess ?? "").trim().slice(0, 120);
+  const answerGuess = String(obj.answer ?? obj.answerGuess ?? "").trim().slice(0, 400);
   const keywordsRaw = obj.keywords;
   const keywords = Array.isArray(keywordsRaw)
     ? keywordsRaw

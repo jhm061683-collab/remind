@@ -85,7 +85,8 @@ export async function extractWithGemini(
           // 옮겨 적기 작업이라 깊은 사고가 필요 없음.
           // 생각(thinking) 토큰은 출력 요금으로 청구되어 건당 비용을 수십 배 올린다.
           thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 2048,
+          // 국어 지문처럼 긴 문제는 수천 토큰이 필요하므로 넉넉히 둔다.
+          maxOutputTokens: 8192,
           response_mime_type: "application/json",
           response_schema: {
             ...EXTRACT_RESPONSE_SCHEMA,
@@ -132,6 +133,11 @@ export async function extractWithGemini(
     answerGuess: parsed.answerGuess,
     keywords: parsed.keywords,
     rawText: text,
+    usage: {
+      promptTokens: Number(body.usageMetadata?.promptTokenCount ?? 0),
+      outputTokens: Number(body.usageMetadata?.candidatesTokenCount ?? 0),
+      thoughtsTokens: Number(body.usageMetadata?.thoughtsTokenCount ?? 0),
+    },
     note: parsed.answerGuess
       ? "Gemini가 읽은 결과입니다. 정답·문장을 확인해 주세요."
       : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.",

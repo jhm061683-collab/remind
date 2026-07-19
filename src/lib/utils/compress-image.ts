@@ -1,5 +1,5 @@
-/** 모바일 사진을 localStorage에 저장하기 좋게 압축합니다. */
-export async function compressImage(file: File, maxWidth = 800): Promise<File> {
+/** 모바일 사진을 저장·AI 인식용으로 압축합니다. (긴 지문 OCR을 위해 가로 최대 1400) */
+export async function compressImage(file: File, maxWidth = 1400): Promise<File> {
   if (!isLikelyImage(file)) return file;
 
   try {

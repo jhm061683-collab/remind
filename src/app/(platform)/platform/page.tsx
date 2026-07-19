@@ -13,6 +13,8 @@ import {
   listPlatformAcademies,
   listSubscriptionPlans,
 } from "@/lib/server/platform/queries";
+import { getPlatformAiCostSummary } from "@/lib/server/ai/cost";
+import { AiCostPanel } from "@/components/platform/ai-cost-panel";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -25,10 +27,11 @@ function formatDate(value: string | null): string {
 
 export default async function PlatformHomePage() {
   await requirePlatformAdmin();
-  const [academies, plans, invites] = await Promise.all([
+  const [academies, plans, invites, aiCost] = await Promise.all([
     listPlatformAcademies(),
     listSubscriptionPlans(),
     listAcademyInvites(),
+    getPlatformAiCostSummary(),
   ]);
 
   const planOptions = plans.map((p) => ({
@@ -46,6 +49,8 @@ export default async function PlatformHomePage() {
         title="학원 관리"
         description="학원 코드(영문·숫자 4~12) · Basic/Pro/Premium · owner가 플랜 변경(일할계산)"
       />
+
+      <AiCostPanel summary={aiCost} />
 
       <section className="mb-8 rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 md:p-5">
         <h2 className="mb-1 text-sm font-semibold">원장 초대 링크</h2>

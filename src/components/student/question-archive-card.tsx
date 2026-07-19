@@ -269,12 +269,12 @@ export function QuestionArchiveCard({
               fill
               imageClassName="object-contain"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-10">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-10">
               <button
                 type="button"
                 disabled={aiPending}
                 onClick={handleRebuildWithAi}
-                className="w-full rounded-xl bg-[var(--rm-nav-active)] px-3 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
+                className="pointer-events-auto w-full rounded-xl bg-[var(--rm-nav-active)] px-3 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
               >
                 {aiPending
                   ? "AI가 문제 만드는 중…"
@@ -413,11 +413,13 @@ export function QuestionArchiveCard({
               <p className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-bold text-[var(--rm-text-muted)]">
                 원본 사진
               </p>
-              <div className="relative bg-[var(--rm-accent-muted)]">
+              <div className="relative h-56 bg-[var(--rm-accent-muted)] sm:h-64">
                 <QuestionImages
                   question={question}
                   alt="문제 원본"
-                  imageClassName="h-auto max-h-80 w-full object-contain"
+                  thumbnail
+                  fill
+                  imageClassName="object-contain"
                 />
               </div>
             </div>

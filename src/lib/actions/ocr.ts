@@ -12,6 +12,7 @@ import {
   extractQuestion,
   hasAnyAiExtractKey,
 } from "@/lib/server/ai/extract-question";
+import { logAiCost } from "@/lib/server/ai/cost";
 
 export type OcrActionState = {
   error?: string;
@@ -93,6 +94,14 @@ export async function ocrFromImageAction(input: {
     const extracted = await extractQuestion({
       imageDataUrls: allImages,
       engine: quota.engine,
+    });
+
+    void logAiCost({
+      userId: session.id,
+      academyId: (profile?.academy_id as string | null) ?? null,
+      engine: extracted.engine,
+      kind: "extract",
+      usage: extracted.usage,
     });
 
     const result: OcrExtractResult = {

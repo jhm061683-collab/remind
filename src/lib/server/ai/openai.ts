@@ -10,6 +10,11 @@ type OpenAIResponse = {
   choices?: Array<{
     message?: { content?: string | null };
   }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
   error?: { message?: string };
 };
 
@@ -95,6 +100,11 @@ export async function extractWithOpenAI(
     answerGuess: parsed.answerGuess,
     keywords: parsed.keywords,
     rawText: text,
+    usage: {
+      promptTokens: Number(body.usage?.prompt_tokens ?? 0),
+      outputTokens: Number(body.usage?.completion_tokens ?? 0),
+      thoughtsTokens: 0,
+    },
     note: parsed.answerGuess
       ? "GPT-4o(골드 티켓)가 읽은 결과입니다. 정답·문장을 확인해 주세요."
       : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.",
