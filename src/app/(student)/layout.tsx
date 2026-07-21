@@ -4,9 +4,13 @@ import { StudentThemeProvider } from "@/components/theme/student-theme-provider"
 import { SubjectProvider } from "@/components/student/subject-provider";
 import { StorageNotice } from "@/components/student/storage-notice";
 import { StudentOnboarding } from "@/components/student/student-onboarding";
-import { getStudentThemeOnServer } from "@/lib/actions/student-theme";
 import { getSession } from "@/lib/auth/session";
-import { DEFAULT_STUDENT_THEME } from "@/lib/theme/student-theme";
+import {
+  DEFAULT_STUDENT_THEME,
+  STUDENT_THEME_COOKIE,
+  parseStudentThemeCookie,
+} from "@/lib/theme/student-theme";
+import { cookies } from "next/headers";
 
 export default async function StudentLayout({
   children,
@@ -15,10 +19,10 @@ export default async function StudentLayout({
 }) {
   const session = await getSession();
   const userId = session?.id ?? "guest";
+  const cookieStore = await cookies();
   const initialTheme =
-    userId !== "guest"
-      ? await getStudentThemeOnServer(userId)
-      : DEFAULT_STUDENT_THEME;
+    parseStudentThemeCookie(cookieStore.get(STUDENT_THEME_COOKIE)?.value) ??
+    DEFAULT_STUDENT_THEME;
 
   return (
     <SubjectProvider userId={userId}>

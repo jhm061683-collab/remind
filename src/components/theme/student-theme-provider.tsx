@@ -12,9 +12,15 @@ import {
 import { saveStudentThemeAction } from "@/lib/actions/student-theme";
 import {
   DEFAULT_STUDENT_THEME,
+  STUDENT_THEME_COOKIE,
   themeStorageKey,
   type StudentTheme,
 } from "@/lib/theme/student-theme";
+
+function persistTheme(userId: string, theme: StudentTheme) {
+  localStorage.setItem(themeStorageKey(userId), theme);
+  document.cookie = `${STUDENT_THEME_COOKIE}=${theme}; path=/; max-age=31536000; samesite=lax`;
+}
 
 type StudentThemeContextValue = {
   theme: StudentTheme;
@@ -37,8 +43,15 @@ export function StudentThemeProvider({
   const [theme, setTheme] = useState<StudentTheme>(initialTheme);
 
   useEffect(() => {
-    // 서버 테마를 우선해 깜빡임을 줄이고, 로컬 캐시만 맞춘다.
-    localStorage.setItem(themeStorageKey(userId), initialTheme);
+    const saved = localStorage.getItem(themeStorageKey(userId));
+    if (saved === "remind-dark" || saved === "remind-light") {
+      if (saved !== initialTheme) {
+        setTheme(saved);
+      }
+      persistTheme(userId, saved);
+      return;
+    }
+    persistTheme(userId, initialTheme);
     setTheme(initialTheme);
   }, [userId, initialTheme]);
 
@@ -46,7 +59,7 @@ export function StudentThemeProvider({
     setTheme((current) => {
       const next: StudentTheme =
         current === "remind-dark" ? "remind-light" : "remind-dark";
-      localStorage.setItem(themeStorageKey(userId), next);
+      persistTheme(userId, next);
       void saveStudentThemeAction(next);
       return next;
     });

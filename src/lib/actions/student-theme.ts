@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth/session";
 import {
   getReviewUiPrefsOnServer,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/supabase/config";
 import {
   DEFAULT_STUDENT_THEME,
+  STUDENT_THEME_COOKIE,
   isStudentTheme,
   type StudentTheme,
 } from "@/lib/theme/student-theme";
@@ -21,6 +23,13 @@ export async function saveStudentThemeAction(
   if (!isStudentTheme(theme)) {
     return { error: "잘못된 테마입니다." };
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(STUDENT_THEME_COOKIE, theme, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
 
   if (!isSupabaseEnabled()) return {};
 

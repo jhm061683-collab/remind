@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
+import { formatStaffLabel } from "@/lib/admin/staff-label";
 import { getHomePathForRole, verifyUser } from "@/lib/auth/users";
 import { clearSession, setSession } from "@/lib/auth/session";
 import { isSupabaseEnabled, toAuthEmail } from "@/lib/supabase/config";
@@ -253,13 +254,16 @@ export async function loginAction(
         flushTiming("error");
         return { error: "플랫폼 관리자 계정이 아닙니다." };
       }
-    } else if (profile.role === "platform_admin") {
+    } else if (
+      profile.role === "platform_admin"
+    ) {
       flushTiming("error");
       return { error: "플랫폼 계정은 PLATFORM 코드로 로그인해 주세요." };
     } else if (
       isServiceRoleConfigured() &&
       profile.academyId &&
-      academyCode
+      academyCode &&
+      !cachedProfile
     ) {
       const service = createServiceClient();
       const { data: academy } = await service
@@ -275,9 +279,11 @@ export async function loginAction(
         flushTiming("error");
         return { error: "이 학원은 이용이 정지되어 있습니다." };
       }
+    } else if (cachedProfile?.academyStatus === "suspended") {
+      flushTiming("error");
+      return { error: "이 학원은 이용이 정지되어 있습니다." };
     }
 
-    const { formatStaffLabel } = await import("@/lib/admin/staff-label");
     const sessionName =
       profile.role === "admin" || profile.isDirector
         ? formatStaffLabel({
