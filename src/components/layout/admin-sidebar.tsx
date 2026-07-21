@@ -41,7 +41,6 @@ export function AdminSidebar({ role }: Props) {
             <li key={link.href}>
               <Link
                 href={link.href}
-                prefetch={false}
                 className={`block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
                     ? "bg-[linear-gradient(135deg,var(--rm-brand-violet)_0%,var(--rm-brand)_100%)] text-white shadow-sm shadow-[var(--rm-accent-glow)]"
@@ -77,7 +76,6 @@ export function AdminMobileNav({ role }: Props) {
             <li key={link.href} className="min-w-0 flex-1">
               <Link
                 href={link.href}
-                prefetch={false}
                 className={`rm-bottom-nav-link flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-[10px] font-semibold touch-manipulation transition ${
                   active ? "rm-bottom-nav-link--active" : ""
                 }`}

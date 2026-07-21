@@ -30,7 +30,6 @@ export function StudentNav() {
             <li key={item.href} className="min-w-0 flex-1">
               <Link
                 href={item.href}
-                prefetch={false}
                 className={`rm-bottom-nav-link flex min-h-[48px] flex-col items-center justify-center rounded-2xl px-2 py-1 text-[10px] font-semibold touch-manipulation transition ${
                   active ? "rm-bottom-nav-link--active" : ""
                 }`}

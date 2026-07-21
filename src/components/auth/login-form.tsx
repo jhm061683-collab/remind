@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { loginAction, type LoginState } from "@/lib/auth/actions";
-import { DEMO_ACADEMY_CODE, PLATFORM_LOGIN_CODE } from "@/types/user";
+import { DEMO_ACADEMY_CODE } from "@/types/user";
 
 const initialState: LoginState = {};
+const ACADEMY_CODE_LOCK_KEY = "remind:locked-academy-code";
 
 export function LoginForm({
   defaultAcademyCode,
@@ -17,6 +18,33 @@ export function LoginForm({
     loginAction,
     initialState,
   );
+  const [academyCode, setAcademyCode] = useState(
+    defaultAcademyCode?.trim() || DEMO_ACADEMY_CODE,
+  );
+  const [isAcademyCodeLocked, setIsAcademyCodeLocked] = useState(false);
+
+  useEffect(() => {
+    const lockedCode = window.localStorage.getItem(ACADEMY_CODE_LOCK_KEY);
+    if (lockedCode) {
+      setAcademyCode(lockedCode);
+      setIsAcademyCodeLocked(true);
+    }
+  }, []);
+
+  function toggleAcademyCodeLock() {
+    if (isAcademyCodeLocked) {
+      window.localStorage.removeItem(ACADEMY_CODE_LOCK_KEY);
+      setIsAcademyCodeLocked(false);
+      return;
+    }
+
+    const normalizedCode = academyCode.trim().toUpperCase();
+    if (!normalizedCode) return;
+
+    setAcademyCode(normalizedCode);
+    window.localStorage.setItem(ACADEMY_CODE_LOCK_KEY, normalizedCode);
+    setIsAcademyCodeLocked(true);
+  }
 
   return (
     <form
@@ -33,21 +61,32 @@ export function LoginForm({
         <label htmlFor="academyCode" className="mb-1 block text-sm font-medium text-slate-700">
           학원 코드
         </label>
-        <input
-          id="academyCode"
-          name="academyCode"
-          type="text"
-          autoComplete="organization"
-          defaultValue={defaultAcademyCode?.trim() || DEMO_ACADEMY_CODE}
-          placeholder={DEMO_ACADEMY_CODE}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm uppercase outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-          required
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          영문·숫자 4~12자 · 데모{" "}
-          <span className="font-mono">{DEMO_ACADEMY_CODE}</span> · 플랫폼{" "}
-          <span className="font-mono">{PLATFORM_LOGIN_CODE}</span>
-        </p>
+        <div className="flex gap-2">
+          <input
+            id="academyCode"
+            name="academyCode"
+            type="text"
+            autoComplete="organization"
+            value={academyCode}
+            onChange={(event) => setAcademyCode(event.target.value)}
+            readOnly={isAcademyCodeLocked}
+            placeholder="학원 코드를 입력하세요"
+            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm uppercase outline-none transition read-only:cursor-not-allowed read-only:bg-slate-100 read-only:text-slate-600 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+            required
+          />
+          <button
+            type="button"
+            onClick={toggleAcademyCodeLock}
+            aria-pressed={isAcademyCodeLocked}
+            className={`shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+              isAcademyCodeLocked
+                ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {isAcademyCodeLocked ? "잠금 해제" : "잠금"}
+          </button>
+        </div>
       </div>
 
       <div>

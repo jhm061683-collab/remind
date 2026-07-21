@@ -44,7 +44,6 @@ export function StudentHeader({ userName }: Props) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    prefetch={false}
                     className={`rm-nav-item flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition ${
                       active
                         ? "rm-nav-item--active"

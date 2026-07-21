@@ -76,6 +76,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(target, request.url));
   }
 
+  if (pathname === "/") {
+    // 비로그인 첫 방문 → 제품 소개(랜딩) 페이지
+    if (session) {
+      return NextResponse.redirect(
+        new URL(getHomePathForRole(session.role), request.url),
+      );
+    }
+    return response;
+  }
+
   if (pathname === "/login") {
     if (session) {
       return NextResponse.redirect(
@@ -136,6 +146,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/login",
     "/dashboard/:path*",
     "/subjects/:path*",
