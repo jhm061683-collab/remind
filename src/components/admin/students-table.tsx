@@ -12,12 +12,19 @@ import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 function formatLastLogin(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  const now = new Date();
-  const isToday =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (isToday) {
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const loginKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+  if (loginKey === todayKey) {
     return d.toLocaleTimeString("ko-KR", {
       timeZone: "Asia/Seoul",
       hour: "numeric",

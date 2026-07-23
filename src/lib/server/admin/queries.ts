@@ -22,6 +22,11 @@ import type {
   SubAdminRow,
   TeacherClassOverview,
 } from "@/lib/types/admin";
+import {
+  isSameKstDay,
+  startOfTodayKstIso,
+  toDateKey,
+} from "@/lib/utils/date-range";
 
 type ProfileRow = {
   id: string;
@@ -88,55 +93,45 @@ type LoginRow = {
   logged_in_at: string;
 };
 
-function toDateKey(dateIso: string): string {
-  return dateIso.slice(0, 10);
-}
-
 function calcLoginStreakDays(logins: LoginRow[]): number {
   if (logins.length === 0) return 0;
-  const uniqueDays = Array.from(new Set(logins.map((l) => toDateKey(l.logged_in_at))));
+  const uniqueDays = Array.from(
+    new Set(logins.map((l) => toDateKey(l.logged_in_at))),
+  );
   uniqueDays.sort((a, b) => (a > b ? -1 : 1));
-  const now = new Date();
-  let cursor = new Date(now);
-  cursor.setHours(0, 0, 0, 0);
+  // 한국 달력 기준으로 연속 출석일을 센다.
+  let cursor = new Date(`${toDateKey(new Date())}T12:00:00+09:00`);
   let streak = 0;
   for (const day of uniqueDays) {
-    const expected = cursor.toISOString().slice(0, 10);
+    const expected = toDateKey(cursor);
     if (day !== expected) break;
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor = new Date(cursor.getTime() - 24 * 60 * 60 * 1000);
   }
   return streak;
 }
 
 function calcInactiveDays(lastLoginAt: string | null): number {
   if (!lastLoginAt) return 999;
-  const last = new Date(lastLoginAt);
-  const now = new Date();
-  last.setHours(0, 0, 0, 0);
-  now.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)));
-}
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const lastKey = toDateKey(lastLoginAt);
+  const todayKey = toDateKey(new Date());
+  const last = new Date(`${lastKey}T12:00:00+09:00`);
+  const today = new Date(`${todayKey}T12:00:00+09:00`);
+  return Math.max(
+    0,
+    Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 }
 
 function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  // 마감 판정은 한국 하루의 끝(다음날 00:00 KST 직전)을 쓴다.
+  const nextDay = new Date(`${toDateKey(date)}T00:00:00+09:00`);
+  nextDay.setTime(nextDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return nextDay;
 }
 
 function isToday(iso: string, now = new Date()): boolean {
-  const d = new Date(iso);
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+  return isSameKstDay(iso, now);
 }
 
 function rowToQuestion(row: QuestionRow): StoredQuestion {
@@ -209,16 +204,15 @@ function buildDailyReviews(
 ): DailyActivity[] {
   const result: DailyActivity[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const label = d.toLocaleDateString("ko-KR", {
+    const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = toDateKey(day);
+    const label = new Date(`${key}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
+      timeZone: "Asia/Seoul",
       month: "numeric",
       day: "numeric",
     });
     const count = events.filter(
-      (e) =>
-        e.event_type === "reviewed" && e.created_at.slice(0, 10) === key,
+      (e) => e.event_type === "reviewed" && toDateKey(e.created_at) === key,
     ).length;
     result.push({ date: key, label, count });
   }
@@ -351,6 +345,7 @@ async function fetchDashboardForStudentIds(
 
   const [
     { data: allLoginRows },
+    { data: todayLoginRows },
     { data: questionRows },
     { data: activityRows },
     { data: classStudentsRows },
@@ -361,6 +356,13 @@ async function fetchDashboardForStudentIds(
           .select("user_id, logged_in_at")
           .in("user_id", studentIds)
           .order("logged_in_at", { ascending: false })
+      : Promise.resolve({ data: [] as LoginRow[] }),
+    studentIds.length > 0
+      ? supabase
+          .from("login_events")
+          .select("user_id, logged_in_at")
+          .in("user_id", studentIds)
+          .gte("logged_in_at", startOfTodayKstIso())
       : Promise.resolve({ data: [] as LoginRow[] }),
     studentIds.length > 0
       ? supabase
@@ -387,6 +389,7 @@ async function fetchDashboardForStudentIds(
   const questions = (questionRows ?? []) as QuestionRow[];
   const activities = (activityRows ?? []) as ActivityRow[];
   const allLogins = (allLoginRows ?? []) as LoginRow[];
+  const todayLogins = (todayLoginRows ?? []) as LoginRow[];
   const classStudents = (classStudentsRows ?? []) as ClassStudentRow[];
   const classRoomIds = Array.from(
     new Set(classStudents.map((row) => row.class_room_id)),
@@ -420,9 +423,7 @@ async function fetchDashboardForStudentIds(
     }
   }
 
-  const loggedInToday = new Set(
-    allLogins.filter((l) => isToday(l.logged_in_at)).map((l) => l.user_id),
-  ).size;
+  const loggedInToday = new Set(todayLogins.map((l) => l.user_id)).size;
   const activeToday = new Set(
     activities
       .filter((e) => e.event_type === "reviewed" && isToday(e.created_at))
