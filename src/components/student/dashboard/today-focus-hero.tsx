@@ -66,12 +66,19 @@ export function TodayFocusHero({
         {loading
           ? "불러오는 중…"
           : hasWork
-            ? `오늘 복습 시작 · ${todayCount}문제`
+            ? todayCount > 10
+              ? `10문제 시작하기 · 약 ${Math.max(1, Math.round(10 * 0.8))}분`
+              : `오늘 복습 시작 · ${todayCount}문제`
             : allDone
               ? "오늘 복습 완료 · 기록 보기"
               : UI_LABELS.todayQueueEmptyCta}
       </Link>
 
+      {hasWork && todayCount > 10 ? (
+        <p className="mt-2 text-center text-xs text-[var(--rm-text-muted)]">
+          전체 대기 {todayCount}문제 · 이번엔 10문제만 풀어요
+        </p>
+      ) : null}
       {allDone ? (
         <p className="mt-2 text-center text-xs font-medium text-[var(--rm-success)]">
           오늘 예정된 복습을 모두 완료했습니다

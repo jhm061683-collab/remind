@@ -21,6 +21,12 @@ import {
   getUpcomingReviewCount,
   type StoredQuestion,
 } from "@/lib/data/questions";
+import {
+  clearSavedReviewSet,
+  readSavedReviewSet,
+  resumeReviewSet,
+  writeSavedReviewSet,
+} from "@/lib/study/review-set";
 import { useSubjects } from "@/components/student/subject-provider";
 import { formatDate, getPhaseHint, getPhaseLabel } from "@/lib/utils/labels";
 import type { CompletedAction } from "@/types/question";
@@ -41,6 +47,7 @@ export function TodayStudySession({ userId }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [upcomingCount, setUpcomingCount] = useState(0);
+  const [dueTotal, setDueTotal] = useState(0);
   const [streakTarget, setStreakTarget] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteProcessing, setDeleteProcessing] = useState(false);
@@ -50,8 +57,19 @@ export function TodayStudySession({ userId }: Props) {
       getTodayReviewQuestions(userId),
       getUpcomingReviewCount(userId),
     ]);
-    setQuestions(today);
+    const saved = readSavedReviewSet(userId);
+    const set = resumeReviewSet(today, saved);
+    setQuestions(set);
+    setDueTotal(today.length);
     setUpcomingCount(upcoming);
+    if (set.length > 0) {
+      writeSavedReviewSet(userId, {
+        ids: set.map((q) => q.id),
+        dueTotal: today.length,
+      });
+    } else {
+      clearSavedReviewSet(userId);
+    }
     setCurrentIndex(0);
     setMyAnswer("");
     setRevealed(false);
@@ -97,6 +115,7 @@ export function TodayStudySession({ userId }: Props) {
     else setFeedback(null);
 
     if (currentIndex + 1 >= questions.length) {
+      clearSavedReviewSet(userId);
       setCurrentIndex(questions.length);
       router.refresh();
       return;
@@ -231,12 +250,31 @@ export function TodayStudySession({ userId }: Props) {
         <p className="mt-2 text-sm text-[var(--rm-text-on-success)]">
           {total}문제를 모두 풀었습니다.
         </p>
-        <Link
-          href="/dashboard"
-          className="mt-3 inline-block rounded-xl bg-[var(--rm-brand)] px-6 py-3 text-sm font-semibold text-white hover:opacity-90"
-        >
-          홈으로
-        </Link>
+        {dueTotal > total ? (
+          <p className="mt-1 text-sm text-[var(--rm-text-on-success)]">
+            전체 대기 {dueTotal}문제 중 이번 세트입니다. 이어서 더 풀 수 있어요.
+          </p>
+        ) : null}
+        <div className="mt-3 flex flex-col items-center gap-2">
+          {dueTotal > total ? (
+            <button
+              type="button"
+              className="rounded-xl bg-[var(--rm-brand)] px-6 py-3 text-sm font-semibold text-white"
+              onClick={() => {
+                clearSavedReviewSet(userId);
+                void loadQuestions();
+              }}
+            >
+              다음 세트 시작
+            </button>
+          ) : null}
+          <Link
+            href="/dashboard"
+            className="inline-block rounded-xl border border-[var(--rm-border)] px-6 py-3 text-sm font-semibold text-[var(--rm-text)]"
+          >
+            홈으로
+          </Link>
+        </div>
       </div>
     );
   }
@@ -263,6 +301,11 @@ export function TodayStudySession({ userId }: Props) {
       <div className="flex items-center justify-between text-sm text-[var(--rm-text-muted)]">
         <span>
           {currentIndex + 1} / {total}
+          {dueTotal > total ? (
+            <span className="ml-2 text-xs font-medium text-[var(--rm-text-muted)]">
+              · 전체 대기 {dueTotal}문제
+            </span>
+          ) : null}
         </span>
         <span className="rounded-full bg-[var(--rm-info-bg)] px-3 py-1 text-xs font-medium text-[var(--rm-text-on-info)]">
           {getSubjectName(current.subjectId)} · {getPhaseLabel(current.phase)}

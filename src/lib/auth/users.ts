@@ -58,3 +58,19 @@ export function getHomePathForRole(role: UserRole): string {
       return "/dashboard";
   }
 }
+
+export function getPasswordChangePath(role: UserRole): string | null {
+  if (role === "student") return "/account";
+  if (role === "admin" || role === "sub_admin") return "/admin/account";
+  return null;
+}
+
+export function getPostLoginPath(
+  role: UserRole,
+  mustChangePassword: boolean,
+): string {
+  if (mustChangePassword) {
+    return getPasswordChangePath(role) ?? getHomePathForRole(role);
+  }
+  return getHomePathForRole(role);
+}

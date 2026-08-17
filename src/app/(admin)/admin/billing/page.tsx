@@ -49,7 +49,7 @@ export default async function AdminBillingPage() {
     <>
       <PageHeader
         title="결제 · 구독"
-        description="요금제는 ChatGPT처럼 Basic / Pro / Premium 입니다. 변경은 플랫폼(owner)에서 합니다."
+        description="지금 학원에서 쓰는 플랜과 학생 수, 이번 달 사용량을 한눈에 봅니다."
       />
 
       <section className="mb-6">
@@ -65,7 +65,11 @@ export default async function AdminBillingPage() {
           }))}
           currentPlanCode={summary.planCode}
           studentCount={summary.studentCount}
-          footnote="지금은 owner가 요금제를 바꿉니다. OCR을 실제로 열면 신청 시 자동 변경 + 일할계산으로 이어집니다."
+          footnote={
+            mockMode
+              ? "미리보기 환경입니다. 실제 결제는 이루어지지 않습니다."
+              : "학생 수 기준으로 매달 청구됩니다. 플랜 변경은 다음 결제일부터 적용됩니다."
+          }
         />
       </section>
 

@@ -50,12 +50,6 @@ function fixKoreaMobileDigits(digits: string): string {
   return digits;
 }
 
-export function defaultPasswordFromPhone(rawPhone: string): string {
-  const onlyDigits = normalizePhone(rawPhone);
-  if (onlyDigits.length < 4) return onlyDigits.padStart(4, "0");
-  return onlyDigits.slice(-4);
-}
-
 export function computePromotedGrade(
   schoolLevel: SchoolLevel,
   gradeNumber: number,

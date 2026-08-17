@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { UserRole } from "@/types/user";
-import type { StaffMode } from "@/lib/auth/staff-mode";
+import type { StaffMode, StaffViewScope } from "@/lib/auth/staff-mode";
 
 export type SessionUser = {
   id: string;
@@ -8,8 +8,12 @@ export type SessionUser = {
   role: UserRole;
   /** 원장 권한 — 관리자 모드 전환 가능 */
   isDirector?: boolean;
-  /** 관리자 모드 | 선생님(원장반) 모드 */
+  /** 관리자 모드 | 선생님(원장반) 모드 — 예전 값. viewScope가 우선 */
   staffMode?: StaffMode;
+  /** 원장의 데이터 보기 범위. 인증 역할과 분리 */
+  viewScope?: StaffViewScope;
+  /** 재설정 후 본인 비밀번호 변경이 필요할 때만 true */
+  mustChangePassword?: boolean;
 };
 
 const SESSION_COOKIE = "wrong-note-session";

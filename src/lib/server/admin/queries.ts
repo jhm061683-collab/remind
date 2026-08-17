@@ -8,7 +8,6 @@ import type { StoredQuestion } from "@/lib/storage/questions";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
 import { DEMO_USERS } from "@/lib/auth/users";
-import { getAdminVisiblePasswords } from "@/lib/server/admin/password-notes";
 import type {
   AdminDashboardData,
   AdminStudentRow,
@@ -244,7 +243,6 @@ function demoDashboard(): AdminDashboardData {
     inactiveDays: 999,
     dueToday: 0,
     reviewedToday: 0,
-    passwordPlain: "student123",
   };
   return {
     totalStudents: 1,
@@ -271,6 +269,7 @@ function demoDashboard(): AdminDashboardData {
         displayName: teacher.name,
         username: teacher.username,
         assignedCount: 1,
+        classCount: 1,
         isDirector: false,
       },
     ],
@@ -341,6 +340,21 @@ async function fetchDashboardForStudentIds(
   const supabase = createServiceClient();
   const profileMap = new Map(profiles.map((p) => [p.id, p]));
   const subAdminProfiles = profiles.filter((p) => p.role === "sub_admin");
+  const teacherIds = subAdminProfiles.map((p) => p.id);
+  const { data: teacherClassRows } =
+    teacherIds.length > 0
+      ? await supabase
+          .from("class_room_teachers")
+          .select("class_room_id, teacher_id")
+          .in("teacher_id", teacherIds)
+      : { data: [] as { class_room_id: string; teacher_id: string }[] };
+  const classCountByTeacher = new Map<string, number>();
+  for (const row of teacherClassRows ?? []) {
+    classCountByTeacher.set(
+      row.teacher_id,
+      (classCountByTeacher.get(row.teacher_id) ?? 0) + 1,
+    );
+  }
   const assignmentByStudent = new Map(
     assignments.map((a) => [a.student_id, a.sub_admin_id]),
   );
@@ -603,14 +617,8 @@ async function fetchDashboardForStudentIds(
       inactiveDays: calcInactiveDays(lastLogin),
       dueToday,
       reviewedToday,
-      passwordPlain: null,
     };
   });
-
-  const passwordMap = await getAdminVisiblePasswords(studentIds);
-  for (const student of students) {
-    student.passwordPlain = passwordMap.get(student.id) ?? null;
-  }
 
   // 담당 학생 = 직접 배정 ∪ 담당 반의 학생 (중복 제거)
   const studentsByClassRoom = new Map<string, string[]>();
@@ -647,6 +655,7 @@ async function fetchDashboardForStudentIds(
       }),
       username: p.username ?? "—",
       assignedCount: uniqueStudents.size,
+      classCount: classCountByTeacher.get(p.id) ?? 0,
       isDirector: Boolean(p.is_director),
     };
   });
@@ -687,7 +696,7 @@ export async function getAdminDashboard(
   const { data: rawProfiles } = await profilesQuery;
 
   const allProfiles = ((rawProfiles ?? []) as ProfileRow[]).filter(
-    (p) => p.role !== "student" || !p.withdrawn_at,
+    (p) => !p.withdrawn_at,
   );
   const studentIds = allProfiles
     .filter((p) => p.role === "student")
@@ -1153,7 +1162,7 @@ export async function getClassManagementData(
     .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
 
   const teachers = profileList
-    .filter((p) => p.role === "sub_admin" || p.role === "admin")
+    .filter((p) => (p.role === "sub_admin" || p.role === "admin") && !p.withdrawn_at)
     .map((p) => ({
       id: p.id,
       displayName: formatStaffLabel({
@@ -1262,7 +1271,6 @@ async function fetchSlimStudentListRows(
     { data: reviewRows },
     { data: loginRows },
     { data: classStudentsRows },
-    passwordMap,
   ] = await Promise.all([
     supabase
       .from("questions")
@@ -1294,7 +1302,6 @@ async function fetchSlimStudentListRows(
         "student_id, class_room_id, class_rooms(name, school_level, grade_number)",
       )
       .in("student_id", studentIds),
-    getAdminVisiblePasswords(studentIds),
   ]);
 
   const registeredCount = new Map<string, number>();
@@ -1446,7 +1453,6 @@ async function fetchSlimStudentListRows(
         inactiveDays: calcInactiveDays(lastLogin),
         dueToday: dueCount.get(id) ?? 0,
         reviewedToday: reviewedCount.get(id) ?? 0,
-        passwordPlain: passwordMap.get(id) ?? null,
       } satisfies AdminStudentRow;
     })
     .filter((row): row is AdminStudentRow => Boolean(row))

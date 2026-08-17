@@ -1,15 +1,14 @@
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { isSupabaseEnabled, toAuthEmail } from "@/lib/supabase/config";
-import {
-  defaultPasswordFromPhone,
-  normalizePhone,
-  type SchoolLevel,
-} from "@/lib/admin/grade";
+import { normalizePhone, type SchoolLevel } from "@/lib/admin/grade";
 import type { UserRole } from "@/types/user";
+import {
+  generateTemporaryPassword,
+  temporaryPasswordMetadata,
+} from "@/lib/server/admin/student-password-reset";
 
 export type CreateAcademyUserInput = {
   username?: string;
-  password?: string;
   displayName: string;
   /** 표시용 닉네임 (없으면 이름 사용) */
   nickname?: string;
@@ -85,10 +84,7 @@ export async function createAcademyUser(
   }
 
   const requestedUsername = resolveUsername(input);
-  const password = (input.password?.trim() || defaultPasswordFromPhone(input.phone)).trim();
-  if (password.length < 4) {
-    return { error: "비밀번호 자동 생성에 실패했습니다. 휴대폰 번호를 확인해 주세요." };
-  }
+  const password = generateTemporaryPassword();
 
   const academyId = await getAdminAcademyId(adminId);
   if (!academyId) return { error: "원장 계정의 학원 정보가 없습니다." };
@@ -124,12 +120,12 @@ export async function createAcademyUser(
     email,
     password,
     email_confirm: true,
-    user_metadata: {
+    user_metadata: temporaryPasswordMetadata({
       role: input.role,
       display_name: input.displayName.trim(),
       username,
       is_director: input.role === "sub_admin" && Boolean(input.isDirector),
-    },
+    }),
   });
 
   if (error || !data.user) {
@@ -155,11 +151,6 @@ export async function createAcademyUser(
       })
       .eq("id", data.user.id);
   }
-
-  const { upsertAdminVisiblePassword } = await import(
-    "@/lib/server/admin/password-notes"
-  );
-  await upsertAdminVisiblePassword(data.user.id, password, adminId);
 
   return { userId: data.user.id, username, password };
 }

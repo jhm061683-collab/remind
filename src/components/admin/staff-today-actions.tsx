@@ -28,13 +28,20 @@ export function StaffTodayActions({ isSubAdmin, students }: Props) {
   return (
     <section data-tour-id="staff-today-actions" className="space-y-3">
       <div>
-        <h2 className="text-sm font-bold text-[var(--rm-text)]">오늘 할 일</h2>
+        <h2 className="text-sm font-bold text-[var(--rm-text)]">
+          {isSubAdmin ? "오늘 개입할 학생" : "학원 운영 상태"}
+        </h2>
         <p className="text-xs text-[var(--rm-text-muted)]">
           {summary.completionPct != null
             ? `오늘 복습 진행 ${summary.completionPct}% · 학습한 학생 ${summary.reviewedToday}명`
             : isSubAdmin
               ? "담당 학생 중 확인이 필요한 사람부터 보세요"
               : "확인이 필요한 학생부터 보세요"}
+          {" · "}
+          이 화면을 연 시각 {new Date().toLocaleTimeString("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </p>
       </div>
 

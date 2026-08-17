@@ -190,6 +190,36 @@ export function GuidedTour({ tutorial, onDismiss }: Props) {
   }, [cardHeight, stepIndex, hole]);
 
   useEffect(() => {
+    const previous: Array<{
+      el: HTMLElement;
+      ariaHidden: string | null;
+      inert: boolean;
+    }> = [];
+    for (const node of Array.from(document.body.children)) {
+      if (!(node instanceof HTMLElement)) continue;
+      if (node.getAttribute("data-tour-root") === "true") continue;
+      previous.push({
+        el: node,
+        ariaHidden: node.getAttribute("aria-hidden"),
+        inert: Boolean(node.inert),
+      });
+      node.setAttribute("aria-hidden", "true");
+      node.inert = true;
+    }
+    const firstFocusable = tooltipRef.current?.querySelector<HTMLElement>(
+      "button, input",
+    );
+    firstFocusable?.focus();
+    return () => {
+      for (const item of previous) {
+        if (item.ariaHidden == null) item.el.removeAttribute("aria-hidden");
+        else item.el.setAttribute("aria-hidden", item.ariaHidden);
+        item.el.inert = item.inert;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();

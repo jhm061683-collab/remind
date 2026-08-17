@@ -26,8 +26,6 @@ export type AdminStudentRow = {
   inactiveDays: number;
   dueToday: number;
   reviewedToday: number;
-  /** 관리자 확인용 비밀번호 (학생이 변경·관리자 재설정 시 기록) */
-  passwordPlain: string | null;
 };
 
 export type SubAdminRow = {
@@ -35,6 +33,7 @@ export type SubAdminRow = {
   displayName: string;
   username: string;
   assignedCount: number;
+  classCount: number;
   isDirector: boolean;
 };
 

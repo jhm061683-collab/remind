@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getHomePathForRole } from "@/lib/auth/users";
-import { parseSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth/session";
-import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
-import { canAccessAdminPath } from "@/lib/constants/admin-nav";
+import { getHomePathForRole, getPasswordChangePath } from "@/lib/auth/users";
+import { parseSessionCookie, SESSION_COOKIE_NAME, type SessionUser } from "@/lib/auth/session";
+import { getAuthenticatedStaffRole } from "@/lib/auth/staff-mode";
+import { canAccessAdminPath, isAdminOnlyPath } from "@/lib/constants/admin-nav";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
 import { updateSession } from "@/lib/supabase/middleware";
 
@@ -26,6 +26,12 @@ function matchesPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function isPasswordChangePath(pathname: string, session: SessionUser): boolean {
+  const target = getPasswordChangePath(session.role);
+  if (!target) return false;
+  return pathname === target || pathname.startsWith(`${target}/`);
 }
 
 export async function middleware(request: NextRequest) {
@@ -79,8 +85,11 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/") {
     // 비로그인 첫 방문 → 제품 소개(랜딩) 페이지
     if (session) {
+      const passwordPath = session.mustChangePassword
+        ? getPasswordChangePath(session.role)
+        : null;
       return NextResponse.redirect(
-        new URL(getHomePathForRole(session.role), request.url),
+        new URL(passwordPath ?? getHomePathForRole(session.role), request.url),
       );
     }
     return response;
@@ -88,8 +97,11 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/login") {
     if (session) {
+      const passwordPath = session.mustChangePassword
+        ? getPasswordChangePath(session.role)
+        : null;
       return NextResponse.redirect(
-        new URL(getHomePathForRole(session.role), request.url),
+        new URL(passwordPath ?? getHomePathForRole(session.role), request.url),
       );
     }
     return response;
@@ -120,16 +132,53 @@ export async function middleware(request: NextRequest) {
   }
 
   if (matchesPrefix(pathname, ADMIN_PREFIXES)) {
-    const effectiveRole =
-      session.role === "admin" || session.role === "sub_admin"
-        ? getEffectiveStaffRole(session)
-        : session.role;
-    if (!canAccessAdminPath(effectiveRole, pathname)) {
-      return NextResponse.redirect(
-        new URL(getHomePathForRole(session.role), request.url),
-      );
+    if (
+      pathname === "/admin/permission-denied" ||
+      pathname.startsWith("/admin/permission-denied/")
+    ) {
+      if (session.role === "admin" || session.role === "sub_admin") {
+        return response;
+      }
+      const denied = new URL("/permission-denied", request.url);
+      denied.searchParams.set("need", "staff");
+      return NextResponse.redirect(denied);
+    }
+    if (
+      session.mustChangePassword &&
+      (session.role === "admin" || session.role === "sub_admin") &&
+      !isPasswordChangePath(pathname, session)
+    ) {
+      return NextResponse.redirect(new URL("/admin/account", request.url));
+    }
+    if (session.role !== "admin" && session.role !== "sub_admin") {
+      const denied = new URL("/permission-denied", request.url);
+      denied.searchParams.set("need", "staff");
+      denied.searchParams.set("from", getHomePathForRole(session.role));
+      return NextResponse.redirect(denied);
+    }
+    const authRole = getAuthenticatedStaffRole(session);
+    if (session.role === "sub_admin" && isAdminOnlyPath(pathname)) {
+      const denied = new URL("/admin/permission-denied", request.url);
+      denied.searchParams.set("need", "admin");
+      denied.searchParams.set("from", "/admin/dashboard");
+      return NextResponse.redirect(denied);
+    }
+    if (!canAccessAdminPath(authRole, pathname)) {
+      const denied = new URL("/admin/permission-denied", request.url);
+      denied.searchParams.set("need", "admin");
+      return NextResponse.redirect(denied);
     }
     return response;
+  }
+
+  if (
+    matchesPrefix(pathname, STUDENT_PREFIXES) &&
+    session.role === "student" &&
+    session.mustChangePassword &&
+    pathname !== "/account" &&
+    !pathname.startsWith("/account/")
+  ) {
+    return NextResponse.redirect(new URL("/account", request.url));
   }
 
   if (
@@ -163,6 +212,7 @@ export const config = {
     "/patch-notes",
     "/patch-notes/:path*",
     "/admin/:path*",
+    "/permission-denied",
     "/sub-admin/:path*",
     "/platform",
     "/platform/:path*",

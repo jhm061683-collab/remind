@@ -4,11 +4,34 @@ import { useActionState, useState } from "react";
 import {
   createAcademyUserAction,
   createStudentsBulkAction,
+  type CreatedCredential,
   type CreateUserState,
 } from "@/lib/actions/admin";
 import type { UserRole } from "@/types/user";
 
 const initialState: CreateUserState = {};
+
+function OneTimeCredentials({ credentials }: { credentials: CreatedCredential[] }) {
+  return (
+    <div className="rounded-lg border border-[color-mix(in_srgb,var(--rm-warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-3 py-2.5">
+      <p className="text-sm font-semibold text-[var(--rm-text)]">
+        지금만 보이는 임시 비밀번호
+      </p>
+      <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+        이 화면을 닫거나 새로고침하면 다시 볼 수 없습니다. 24시간 안에
+        로그인해서 새 비밀번호로 바꿔 주세요. 현재 비밀번호는 관리자도
+        확인할 수 없습니다.
+      </p>
+      <ul className="mt-2 space-y-1 font-mono text-sm text-[var(--rm-text)]">
+        {credentials.map((item) => (
+          <li key={item.username}>
+            아이디 {item.username} · 임시 비밀번호 {item.temporaryPassword}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 type Props = {
   role: Extract<UserRole, "student" | "sub_admin">;
@@ -31,7 +54,8 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
     <section className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
       <h2 className="font-semibold text-[var(--rm-text)]">{title}</h2>
       <p className="mt-1 text-sm text-[var(--rm-text-muted)]">
-        아이디는 이름으로 자동 생성되고, 초기 비밀번호는 휴대폰 뒤 4자리입니다.
+        계정을 만들면 최초 로그인용 일회성 안내가 생성됩니다. 현재 비밀번호는
+        관리자도 확인할 수 없습니다.
       </p>
 
       <form action={formAction} className="mt-4 space-y-3">
@@ -89,7 +113,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
             className="w-full rounded-lg border border-[var(--rm-border)] px-3 py-2 text-sm"
           />
           <p className="mt-1 text-xs text-[var(--rm-text-faint)]">
-            초기 비밀번호로 뒤 4자리를 사용합니다.
+            연락처로만 쓰이며, 비밀번호로 쓰이지 않습니다.
           </p>
         </div>
 
@@ -169,6 +193,9 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
             {state.success}
           </p>
         ) : null}
+        {state.credentials && state.credentials.length > 0 ? (
+          <OneTimeCredentials credentials={state.credentials} />
+        ) : null}
 
         <button
           type="submit"
@@ -246,6 +273,9 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-sm text-[var(--rm-text-on-success)]">
                 {bulkState.success}
               </p>
+            ) : null}
+            {bulkState.credentials && bulkState.credentials.length > 0 ? (
+              <OneTimeCredentials credentials={bulkState.credentials} />
             ) : null}
             <button
               type="submit"

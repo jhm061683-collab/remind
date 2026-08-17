@@ -11,17 +11,19 @@ import {
   getStaffStudentList,
 } from "@/lib/server/admin/dashboard";
 import { getPromotionRule } from "@/lib/server/admin/queries";
-import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
+import { getAuthenticatedStaffRole, getEffectiveStaffRole } from "@/lib/auth/staff-mode";
 import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 
 type Props = {
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; scope?: string }>;
 };
 
 export default async function AdminStudentsPage({ searchParams }: Props) {
   const session = await requireStaff();
   const params = (await searchParams) ?? {};
-  const isAdmin = getEffectiveStaffRole(session) === "admin";
+  const isAdmin = getAuthenticatedStaffRole(session) === "admin";
+  const assignedOnly =
+    getEffectiveStaffRole(session, params.scope) === "sub_admin";
   const tab =
     params.tab === "add" || params.tab === "reports" ? params.tab : "list";
 
@@ -48,14 +50,14 @@ export default async function AdminStudentsPage({ searchParams }: Props) {
     ]);
   } else if (tab === "list") {
     [students, classOptions] = await Promise.all([
-      getStaffStudentList(session),
+      getStaffStudentList(session, params.scope),
       isAdmin
         ? getCachedAdminClassOptions(session.id)
         : Promise.resolve([] as ClassOption[]),
     ]);
   } else if (tab === "reports") {
     [students, classOptions] = await Promise.all([
-      getStaffStudentList(session),
+      getStaffStudentList(session, params.scope),
       isAdmin
         ? getCachedAdminClassOptions(session.id)
         : Promise.resolve([] as ClassOption[]),
@@ -65,9 +67,9 @@ export default async function AdminStudentsPage({ searchParams }: Props) {
   return (
     <>
       <PageHeader
-        title={isAdmin ? "학생 설정" : "담당 학생"}
+        title={isAdmin && !assignedOnly ? "학생 설정" : "담당 학생"}
         description={
-          isAdmin
+          isAdmin && !assignedOnly
             ? "목록 · 계정 추가 · 학부모 보고서"
             : "담당 학생 목록과 보고서를 관리합니다."
         }

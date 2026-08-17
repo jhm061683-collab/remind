@@ -16,6 +16,7 @@ export default async function AdminAccountPage() {
     .maybeSingle();
 
   const isAdmin = (me?.role ?? session.role) === "admin";
+  const mustChange = Boolean(session.mustChangePassword);
 
   return (
     <>
@@ -25,6 +26,14 @@ export default async function AdminAccountPage() {
       />
 
       <div className="mx-auto max-w-lg space-y-4">
+        {mustChange ? (
+          <p
+            className="rounded-xl border border-[var(--rm-warning)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-3 py-2 text-sm text-[var(--rm-text)]"
+            role="status"
+          >
+            임시 비밀번호로 로그인했습니다. 계속 쓰려면 새 비밀번호로 바꿔 주세요.
+          </p>
+        ) : null}
         <ReplayTutorials compact />
         <StaffProfileForm
           displayName={me?.display_name ?? session.name}

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession, type SessionUser } from "@/lib/auth/session";
-import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
+import { getAuthenticatedStaffRole } from "@/lib/auth/staff-mode";
 import { isAdminOnlyPath } from "@/lib/constants/admin-nav";
-import type { UserRole } from "@/types/user";
 
 export async function requireSession(): Promise<SessionUser> {
   const session = await getSession();
@@ -10,28 +9,31 @@ export async function requireSession(): Promise<SessionUser> {
   return session;
 }
 
-function staffHome(role: UserRole): string {
-  if (role === "admin" || role === "sub_admin") return "/admin/dashboard";
-  return "/dashboard";
+function permissionDeniedUrl(need: "admin" | "staff", from?: string): string {
+  const path =
+    need === "staff" ? "/permission-denied" : "/admin/permission-denied";
+  const params = new URLSearchParams({ need });
+  if (from) params.set("from", from);
+  return `${path}?${params.toString()}`;
 }
 
 export async function requireStaff(): Promise<SessionUser> {
   const session = await requireSession();
   if (session.role !== "admin" && session.role !== "sub_admin") {
-    redirect(staffHome(session.role));
+    redirect(permissionDeniedUrl("staff"));
   }
   return session;
 }
 
 export async function requireAdmin(): Promise<SessionUser> {
   const session = await requireSession();
-  if (getEffectiveStaffRole(session) !== "admin") {
-    redirect(staffHome(session.role));
+  if (getAuthenticatedStaffRole(session) !== "admin") {
+    redirect(permissionDeniedUrl("admin", "/admin/dashboard"));
   }
   return session;
 }
 
-/** 원장 전용 페이지 — 서브관리자는 대시보드로 */
+/** 원장 전용 페이지 — 선생님은 안내 화면으로 */
 export async function requireAdminPage(): Promise<SessionUser> {
   return requireAdmin();
 }
@@ -39,10 +41,10 @@ export async function requireAdminPage(): Promise<SessionUser> {
 export async function requireStaffAdminPath(pathname: string): Promise<SessionUser> {
   const session = await requireStaff();
   if (
-    getEffectiveStaffRole(session) === "sub_admin" &&
+    getAuthenticatedStaffRole(session) === "sub_admin" &&
     isAdminOnlyPath(pathname)
   ) {
-    redirect("/admin/dashboard");
+    redirect(permissionDeniedUrl("admin", "/admin/dashboard"));
   }
   return session;
 }

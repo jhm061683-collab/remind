@@ -3,12 +3,13 @@
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { formatStaffLabel } from "@/lib/admin/staff-label";
-import { getHomePathForRole, verifyUser } from "@/lib/auth/users";
+import { getHomePathForRole, getPostLoginPath, verifyUser } from "@/lib/auth/users";
 import { clearSession, setSession } from "@/lib/auth/session";
 import { recordDailyVisitOnServer } from "@/lib/server/record-daily-visit";
 import { isSupabaseEnabled, toAuthEmail } from "@/lib/supabase/config";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import { isTemporaryPasswordLoginBlocked } from "@/lib/server/admin/student-password-reset";
 import {
   DEMO_ACADEMY_CODE,
   PLATFORM_LOGIN_CODE,
@@ -26,6 +27,7 @@ type LoginProfile = {
   nickname: string | null;
   academyId: string | null;
   academyStatus: string | null;
+  withdrawnAt: string | null;
 };
 
 function normalizeAcademyCode(raw: string): string {
@@ -45,7 +47,7 @@ async function getProfileFromSupabase(userId: string): Promise<LoginProfile | nu
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("display_name, role, is_director, nickname, academy_id")
+    .select("display_name, role, is_director, nickname, academy_id, withdrawn_at")
     .eq("id", userId)
     .single();
 
@@ -57,6 +59,7 @@ async function getProfileFromSupabase(userId: string): Promise<LoginProfile | nu
     nickname: (data.nickname as string | null) ?? null,
     academyId: (data.academy_id as string | null) ?? null,
     academyStatus: null,
+    withdrawnAt: (data.withdrawn_at as string | null) ?? null,
   };
 }
 
@@ -71,6 +74,7 @@ function profileFromUserMetadata(metadata: Record<string, unknown> | undefined):
       nickname: typeof metadata?.nickname === "string" ? metadata.nickname : null,
       academyId: null,
       academyStatus: null,
+      withdrawnAt: null,
     };
   }
   return null;
@@ -122,7 +126,7 @@ export async function loginAction(
       if (academyCode === PLATFORM_LOGIN_CODE) {
         const { data: profile } = await service
           .from("profiles")
-          .select("auth_email, display_name, role, is_director, nickname, academy_id")
+          .select("auth_email, display_name, role, is_director, nickname, academy_id, withdrawn_at")
           .eq("username", trimmed)
           .eq("role", "platform_admin")
           .is("academy_id", null)
@@ -138,6 +142,7 @@ export async function loginAction(
             nickname: (profile.nickname as string | null) ?? null,
             academyId: null,
             academyStatus: null,
+            withdrawnAt: (profile.withdrawn_at as string | null) ?? null,
           };
         }
       } else {
@@ -159,7 +164,7 @@ export async function loginAction(
 
         const { data: profile } = await service
           .from("profiles")
-          .select("auth_email, display_name, role, is_director, nickname, academy_id")
+          .select("auth_email, display_name, role, is_director, nickname, academy_id, withdrawn_at")
           .eq("username", trimmed)
           .eq("academy_id", academy.id)
           .maybeSingle();
@@ -176,9 +181,15 @@ export async function loginAction(
             nickname: (profile.nickname as string | null) ?? null,
             academyId: (profile.academy_id as string | null) ?? null,
             academyStatus: (academy.status as string | null) ?? null,
+            withdrawnAt: (profile.withdrawn_at as string | null) ?? null,
           };
         }
       }
+    }
+
+    if (cachedProfile?.withdrawnAt) {
+      flushTiming("error");
+      return { error: "이용이 중지된 계정입니다. 학원에 문의해 주세요." };
     }
 
     const attempt = async (targetEmail: string) =>
@@ -250,6 +261,35 @@ export async function loginAction(
       return { error: "프로필 정보를 불러오지 못했습니다." };
     }
 
+    let withdrawnAt = profile.withdrawnAt;
+    if (!withdrawnAt && isServiceRoleConfigured() && !cachedProfile) {
+      const service = createServiceClient();
+      const { data: statusRow } = await service
+        .from("profiles")
+        .select("withdrawn_at")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      withdrawnAt = (statusRow?.withdrawn_at as string | null) ?? null;
+    }
+    if (withdrawnAt) {
+      await supabase.auth.signOut();
+      flushTiming("error");
+      return { error: "이용이 중지된 계정입니다. 학원에 문의해 주세요." };
+    }
+
+    const authMetadata =
+      data.user.user_metadata && typeof data.user.user_metadata === "object"
+        ? (data.user.user_metadata as Record<string, unknown>)
+        : undefined;
+    if (isTemporaryPasswordLoginBlocked(authMetadata)) {
+      await supabase.auth.signOut();
+      flushTiming("error");
+      return {
+        error: "임시 비밀번호가 만료되었습니다. 학원에 재설정을 요청해 주세요.",
+      };
+    }
+    const mustChangePassword = authMetadata?.must_change_password === true;
+
     if (academyCode === PLATFORM_LOGIN_CODE) {
       if (profile.role !== "platform_admin") {
         flushTiming("error");
@@ -312,11 +352,13 @@ export async function loginAction(
           : profile.role === "platform_admin"
             ? "admin"
             : "teacher",
+      viewScope: profile.role === "admin" ? "academy" : "assigned",
+      mustChangePassword,
     });
     mark("setSession");
 
     flushTiming("ok");
-    redirect(getHomePathForRole(profile.role));
+    redirect(getPostLoginPath(profile.role, mustChangePassword));
   }
 
   const user = verifyUser(username, password);
@@ -336,6 +378,7 @@ export async function loginAction(
     role: user.role,
     isDirector: user.role === "admin",
     staffMode: user.role === "admin" ? "admin" : "teacher",
+    viewScope: user.role === "admin" ? "academy" : "assigned",
   });
   mark("setSessionLocal");
 
@@ -343,26 +386,38 @@ export async function loginAction(
   redirect(getHomePathForRole(user.role));
 }
 
-export async function switchStaffModeAction(
-  mode: "admin" | "teacher",
+export async function switchViewScopeAction(
+  scope: "academy" | "assigned",
 ): Promise<{ error?: string }> {
   const { getSession, setSession } = await import("@/lib/auth/session");
-  const { canSwitchStaffMode } = await import("@/lib/auth/staff-mode");
+  const { canSwitchViewScope, viewScopeToStaffMode } = await import(
+    "@/lib/auth/staff-mode"
+  );
   const { revalidatePath } = await import("next/cache");
 
   const session = await getSession();
   if (!session) return { error: "로그인이 필요합니다." };
-  if (!canSwitchStaffMode(session)) {
-    return { error: "모드를 바꿀 권한이 없습니다." };
+  if (!canSwitchViewScope(session)) {
+    return { error: "보기 범위를 바꿀 권한이 없습니다." };
+  }
+  if (scope !== "academy" && scope !== "assigned") {
+    return { error: "잘못된 보기 범위입니다." };
   }
 
   await setSession({
     ...session,
-    isDirector: session.isDirector || session.role === "admin",
-    staffMode: mode,
+    viewScope: scope,
+    staffMode: viewScopeToStaffMode(scope),
   });
   revalidatePath("/admin", "layout");
-  redirect("/admin/dashboard");
+  return {};
+}
+
+/** @deprecated viewScope 전환을 사용한다. */
+export async function switchStaffModeAction(
+  mode: "admin" | "teacher",
+): Promise<{ error?: string }> {
+  return switchViewScopeAction(mode === "admin" ? "academy" : "assigned");
 }
 
 export async function logoutAction(): Promise<void> {

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AdminAccountMenu } from "@/components/layout/admin-account-menu";
 import { RemindLogo } from "@/components/brand/remind-logo";
 import {
@@ -12,9 +13,9 @@ import {
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 import { getSession } from "@/lib/auth/session";
 import {
-  canSwitchStaffMode,
-  effectiveRoleForNav,
-  resolveStaffMode,
+  canSwitchViewScope,
+  getAuthenticatedStaffRole,
+  resolveViewScope,
 } from "@/lib/auth/staff-mode";
 import { canViewSuggestions } from "@/lib/constants/suggestions";
 import { listTutorialPreferences } from "@/lib/server/tutorial/preferences";
@@ -32,9 +33,9 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  const navRole = session ? effectiveRoleForNav(session) : "admin";
-  const canSwitch = session ? canSwitchStaffMode(session) : false;
-  const staffMode = session ? resolveStaffMode(session) : "admin";
+  const navRole = session ? getAuthenticatedStaffRole(session) : "admin";
+  const canSwitch = session ? canSwitchViewScope(session) : false;
+  const viewScope = session ? resolveViewScope(session) : "academy";
   const showSuggestions = canViewSuggestions(session?.role);
   const userId = session?.id ?? "guest";
   const cookieStore = await cookies();
@@ -62,7 +63,11 @@ export default async function AdminLayout({
               <RemindLogo href="/admin/dashboard" size="sm" />
             </div>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-              {canSwitch ? <StaffModeSwitch currentMode={staffMode} /> : null}
+              {canSwitch ? (
+                <Suspense fallback={null}>
+                  <StaffModeSwitch currentScope={viewScope} />
+                </Suspense>
+              ) : null}
               <AdminThemeToggle />
               <AdminAccountMenu
                 userName={session?.name ?? "관리자"}

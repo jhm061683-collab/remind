@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  deleteSubAdminAction,
+  deactivateSubAdminAction,
   setSubAdminTeamLeadAction,
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -40,7 +40,7 @@ export function SubAdminsList({ subAdmins }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<SubAdminRow | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<SubAdminRow | null>(null);
 
   function handleTeamLead(rowId: string, next: boolean) {
     startTransition(async () => {
@@ -100,10 +100,10 @@ export function SubAdminsList({ subAdmins }: Props) {
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => setDeleteTarget(row)}
+                    onClick={() => setDeactivateTarget(row)}
                     className="whitespace-nowrap rounded-lg border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--rm-text-on-error)] hover:bg-[var(--rm-error-bg)] disabled:opacity-50"
                   >
-                    삭제
+                    비활성화
                   </button>
                 </td>
               </tr>
@@ -146,10 +146,10 @@ export function SubAdminsList({ subAdmins }: Props) {
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => setDeleteTarget(row)}
+                onClick={() => setDeactivateTarget(row)}
                 className="min-h-[44px] rounded-xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] px-4 text-sm font-semibold text-[var(--rm-text-on-error)] disabled:opacity-50"
               >
-                삭제
+                비활성화
               </button>
             </div>
           </li>
@@ -161,28 +161,28 @@ export function SubAdminsList({ subAdmins }: Props) {
       ) : null}
 
       <p className="mt-2 text-[11px] text-[var(--rm-text-muted)]">
-        팀장은 여러 명 가능 · 관리자/선생님 모드 전환 · 삭제 시 반은 유지
+        팀장은 여러 명 가능 · 관리자/선생님 모드 전환 · 비활성화 시 반은 유지
       </p>
 
       <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="선생님 계정 삭제"
+        open={Boolean(deactivateTarget)}
+        title="선생님 계정 비활성화"
         description={
-          deleteTarget
-            ? `${deleteTarget.displayName} (${deleteTarget.username}) 계정을 삭제할까요?\n\n반은 그대로 유지되고, 이 선생님의 반 담당·학생 배정만 해제됩니다. 나중에 반 설정에서 담당 선생님을 다시 지정하면 됩니다.`
+          deactivateTarget
+            ? `${deactivateTarget.displayName} (${deactivateTarget.username}) 선생님을 비활성화할까요?\n\n담당 학생 ${deactivateTarget.assignedCount}명, 담당 반 ${deactivateTarget.classCount}개에서 담당이 해제됩니다.\n반은 그대로 남고, 이 계정은 로그인할 수 없습니다.`
             : ""
         }
-        confirmLabel="삭제"
+        confirmLabel="비활성화"
         variant="danger"
         loading={pending}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => setDeactivateTarget(null)}
         onConfirm={() => {
-          if (!deleteTarget) return;
-          const target = deleteTarget;
+          if (!deactivateTarget) return;
+          const target = deactivateTarget;
           startTransition(async () => {
-            const res = await deleteSubAdminAction(target.id);
+            const res = await deactivateSubAdminAction(target.id);
             setFeedback(res.error ?? res.success ?? null);
-            setDeleteTarget(null);
+            setDeactivateTarget(null);
             router.refresh();
           });
         }}

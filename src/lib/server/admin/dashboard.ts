@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/lib/auth/session";
-import { getEffectiveStaffRole } from "@/lib/auth/staff-mode";
+import { getEffectiveStaffRole, resolveViewScope } from "@/lib/auth/staff-mode";
 import { unstable_cache } from "next/cache";
 import {
   getAdminClassOptions,
@@ -12,8 +12,10 @@ import type { AdminDashboardData, AdminStudentRow, ClassOption } from "@/lib/typ
 
 export async function getStaffDashboard(
   session: SessionUser,
+  urlScope?: string | null,
 ): Promise<AdminDashboardData> {
-  const effective = getEffectiveStaffRole(session);
+  const effective = getEffectiveStaffRole(session, urlScope);
+  const scope = resolveViewScope(session, urlScope);
   const cached = unstable_cache(
     async () => {
       if (effective === "sub_admin") {
@@ -21,7 +23,7 @@ export async function getStaffDashboard(
       }
       return getAdminDashboard(session.id);
     },
-    ["staff-dashboard", effective, session.id, session.staffMode ?? ""],
+    ["staff-dashboard", effective, session.id, scope],
     { revalidate: 20 },
   );
   return cached();
@@ -30,8 +32,10 @@ export async function getStaffDashboard(
 /** 학생 설정 목록/보고서용 슬림 목록 (대시보드 풀스캔 회피) */
 export async function getStaffStudentList(
   session: SessionUser,
+  urlScope?: string | null,
 ): Promise<AdminStudentRow[]> {
-  const effective = getEffectiveStaffRole(session);
+  const effective = getEffectiveStaffRole(session, urlScope);
+  const scope = resolveViewScope(session, urlScope);
   const cached = unstable_cache(
     async () => {
       if (effective === "sub_admin") {
@@ -39,7 +43,7 @@ export async function getStaffStudentList(
       }
       return getAdminStudentList(session.id);
     },
-    ["staff-student-list", effective, session.id, session.staffMode ?? ""],
+    ["staff-student-list", effective, session.id, scope],
     { revalidate: 20 },
   );
   return cached();

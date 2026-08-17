@@ -327,7 +327,6 @@ export function AdminStudentsTable({
               ) : null}
               <th className="whitespace-nowrap px-3 py-2 font-medium">이름</th>
               <th className="whitespace-nowrap px-3 py-2 font-medium">아이디</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">비번</th>
               <th className="whitespace-nowrap px-3 py-2 font-medium">학년</th>
               <th className="whitespace-nowrap px-3 py-2 font-medium">반</th>
               <th className="whitespace-nowrap px-3 py-2 font-medium">담당</th>
@@ -373,11 +372,6 @@ export function AdminStudentsTable({
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.username}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-[var(--rm-text)]">
-                  {student.passwordPlain ?? (
-                    <span className="text-[var(--rm-text-faint)]">—</span>
-                  )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.gradeLabel ?? "—"}
@@ -474,9 +468,6 @@ export function AdminStudentsTable({
               </p>
               <p className="min-w-0 truncate">
                 반: {formatClassDisplay(student)}
-              </p>
-              <p className="min-w-0 truncate">
-                비번: {student.passwordPlain ?? "—"}
               </p>
               <p className="min-w-0 truncate">
                 담당: {student.teacherNames.join(", ") || "미배정"}

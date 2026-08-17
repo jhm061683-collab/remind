@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { formatStaffLabel } from "@/lib/admin/staff-label";
 import { getSession, setSession } from "@/lib/auth/session";
 import { requireStaff } from "@/lib/server/admin/auth";
-import { upsertAdminVisiblePassword } from "@/lib/server/admin/password-notes";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { clearedTemporaryPasswordMetadata } from "@/lib/server/admin/student-password-reset";
 
 export type ChangePasswordState = {
   error?: string;
@@ -99,7 +99,7 @@ export async function changeOwnPasswordAction(
     String(formData.get("revalidatePath") ?? "").trim() || "/account";
   const successHint =
     String(formData.get("successHint") ?? "").trim() ||
-    "비밀번호를 변경했습니다. 관리자 화면에도 반영됩니다.";
+    "비밀번호를 변경했습니다.";
 
   if (!currentPassword || !nextPassword) {
     return { error: "현재 비밀번호와 새 비밀번호를 입력해 주세요." };
@@ -137,14 +137,20 @@ export async function changeOwnPasswordAction(
 
   const { error: updateError } = await supabase.auth.updateUser({
     password: nextPassword,
+    data: clearedTemporaryPasswordMetadata(
+      user.user_metadata && typeof user.user_metadata === "object"
+        ? user.user_metadata
+        : {},
+    ),
   });
   if (updateError) {
     return { error: updateError.message || "비밀번호 변경에 실패했습니다." };
   }
 
-  if (session.role === "student") {
-    await upsertAdminVisiblePassword(session.id, nextPassword, session.id);
-  }
+  await setSession({
+    ...session,
+    mustChangePassword: false,
+  });
 
   revalidatePath(revalidateTarget);
   return { success: successHint };

@@ -71,10 +71,15 @@ function scopeLeaderboardToStudents(
   });
 }
 
-export default async function AdminDashboardPage() {
+type Props = {
+  searchParams?: Promise<{ scope?: string }>;
+};
+
+export default async function AdminDashboardPage({ searchParams }: Props) {
   const session = await requireStaff();
-  const data = await getStaffDashboard(session);
-  const isSubAdmin = getEffectiveStaffRole(session) === "sub_admin";
+  const params = (await searchParams) ?? {};
+  const data = await getStaffDashboard(session, params.scope);
+  const isSubAdmin = getEffectiveStaffRole(session, params.scope) === "sub_admin";
   const classData =
     !isSubAdmin ? await getClassManagementData(session.id) : null;
   const classOptions =

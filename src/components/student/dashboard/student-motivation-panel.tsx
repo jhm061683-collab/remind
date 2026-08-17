@@ -303,7 +303,7 @@ export function StudentMotivationPanel({
                 {activeBoard
                   ? `${activeBoard.monthLabel}${boardLevel ? ` · ${boardLevel}` : ""} · ${boardStudents.length}명`
                   : period === "this"
-                    ? "이번 달 기록이 아직 없어요"
+                    ? "아직 이번 달 점수가 없어요. 오늘 첫 복습을 완료하고 랭킹에 올라가 보세요."
                     : "지난달 기록이 아직 없어요"}
               </p>
             </div>
@@ -346,7 +346,7 @@ export function StudentMotivationPanel({
                 {boardStudents.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">
                     {period === "this"
-                      ? "이번 달 기록이 아직 없어요"
+                      ? "아직 이번 달 점수가 없어요. 오늘 첫 복습을 완료하고 랭킹에 올라가 보세요."
                       : "지난달 기록이 아직 없어요"}
                   </p>
                 ) : (

@@ -11,6 +11,12 @@ import {
 } from "@/lib/server/admin/class-rooms";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { UserRole } from "@/types/user";
+import { logStaffAudit } from "@/lib/server/audit/staff-audit";
+import {
+  decideStudentPasswordResetAccess,
+  generateTemporaryPassword,
+  temporaryPasswordMetadata,
+} from "@/lib/server/admin/student-password-reset";
 
 export async function assignStudentAction(
   studentId: string,
@@ -29,7 +35,16 @@ export async function assignStudentAction(
   return result;
 }
 
-export type CreateUserState = { error?: string; success?: string };
+export type CreatedCredential = {
+  username: string;
+  temporaryPassword: string;
+};
+
+export type CreateUserState = {
+  error?: string;
+  success?: string;
+  credentials?: CreatedCredential[];
+};
 
 export async function createAcademyUserAction(
   _prev: CreateUserState,
@@ -44,12 +59,10 @@ export async function createAcademyUserAction(
 
   const usernameRaw = String(formData.get("username") ?? "").trim();
   const nicknameRaw = String(formData.get("nickname") ?? "").trim();
-  const passwordRaw = String(formData.get("password") ?? "").trim();
 
   const result = await createAcademyUser(session.id, {
     // 학생 폼에는 username 칸이 없음 → 빈 문자열을 넘기면 검증이 이름을 무시함
     username: usernameRaw || undefined,
-    password: passwordRaw || undefined,
     displayName: String(formData.get("displayName") ?? ""),
     nickname: nicknameRaw || undefined,
     phone: String(formData.get("phone") ?? ""),
@@ -96,11 +109,15 @@ export async function createAcademyUserAction(
   revalidatePath("/admin/assignments");
   revalidatePath("/admin/classes");
 
-  const label = role === "student" ? "학생" : "서브관리자";
+  const label = role === "student" ? "학생" : "선생님";
   const classNote =
     classIds.length > 0 ? ` · 반 ${classIds.length}개 배정` : "";
   return {
-    success: `${label} 계정 생성 완료: 아이디 ${result.username}, 초기 비밀번호 ${result.password}${classNote}`,
+    success: `${label} 계정을 만들었습니다. 아이디 ${result.username}. 임시 비밀번호는 지금만 보이며 저장되지 않습니다.${classNote}`,
+    credentials:
+      result.username && result.password
+        ? [{ username: result.username, temporaryPassword: result.password }]
+        : undefined,
   };
 }
 
@@ -122,6 +139,7 @@ export async function createStudentsBulkAction(
 
   let created = 0;
   const failures: string[] = [];
+  const credentials: CreatedCredential[] = [];
   for (const row of parsed.rows) {
     const result = await createAcademyUser(session.id, {
       displayName: row.displayName,
@@ -136,6 +154,12 @@ export async function createStudentsBulkAction(
       continue;
     }
     created += 1;
+    if (result.username && result.password) {
+      credentials.push({
+        username: result.username,
+        temporaryPassword: result.password,
+      });
+    }
   }
 
   revalidatePath("/admin/students");
@@ -145,9 +169,13 @@ export async function createStudentsBulkAction(
       error: `성공 ${created}명 / 실패 ${failures.length}명\n${failures
         .slice(0, 5)
         .join("\n")}`,
+      credentials: credentials.length > 0 ? credentials : undefined,
     };
   }
-  return { success: `${created}명 학생 계정을 일괄 등록했습니다.` };
+  return {
+    success: `${created}명 학생 계정을 일괄 등록했습니다. 임시 비밀번호는 지금만 보이며 저장되지 않습니다.`,
+    credentials,
+  };
 }
 
 export async function deleteStudentsAction(
@@ -217,16 +245,15 @@ export async function deleteStudentsAction(
 }
 
 /**
- * 서브관리자(선생님) 삭제.
- * 반은 유지하고, 해당 선생님의 반 담당·학생 배정만 해제합니다.
+ * 선생님 비활성화. 계정은 지우지 않고, 반은 유지한 채 담당만 해제합니다.
  */
-export async function deleteSubAdminAction(
+export async function deactivateSubAdminAction(
   subAdminId: string,
 ): Promise<{ error?: string; success?: string }> {
   const session = await requireAdmin();
-  if (!subAdminId) return { error: "삭제할 선생님을 선택해 주세요." };
+  if (!subAdminId) return { error: "비활성화할 선생님을 선택해 주세요." };
   if (subAdminId === session.id) {
-    return { error: "자기 자신은 삭제할 수 없습니다." };
+    return { error: "자기 자신은 비활성화할 수 없습니다." };
   }
 
   const supabase = createServiceClient();
@@ -239,16 +266,18 @@ export async function deleteSubAdminAction(
 
   const { data: target, error: targetError } = await supabase
     .from("profiles")
-    .select("id, role, academy_id, display_name, username")
+    .select("id, role, academy_id, display_name, username, withdrawn_at")
     .eq("id", subAdminId)
     .eq("role", "sub_admin")
     .eq("academy_id", me.academy_id)
     .maybeSingle();
 
   if (targetError) return { error: targetError.message };
-  if (!target) return { error: "삭제할 선생님 계정을 찾을 수 없습니다." };
+  if (!target) return { error: "선생님 계정을 찾을 수 없습니다." };
+  if (target.withdrawn_at) {
+    return { error: "이미 비활성화된 선생님입니다." };
+  }
 
-  // 반은 그대로 두고 담당 관계만 끊음
   const { error: teacherLinkError } = await supabase
     .from("class_room_teachers")
     .delete()
@@ -261,10 +290,20 @@ export async function deleteSubAdminAction(
     .eq("sub_admin_id", subAdminId);
   if (assignError) return { error: assignError.message };
 
-  const { error: deleteError } = await supabase.auth.admin.deleteUser(
-    subAdminId,
-  );
-  if (deleteError) return { error: deleteError.message };
+  const { error: withdrawError } = await supabase
+    .from("profiles")
+    .update({ withdrawn_at: new Date().toISOString() })
+    .eq("id", subAdminId)
+    .eq("academy_id", me.academy_id);
+  if (withdrawError) return { error: withdrawError.message };
+
+  await logStaffAudit({
+    actorId: session.id,
+    targetUserId: subAdminId,
+    academyId: me.academy_id,
+    action: "teacher_deactivate",
+    success: true,
+  });
 
   revalidatePath("/admin/sub-admins");
   revalidatePath("/admin/classes");
@@ -273,7 +312,7 @@ export async function deleteSubAdminAction(
   revalidatePath("/admin/assignments");
 
   return {
-    success: `${target.display_name} 선생님 계정을 삭제했습니다. 반은 그대로 남아 있으니 나중에 담당 선생님을 바꿔 주세요.`,
+    success: `${target.display_name} 선생님을 비활성화했습니다. 반은 그대로 남아 있으니 나중에 담당 선생님을 바꿔 주세요.`,
   };
 }
 
@@ -323,24 +362,105 @@ export async function setSubAdminTeamLeadAction(
 
 export async function resetStudentPasswordAction(
   studentId: string,
-  nextPassword: string,
-): Promise<{ error?: string; success?: string }> {
+): Promise<{ error?: string; success?: string; temporaryPassword?: string }> {
   const session = await requireStaff();
-  if (!nextPassword || nextPassword.length < 4) {
-    return { error: "비밀번호는 4자 이상으로 입력해 주세요." };
-  }
   const supabase = createServiceClient();
-  const { error } = await supabase.auth.admin.updateUserById(studentId, {
-    password: nextPassword,
+
+  const [{ data: staff }, { data: student }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id")
+      .eq("id", session.id)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id, withdrawn_at")
+      .eq("id", studentId)
+      .maybeSingle(),
+  ]);
+
+  let isAssigned = false;
+  if (staff?.role === "sub_admin" && student?.id) {
+    const [{ data: assignment }, { data: classTeacherRows }] = await Promise.all([
+      supabase
+        .from("student_assignments")
+        .select("student_id")
+        .eq("sub_admin_id", session.id)
+        .eq("student_id", studentId)
+        .maybeSingle(),
+      supabase
+        .from("class_room_teachers")
+        .select("class_room_id")
+        .eq("teacher_id", session.id),
+    ]);
+    if (assignment) {
+      isAssigned = true;
+    } else {
+      const classIds = (classTeacherRows ?? []).map((row) => row.class_room_id as string);
+      if (classIds.length > 0) {
+        const { data: membership } = await supabase
+          .from("class_room_students")
+          .select("student_id")
+          .eq("student_id", studentId)
+          .in("class_room_id", classIds)
+          .limit(1)
+          .maybeSingle();
+        isAssigned = Boolean(membership);
+      }
+    }
+  }
+
+  const decision = decideStudentPasswordResetAccess({
+    actorRole: session.role,
+    actorAcademyId: (staff?.academy_id as string | null) ?? null,
+    studentRole: (student?.role as string | null) ?? "",
+    studentAcademyId: (student?.academy_id as string | null) ?? null,
+    studentWithdrawn: Boolean(student?.withdrawn_at),
+    isAssigned,
   });
+
+  if (decision !== "ok") {
+    await logStaffAudit({
+      actorId: session.id,
+      targetUserId: studentId,
+      academyId: (staff?.academy_id as string | null) ?? null,
+      action: "student_password_reset",
+      success: false,
+    });
+    return { error: "이 학생의 비밀번호를 재설정할 권한이 없습니다." };
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const { data: authUser } = await supabase.auth.admin.getUserById(studentId);
+  const existingMeta =
+    authUser?.user?.user_metadata && typeof authUser.user.user_metadata === "object"
+      ? authUser.user.user_metadata
+      : {};
+
+  const { error } = await supabase.auth.admin.updateUserById(studentId, {
+    password: temporaryPassword,
+    user_metadata: temporaryPasswordMetadata(
+      existingMeta as Record<string, unknown>,
+    ),
+  });
+
+  await logStaffAudit({
+    actorId: session.id,
+    targetUserId: studentId,
+    academyId: (staff?.academy_id as string | null) ?? null,
+    action: "student_password_reset",
+    success: !error,
+  });
+
   if (error) return { error: error.message };
-  const { upsertAdminVisiblePassword } = await import(
-    "@/lib/server/admin/password-notes"
-  );
-  await upsertAdminVisiblePassword(studentId, nextPassword, session.id);
+
   revalidatePath(`/admin/students/${studentId}`);
   revalidatePath("/admin/students");
-  return { success: "비밀번호를 변경했습니다." };
+  return {
+    success:
+      "임시 비밀번호를 만들었습니다. 24시간 안에 로그인해서 새 비밀번호로 바꿔 주세요. 이 화면에서 한 번만 보여 주며, 저장되지 않습니다.",
+    temporaryPassword,
+  };
 }
 
 export async function sendAdminNotificationAction(

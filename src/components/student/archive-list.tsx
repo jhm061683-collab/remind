@@ -21,6 +21,7 @@ type Props = {
 type SubjectFilter = "all" | string;
 type StatusFilter = "all" | "active" | "archived";
 
+import { EmptyState, FilterEmptyState } from "@/components/ui/status-state";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
@@ -28,6 +29,8 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: "active", label: UI_LABELS.archiveTabActive },
   { id: "archived", label: UI_LABELS.archiveTabSaved },
 ];
+
+const PAGE_SIZE = 20;
 
 function parseStatusFilter(value: string | null): StatusFilter {
   if (value === "active" || value === "archived") return value;
@@ -225,6 +228,21 @@ export function ArchiveList({ userId }: Props) {
     dateTo,
     getSubjectName,
   ]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(
+    pageCount,
+    Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1),
+  );
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function goPage(next: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next <= 1) params.delete("page");
+    else params.set("page", String(next));
+    const qs = params.toString();
+    router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
+  }
 
   const hasDetailFilters =
     subjectFilter !== "all" ||
@@ -500,18 +518,30 @@ export function ArchiveList({ userId }: Props) {
       </p>
 
       {filtered.length === 0 ? (
-        <div className="remind-empty-state mt-6">
-          {statusFilter === "archived"
-            ? hasDetailFilters
-              ? "조건에 맞는 보관 완료 문제가 없습니다."
-              : "아직 보관한 문제가 없어요. 다시 풀기를 끝낸 뒤 「보관 완료」를 누르면 여기에 쌓여요."
-            : hasDetailFilters
-              ? "조건에 맞는 문제가 없습니다. 키워드·필터를 바꿔 보세요."
-              : "등록된 문제가 없습니다. 「등록」 탭에서 올려 주세요."}
-        </div>
+        hasDetailFilters ? (
+          <FilterEmptyState
+            summary="지금 켜 둔 검색·필터에 맞는 문제가 없습니다."
+            onReset={clearDetailFilters}
+          />
+        ) : (
+          <EmptyState
+            title={
+              statusFilter === "archived"
+                ? "아직 보관한 문제가 없어요"
+                : "등록된 문제가 없습니다"
+            }
+            description={
+              statusFilter === "archived"
+                ? "다시 풀기를 끝낸 뒤 「보관 완료」를 누르면 여기에 쌓여요."
+                : "「등록」 탭에서 오답을 올려 주세요."
+            }
+            actionHref={statusFilter === "archived" ? undefined : "/upload"}
+            actionLabel={statusFilter === "archived" ? undefined : "오답 등록"}
+          />
+        )
       ) : (
         <ul className="mt-3 space-y-2.5">
-          {filtered.map((question) => (
+          {paged.map((question) => (
             <QuestionArchiveCard
               key={question.id}
               question={question}
@@ -530,6 +560,29 @@ export function ArchiveList({ userId }: Props) {
           ))}
         </ul>
       )}
+      {filtered.length > PAGE_SIZE ? (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => goPage(page - 1)}
+            className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-3 text-sm font-semibold disabled:opacity-40"
+          >
+            이전
+          </button>
+          <p className="text-sm text-[var(--rm-text-muted)]">
+            {page} / {pageCount}쪽
+          </p>
+          <button
+            type="button"
+            disabled={page >= pageCount}
+            onClick={() => goPage(page + 1)}
+            className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-3 text-sm font-semibold disabled:opacity-40"
+          >
+            다음
+          </button>
+        </div>
+      ) : null}
 
       {filtered.length > 0 ? (
         <div className="mt-6 border-t border-[var(--rm-border)] pt-4">
