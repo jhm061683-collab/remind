@@ -90,6 +90,7 @@ export type ClassRoomSummary = {
   gradeNumber: number | null;
   gradeLabel: string | null;
   displayLabel: string;
+  imageUrl: string | null;
   teacherIds: string[];
   teacherNames: string[];
   studentIds: string[];
@@ -116,4 +117,6 @@ export type ClassManagementData = {
 export type ClassOption = {
   id: string;
   displayLabel: string;
+  gradeLabel?: string | null;
+  name?: string;
 };

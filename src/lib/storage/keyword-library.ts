@@ -7,7 +7,11 @@ import {
   type KeywordLibrary,
 } from "@/lib/keywords/library";
 
-const STORAGE_KEY = "wrong-note-keyword-library";
+const LEGACY_STORAGE_KEY = "wrong-note-keyword-library";
+
+function storageKey(userId: string): string {
+  return `wrong-note-keyword-library:${userId}`;
+}
 
 function normalizeEntries(raw: unknown): KeywordEntry[] {
   if (!Array.isArray(raw)) return [];
@@ -31,21 +35,46 @@ function normalizeEntries(raw: unknown): KeywordEntry[] {
     .slice(0, 80);
 }
 
-export function getKeywordLibraryLocal(): KeywordLibrary {
-  const raw = readJson<Partial<KeywordLibrary>>(STORAGE_KEY, EMPTY_KEYWORD_LIBRARY);
+function normalizeLibrary(raw: Partial<KeywordLibrary> | null | undefined): KeywordLibrary {
   return {
-    problem: normalizeEntries(raw.problem),
-    wrong: normalizeEntries(raw.wrong),
+    problem: normalizeEntries(raw?.problem),
+    wrong: normalizeEntries(raw?.wrong),
   };
 }
 
-export function saveKeywordLibraryLocal(library: KeywordLibrary): boolean {
-  return writeJson(STORAGE_KEY, {
+/** 계정별 키워드 라이브러리 (다른 계정과 섞이지 않음) */
+export function getKeywordLibraryLocal(userId: string): KeywordLibrary {
+  if (!userId) return { problem: [], wrong: [] };
+  const raw = readJson<Partial<KeywordLibrary>>(
+    storageKey(userId),
+    EMPTY_KEYWORD_LIBRARY,
+  );
+  return normalizeLibrary(raw);
+}
+
+export function saveKeywordLibraryLocal(
+  userId: string,
+  library: KeywordLibrary,
+): boolean {
+  if (!userId) return false;
+  return writeJson(storageKey(userId), {
     problem: normalizeEntries(library.problem),
     wrong: normalizeEntries(library.wrong),
   }).ok;
 }
 
-export function getKindEntriesLocal(kind: KeywordKind): KeywordEntry[] {
-  return getKeywordLibraryLocal()[kind];
+export function getKindEntriesLocal(
+  userId: string,
+  kind: KeywordKind,
+): KeywordEntry[] {
+  return getKeywordLibraryLocal(userId)[kind];
+}
+
+/** 예전 공용 키는 계정 간 오염을 막기 위해 비움 */
+export function clearLegacyKeywordLibraryLocal(): void {
+  try {
+    writeJson(LEGACY_STORAGE_KEY, EMPTY_KEYWORD_LIBRARY);
+  } catch {
+    /* ignore */
+  }
 }

@@ -163,9 +163,9 @@ export async function getAvailableEngineAndDeductQuota(input: {
   if (!row.allowed) {
     const message =
       row.reason === "daily_limit"
-        ? `오늘 AI 이용 한도(${limits.dailyLimit}건)를 모두 썼습니다. 내일 다시 시도해 주세요.`
+        ? `오늘 AI 분석 한도(${limits.dailyLimit}회)를 모두 썼습니다. 내일 다시 시도해 주세요. (사진·문제 개수가 아니라 AI 분석 횟수예요)`
         : row.reason === "monthly_limit"
-          ? `이번 달 AI 이용 한도(${limits.monthlyLimit}건)를 모두 썼습니다. 다음 달에 초기화됩니다.`
+          ? `이번 달 AI 분석 한도(${limits.monthlyLimit}회)를 모두 썼습니다. 다음 달에 초기화됩니다.`
           : "이 AI 요청은 취소되었습니다. 다시 시도해 주세요.";
     return { error: message, ...usage };
   }

@@ -169,7 +169,7 @@ export function SubAdminsList({ subAdmins }: Props) {
         title="선생님 계정 삭제"
         description={
           deleteTarget
-            ? `${deleteTarget.displayName} (${deleteTarget.username}) 계정을 삭제할까요?\n\n반은 그대로 유지되고, 이 선생님의 반 담당·학생 배정만 해제됩니다. 나중에 반 관리에서 담당 선생님을 다시 지정하면 됩니다.`
+            ? `${deleteTarget.displayName} (${deleteTarget.username}) 계정을 삭제할까요?\n\n반은 그대로 유지되고, 이 선생님의 반 담당·학생 배정만 해제됩니다. 나중에 반 설정에서 담당 선생님을 다시 지정하면 됩니다.`
             : ""
         }
         confirmLabel="삭제"

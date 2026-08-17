@@ -133,6 +133,19 @@ export async function saveQuestionsBatchAction(input: {
   }
 
   try {
+    for (const q of input.questions) {
+      if (
+        q.imageDataUrl.startsWith("data:") ||
+        q.extraImageDataUrls?.some((u) => u.startsWith("data:")) ||
+        q.answerImageDataUrl?.startsWith("data:") ||
+        q.extraAnswerImageDataUrls?.some((u) => u.startsWith("data:"))
+      ) {
+        return {
+          error:
+            "사진 업로드가 끝나기 전에 저장을 시도했어요. 잠시 후 다시 등록해 주세요.",
+        };
+      }
+    }
     const questions = await saveQuestionsBatchOnServer(
       session.id,
       input.requestId,

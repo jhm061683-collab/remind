@@ -22,10 +22,10 @@ export default async function AdminStudentDetailPage({ params }: Props) {
 
   return (
     <>
-      <BackBar href="/admin/students" label="학생 관리" />
+      <BackBar href="/admin/students" label="학생 설정" />
       <PageHeader
         title={`${detail.student.displayName} 상세`}
-        description="학생 정보/학습 리포트/비밀번호/알림을 관리합니다."
+        description="10초 요약 · 오답모음 PDF · 학부모 보고서 · 계정 관리"
       />
       <StudentDetailPanel detail={detail} />
     </>

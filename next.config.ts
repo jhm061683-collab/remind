@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: getLocalDevOrigins(),
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb",
+      bodySizeLimit: "15mb",
     },
     staleTimes: {
       dynamic: 30,

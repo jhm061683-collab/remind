@@ -55,11 +55,27 @@ export async function getAllQuestions(userId: string) {
   return Promise.resolve(localQuestions.getAllQuestions());
 }
 
+/** 학생 홈 전용 — 본문/이미지 없이 메타만 */
+export async function getHomeQuestionMeta(userId: string) {
+  if (isSupabaseEnabled()) {
+    return dbQuestions.getHomeQuestionMeta(userId);
+  }
+  return Promise.resolve(localQuestions.getAllQuestions());
+}
+
 export async function getUpcomingReviewQuestions(userId: string) {
   if (isSupabaseEnabled()) {
     return dbQuestions.getUpcomingReviewQuestions(userId);
   }
   return Promise.resolve(localQuestions.getUpcomingReviewQuestions());
+}
+
+export async function getUpcomingReviewCount(userId: string) {
+  if (isSupabaseEnabled()) {
+    return dbQuestions.getUpcomingReviewCount(userId);
+  }
+  const upcoming = await localQuestions.getUpcomingReviewQuestions();
+  return upcoming.length;
 }
 
 export async function saveQuestion(

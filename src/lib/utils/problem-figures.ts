@@ -25,12 +25,21 @@ export async function cropExtractedFigures(
 
     try {
       const image = await loadImage(source);
-      const paddingX = Math.round(image.naturalWidth * 0.008);
-      const paddingY = Math.round(image.naturalHeight * 0.008);
       const rawX = Math.round((figure.x / 1000) * image.naturalWidth);
       const rawY = Math.round((figure.y / 1000) * image.naturalHeight);
       const rawWidth = Math.round((figure.width / 1000) * image.naturalWidth);
       const rawHeight = Math.round((figure.height / 1000) * image.naturalHeight);
+      // AI 박스가 접선·라벨을 자주 빠뜨리므로 여백을 넉넉히 확보
+      const paddingX = Math.max(
+        Math.round(image.naturalWidth * 0.035),
+        Math.round(rawWidth * 0.1),
+        24,
+      );
+      const paddingY = Math.max(
+        Math.round(image.naturalHeight * 0.035),
+        Math.round(rawHeight * 0.1),
+        24,
+      );
       const sx = Math.max(0, rawX - paddingX);
       const sy = Math.max(0, rawY - paddingY);
       const sourceWidth = Math.min(

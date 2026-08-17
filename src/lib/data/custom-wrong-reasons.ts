@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import {
+  clearLegacyCustomWrongReasonsLocal,
   getCustomWrongReasonsLocal,
   saveCustomWrongReasonsLocal,
 } from "@/lib/storage/custom-wrong-reasons";
@@ -8,8 +9,11 @@ import { isSupabaseEnabled } from "@/lib/supabase/config";
 const REASONS_KEY = "__wrong_reasons__";
 
 export async function getCustomWrongReasons(userId: string): Promise<string[]> {
+  clearLegacyCustomWrongReasonsLocal();
+  if (!userId) return [];
+
   if (!isSupabaseEnabled()) {
-    return getCustomWrongReasonsLocal();
+    return getCustomWrongReasonsLocal(userId);
   }
 
   const supabase = createClient();
@@ -22,13 +26,15 @@ export async function getCustomWrongReasons(userId: string): Promise<string[]> {
 
   if (error) {
     console.error("[getCustomWrongReasons]", error);
-    return getCustomWrongReasonsLocal();
+    return getCustomWrongReasonsLocal(userId);
   }
 
   const reasons = (data?.settings as { reasons?: string[] } | null)?.reasons;
-  if (!Array.isArray(reasons)) return getCustomWrongReasonsLocal();
+  if (!Array.isArray(reasons)) {
+    return getCustomWrongReasonsLocal(userId);
+  }
   const cleaned = reasons.map((r) => String(r).trim()).filter(Boolean);
-  saveCustomWrongReasonsLocal(cleaned);
+  saveCustomWrongReasonsLocal(userId, cleaned);
   return cleaned;
 }
 
@@ -36,8 +42,9 @@ export async function saveCustomWrongReasons(
   userId: string,
   reasons: string[],
 ): Promise<boolean> {
+  if (!userId) return false;
   const cleaned = reasons.map((r) => r.trim()).filter(Boolean).slice(0, 40);
-  saveCustomWrongReasonsLocal(cleaned);
+  saveCustomWrongReasonsLocal(userId, cleaned);
 
   if (!isSupabaseEnabled()) return true;
 

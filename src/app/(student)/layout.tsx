@@ -3,8 +3,12 @@ import { StudentNav } from "@/components/layout/student-nav";
 import { StudentThemeProvider } from "@/components/theme/student-theme-provider";
 import { SubjectProvider } from "@/components/student/subject-provider";
 import { StorageNotice } from "@/components/student/storage-notice";
-import { StudentOnboarding } from "@/components/student/student-onboarding";
+import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
+import { DailyVisitRecorder } from "@/components/student/daily-visit-recorder";
 import { getSession } from "@/lib/auth/session";
+import { countUnreadStudentNotifications } from "@/lib/server/student/notifications";
+import { listTutorialPreferences } from "@/lib/server/tutorial/preferences";
+import { isSupabaseUserId } from "@/lib/supabase/config";
 import {
   DEFAULT_STUDENT_THEME,
   STUDENT_THEME_COOKIE,
@@ -24,16 +28,40 @@ export default async function StudentLayout({
     parseStudentThemeCookie(cookieStore.get(STUDENT_THEME_COOKIE)?.value) ??
     DEFAULT_STUDENT_THEME;
 
+  let unreadNotifications = 0;
+  let tutorialPrefs: Awaited<ReturnType<typeof listTutorialPreferences>> = [];
+  if (
+    session?.role === "student" &&
+    session.id &&
+    isSupabaseUserId(session.id)
+  ) {
+    [unreadNotifications, tutorialPrefs] = await Promise.all([
+      countUnreadStudentNotifications(session.id),
+      listTutorialPreferences(session.id),
+    ]);
+  }
+
   return (
     <SubjectProvider userId={userId}>
       <StudentThemeProvider userId={userId} initialTheme={initialTheme}>
-        <StudentHeader userName={session?.name ?? "학생"} />
+        <TutorialProvider
+          userId={userId}
+          role={session?.role === "student" ? "student" : null}
+          initialPrefs={tutorialPrefs}
+        >
+        {session?.role === "student" && isSupabaseUserId(userId) ? (
+          <DailyVisitRecorder userId={userId} />
+        ) : null}
+        <StudentHeader
+          userName={session?.name ?? "학생"}
+          unreadNotifications={unreadNotifications}
+        />
         <div className="relative z-[1] mx-auto w-full max-w-4xl flex-1 px-3 py-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-5 md:py-3 md:pb-4">
           <StorageNotice />
           {children}
         </div>
-        <StudentOnboarding userId={userId} />
         <StudentNav />
+        </TutorialProvider>
       </StudentThemeProvider>
     </SubjectProvider>
   );

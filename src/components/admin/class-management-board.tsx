@@ -11,10 +11,13 @@ import {
   updateClassTeachersAction,
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ClassImagePicker } from "@/components/admin/class-image-picker";
 import type { ClassManagementData, ClassStudentBrief } from "@/lib/types/admin";
 
 type Props = {
   data: ClassManagementData;
+  /** 추가 탭 / 목록 탭 분리 */
+  section?: "add" | "list";
 };
 
 type ViewMode = "by_class" | "by_teacher";
@@ -26,7 +29,7 @@ const SCHOOL_LEVELS = [
   { value: "adult", label: "성인" },
 ] as const;
 
-export function ClassManagementBoard({ data }: Props) {
+export function ClassManagementBoard({ data, section = "list" }: Props) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("by_class");
@@ -158,13 +161,14 @@ export function ClassManagementBoard({ data }: Props) {
         <p className="rounded-xl bg-[var(--rm-info-bg)] px-4 py-2 text-sm text-[var(--rm-text-on-info)]">{message}</p>
       ) : null}
 
-      {unassignedCount > 0 ? (
+      {section === "list" && unassignedCount > 0 ? (
         <p className="rounded-xl border border-[color-mix(in_srgb,var(--rm-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-4 py-2 text-sm text-[var(--rm-text)]">
           아직 반에 안 들어간 학생 <strong>{unassignedCount}명</strong>이 있어요.
           반을 펼친 뒤 「미배정만」으로 골라 넣을 수 있습니다.
         </p>
       ) : null}
 
+      {section === "list" ? (
       <section className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-[var(--rm-text)] sm:text-base">
           학생 검색 · 반 이동
@@ -298,7 +302,9 @@ export function ClassManagementBoard({ data }: Props) {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "add" ? (
       <section className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-[var(--rm-text)] sm:text-base">
           새 반 만들기
@@ -385,7 +391,10 @@ export function ClassManagementBoard({ data }: Props) {
           </p>
         )}
       </section>
+      ) : null}
 
+      {section === "list" ? (
+      <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2">
           <button
@@ -500,6 +509,10 @@ export function ClassManagementBoard({ data }: Props) {
 
                   {expanded ? (
                     <div className="space-y-3 border-t border-[var(--rm-border)] px-3 py-3">
+                      <ClassImagePicker
+                        classId={room.id}
+                        initialUrl={room.imageUrl}
+                      />
                       <div>
                         <p className="mb-2 text-xs font-semibold text-[var(--rm-text-muted)]">
                           담당 선생님 (복수 가능)
@@ -810,10 +823,12 @@ export function ClassManagementBoard({ data }: Props) {
       <p className="text-xs text-[var(--rm-text-muted)]">
         학생 계정 등록은{" "}
         <Link href="/admin/students" className="text-[var(--rm-nav-active)] underline">
-          학생 관리
+          학생 설정
         </Link>
         에서 할 수 있어요.
       </p>
+      </>
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

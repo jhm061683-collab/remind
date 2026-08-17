@@ -40,7 +40,7 @@ export function WeeklyTrendCard({ weekly, totalReviews, loading }: Props) {
     },
     {
       key: "archived",
-      label: "정복",
+      label: "보관 완료",
       value: weekly?.archived ?? 0,
       color: "var(--rm-success)",
       Icon: IconArchive,

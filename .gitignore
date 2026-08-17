@@ -41,3 +41,12 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# local PDF QA outputs
+tmp-pdf-qa/
+
+# local scratch / deploy logs
+tmp-*.txt
+*-out.txt
+scripts/variant-offsets.ts.txt
+

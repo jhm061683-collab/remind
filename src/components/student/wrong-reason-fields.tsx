@@ -7,6 +7,10 @@ import {
 } from "@/lib/data/custom-wrong-reasons";
 import { mergeWrongReasonOptions } from "@/lib/constants/wrong-reasons";
 import { KeywordPicker } from "@/components/student/keyword-picker";
+import {
+  SOLVE_CONFIDENCE_OPTIONS,
+  type SolveConfidence,
+} from "@/lib/utils/solve-confidence";
 
 type Props = {
   userId: string;
@@ -14,6 +18,8 @@ type Props = {
   wrongKeywords: string[];
   onWrongReasonChange: (value: string) => void;
   onWrongKeywordsChange: (value: string[]) => void;
+  solveConfidence?: SolveConfidence | "";
+  onSolveConfidenceChange?: (value: SolveConfidence | "") => void;
   selectClassName?: string;
   inputClassName?: string;
 };
@@ -24,7 +30,8 @@ export function WrongReasonFields({
   wrongKeywords,
   onWrongReasonChange,
   onWrongKeywordsChange,
-  selectClassName = "remind-input mt-1 text-base",
+  solveConfidence = "",
+  onSolveConfidenceChange,
   inputClassName = "remind-input mt-1 text-base",
 }: Props) {
   const [custom, setCustom] = useState<string[]>([]);
@@ -56,50 +63,26 @@ export function WrongReasonFields({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="block">
-          <span className="rm-field-hint">틀린 이유 (선택)</span>
-          <select
-            value={wrongReason}
-            onChange={(e) => onWrongReasonChange(e.target.value)}
-            className={selectClassName}
-          >
-            <option value="">선택 안 함</option>
-            {options.map((reason) => (
-              <option key={reason} value={reason}>
+        <p className="rm-field-hint">틀린 이유 (선택)</p>
+        <div className="flex flex-wrap gap-2">
+          {options.map((reason) => {
+            const active = wrongReason === reason;
+            return (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => onWrongReasonChange(active ? "" : reason)}
+                className={`min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold touch-manipulation transition ${
+                  active
+                    ? "border-[var(--rm-brand)] bg-[color-mix(in_srgb,var(--rm-brand)_12%,white)] text-[var(--rm-brand)]"
+                    : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
+                }`}
+              >
                 {reason}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {custom.length > 0 ? (
-          <div className="rounded-xl border border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface-raised)_80%,transparent)] p-3">
-            <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
-              내가 만든 틀린 이유 · 탭해서 선택
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {custom.map((reason) => {
-                const active = wrongReason === reason;
-                return (
-                  <button
-                    key={reason}
-                    type="button"
-                    onClick={() =>
-                      onWrongReasonChange(active ? "" : reason)
-                    }
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                      active
-                        ? "border-rose-300 bg-rose-50 text-rose-800"
-                        : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
-                    }`}
-                  >
-                    {reason}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+              </button>
+            );
+          })}
+        </div>
 
         {!adding ? (
           <button
@@ -145,6 +128,36 @@ export function WrongReasonFields({
           </div>
         )}
       </div>
+
+      {onSolveConfidenceChange ? (
+        <div className="space-y-2">
+          <p className="rm-field-hint">풀 때 느낌 (선택)</p>
+          <div className="grid grid-cols-3 gap-2">
+            {SOLVE_CONFIDENCE_OPTIONS.map((option) => {
+              const active = solveConfidence === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    onSolveConfidenceChange(active ? "" : option.value)
+                  }
+                  className={`flex min-h-[48px] flex-col items-center justify-center rounded-xl border px-2 py-2 text-xs font-semibold touch-manipulation ${
+                    active
+                      ? "border-[var(--rm-brand)] bg-[color-mix(in_srgb,var(--rm-brand)_12%,white)] text-[var(--rm-brand)]"
+                      : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
+                  }`}
+                >
+                  <span className="text-base" aria-hidden>
+                    {option.emoji}
+                  </span>
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <KeywordPicker
         userId={userId}

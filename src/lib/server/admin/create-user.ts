@@ -25,13 +25,25 @@ function normalizeUsername(raw: string): string {
   return raw.trim();
 }
 
+/** 빈 문자열은 “없음”으로 보고 닉네임·이름 순으로 아이디 후보를 고른다 */
+function resolveUsername(input: CreateAcademyUserInput): string {
+  return normalizeUsername(
+    input.username?.trim() ||
+      input.nickname?.trim() ||
+      input.displayName ||
+      "",
+  );
+}
+
 function validateInput(input: CreateAcademyUserInput): string | null {
-  const username = normalizeUsername(input.username ?? input.displayName);
+  const displayName = input.displayName.trim();
+  if (!displayName) {
+    return "이름을 입력해 주세요.";
+  }
+  // username이 ""로 넘어와도 ?? 대신 || 로 이름에 폴백 (학생 폼은 username 필드 없음)
+  const username = resolveUsername(input);
   if (username.length < 2) {
     return "아이디(사용자 이름)는 2자 이상으로 입력해 주세요.";
-  }
-  if (!input.displayName.trim()) {
-    return "이름을 입력해 주세요.";
   }
   const phoneDigits = normalizePhone(input.phone);
   if (phoneDigits.length < 10 || phoneDigits.length > 11) {
@@ -72,9 +84,7 @@ export async function createAcademyUser(
     };
   }
 
-  const requestedUsername = normalizeUsername(
-    input.username?.trim() || input.nickname?.trim() || input.displayName,
-  );
+  const requestedUsername = resolveUsername(input);
   const password = (input.password?.trim() || defaultPasswordFromPhone(input.phone)).trim();
   if (password.length < 4) {
     return { error: "비밀번호 자동 생성에 실패했습니다. 휴대폰 번호를 확인해 주세요." };

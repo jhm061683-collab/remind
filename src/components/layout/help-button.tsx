@@ -1,14 +1,18 @@
 "use client";
 
-import { OPEN_ONBOARDING_EVENT } from "@/components/student/student-onboarding";
+import { useRouter } from "next/navigation";
 
+/** 헤더 ? → 사용법 페이지 (온보딩과 내용이 갈라지지 않게) */
 export function HelpButton() {
+  const router = useRouter();
+
   return (
     <button
       type="button"
-      aria-label="사용법 다시 보기"
-      title="사용법 다시 보기"
-      onClick={() => window.dispatchEvent(new Event(OPEN_ONBOARDING_EVENT))}
+      data-tour-id="student-help"
+      aria-label="사용법 보기"
+      title="사용법 보기"
+      onClick={() => router.push("/help")}
       className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--rm-text-muted)] transition hover:bg-[var(--rm-surface)] hover:text-[var(--rm-text)]"
     >
       <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>

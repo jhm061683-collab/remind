@@ -11,18 +11,23 @@ import {
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 
 const navItems = [
-  { href: "/dashboard", label: "홈", Icon: IconHome },
-  { href: "/upload", label: UI_LABELS.registerTab, Icon: IconPlusPhoto },
-  { href: "/study/today", label: UI_LABELS.studyTab, Icon: IconStudy },
-  { href: "/archive", label: "보관", Icon: IconArchive },
+  { href: "/dashboard", label: "홈", Icon: IconHome, tourId: "student-nav-home" },
+  { href: "/upload", label: UI_LABELS.registerTab, Icon: IconPlusPhoto, tourId: "student-nav-register" },
+  { href: "/study/today", label: UI_LABELS.studyTab, Icon: IconStudy, tourId: "student-nav-study" },
+  { href: "/archive", label: UI_LABELS.archiveTab, Icon: IconArchive, tourId: "student-nav-archive" },
 ] as const;
 
 export function StudentNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="student-shell-nav rm-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md md:hidden">
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around px-2 pb-[max(0.125rem,env(safe-area-inset-bottom))] pt-0.5">
+    <nav
+      className="student-shell-nav rm-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md md:hidden"
+    >
+      <ul
+        className="mx-auto flex max-w-lg items-stretch justify-around px-2 pb-[max(0.125rem,env(safe-area-inset-bottom))] pt-0.5"
+        data-tour-id="student-nav"
+      >
         {navItems.map((item) => {
           const active = pathname.startsWith(item.href);
 
@@ -30,6 +35,7 @@ export function StudentNav() {
             <li key={item.href} className="min-w-0 flex-1">
               <Link
                 href={item.href}
+                data-tour-id={item.tourId}
                 className={`rm-bottom-nav-link flex min-h-[48px] flex-col items-center justify-center rounded-2xl px-2 py-1 text-[10px] font-semibold touch-manipulation transition ${
                   active ? "rm-bottom-nav-link--active" : ""
                 }`}

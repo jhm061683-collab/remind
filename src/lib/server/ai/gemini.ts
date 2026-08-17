@@ -2,6 +2,7 @@ import {
   AiExtractError,
   EXTRACT_RESPONSE_SCHEMA,
   EXTRACT_SYSTEM_PROMPT,
+  buildExtractNote,
   normalizeExtractJson,
   type AiTokenUsage,
   type QuestionExtractInput,
@@ -77,7 +78,7 @@ export async function extractWithGemini(
             role: "user",
             parts: [
               {
-                text: "이 문제 사진을 분석해서 JSON으로 답하세요. 여러 문항이면 problems 배열로 분리하세요. 그래프·도형·표는 글로 설명하지 말고 원본 영역 좌표를 figures에 반환하세요.",
+                text: "이 문제 사진을 디지털 문항으로 정리해 JSON으로 답하세요. 여러 문항이면 problems 배열로 분리하세요. 그래프·도형·표는 글로 설명하지 말고 원본 영역 좌표를 figures에 반환하세요. answer는 반드시 빈 문자열로 두세요. 정답을 옮기거나 풀지 마세요.",
               },
               ...imageParts,
             ],
@@ -145,12 +146,10 @@ export async function extractWithGemini(
 
   const first = parsed.problems[0]!;
   const count = parsed.problems.length;
-  const note =
-    count > 1
-      ? `사진에서 ${count}개 문항을 나눴어요. 등록할 문항을 확인하고 수정해 주세요.`
-      : first.answerGuess
-        ? "빠른 AI가 읽은 결과입니다. 정답과 문장을 확인해 주세요."
-        : "문제를 읽었지만 정답을 확신하지 못했습니다. 정답을 직접 입력해 주세요.";
+  const note = buildExtractNote({
+    problemCount: count,
+    quality: "standard",
+  });
 
   return {
     engine: "gemini-3.5-flash",

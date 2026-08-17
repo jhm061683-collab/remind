@@ -1,0 +1,218 @@
+{
+  "fox:orange": {
+    "pupilY": 61.8,
+    "ipd": 26.8,
+    "leftX": 36.4,
+    "rightX": 63.3
+  },
+  "fox:arctic": {
+    "pupilY": 51.4,
+    "ipd": 28.2,
+    "leftX": 36.1,
+    "rightX": 64.3
+  },
+  "fox:silver": {
+    "pupilY": 59.8,
+    "ipd": 34.9,
+    "leftX": 32.5,
+    "rightX": 67.3
+  },
+  "cat:calico": {
+    "pupilY": 54.9,
+    "ipd": 26.2,
+    "leftX": 36.3,
+    "rightX": 62.5
+  },
+  "cat:black": {
+    "pupilY": 50.6,
+    "ipd": 31.6,
+    "leftX": 36.6,
+    "rightX": 68.1
+  },
+  "cat:tuxedo": {
+    "pupilY": 44.6,
+    "ipd": 38.2,
+    "leftX": 30.1,
+    "rightX": 68.3
+  },
+  "puppy:golden": {
+    "pupilY": 59.7,
+    "ipd": 25.8,
+    "leftX": 36.7,
+    "rightX": 62.5
+  },
+  "puppy:shiba": {
+    "pupilY": 49.6,
+    "ipd": 30.6,
+    "leftX": 36.4,
+    "rightX": 67
+  },
+  "puppy:husky": {
+    "pupilY": 53.1,
+    "ipd": 25.4,
+    "leftX": 38.5,
+    "rightX": 63.8
+  },
+  "bunny:white": {
+    "pupilY": 65.1,
+    "ipd": 24.7,
+    "leftX": 38,
+    "rightX": 62.8
+  },
+  "bunny:brown": {
+    "pupilY": 63.3,
+    "ipd": 26.2,
+    "leftX": 38.2,
+    "rightX": 64.4
+  },
+  "bunny:gray": {
+    "pupilY": 62.9,
+    "ipd": 31.3,
+    "leftX": 33,
+    "rightX": 64.3
+  },
+  "bear:brown": {
+    "pupilY": 57.4,
+    "ipd": 32,
+    "leftX": 32.6,
+    "rightX": 64.5
+  },
+  "bear:polar": {
+    "pupilY": 49.8,
+    "ipd": 35.9,
+    "leftX": 30.1,
+    "rightX": 65.9
+  },
+  "bear:cream": {
+    "pupilY": 52.5,
+    "ipd": 34.8,
+    "leftX": 31.9,
+    "rightX": 66.8
+  },
+  "panda:classic": {
+    "pupilY": 58,
+    "ipd": 28.1,
+    "leftX": 38,
+    "rightX": 66
+  },
+  "panda:baby": {
+    "pupilY": 51.4,
+    "ipd": 31,
+    "leftX": 36.6,
+    "rightX": 67.5
+  },
+  "panda:red": {
+    "pupilY": 53,
+    "ipd": 31.3,
+    "leftX": 35,
+    "rightX": 66.3
+  },
+  "chick:yellow": {
+    "pupilY": 60.8,
+    "ipd": 27.5,
+    "leftX": 36.2,
+    "rightX": 63.7
+  },
+  "chick:brown": {
+    "pupilY": 45.4,
+    "ipd": 32.7,
+    "leftX": 35.2,
+    "rightX": 67.8
+  },
+  "chick:fluffy": {
+    "pupilY": 50.4,
+    "ipd": 31.2,
+    "leftX": 33.4,
+    "rightX": 64.6
+  },
+  "penguin:classic": {
+    "pupilY": 61,
+    "ipd": 31.1,
+    "leftX": 35.5,
+    "rightX": 66.6
+  },
+  "penguin:emperor": {
+    "pupilY": 44,
+    "ipd": 27.9,
+    "leftX": 32.9,
+    "rightX": 60.9
+  },
+  "penguin:chick": {
+    "pupilY": 49.7,
+    "ipd": 32.3,
+    "leftX": 33.7,
+    "rightX": 66
+  },
+  "otter:brown": {
+    "pupilY": 59.5,
+    "ipd": 28.6,
+    "leftX": 35.5,
+    "rightX": 64
+  },
+  "otter:light": {
+    "pupilY": 52.8,
+    "ipd": 21.3,
+    "leftX": 44.4,
+    "rightX": 65.7
+  },
+  "otter:belly": {
+    "pupilY": 41.7,
+    "ipd": 28.9,
+    "leftX": 34.8,
+    "rightX": 63.7
+  },
+  "raccoon:classic": {
+    "pupilY": 59.3,
+    "ipd": 27.2,
+    "leftX": 36.3,
+    "rightX": 63.5
+  },
+  "raccoon:light": {
+    "pupilY": 55.7,
+    "ipd": 29.3,
+    "leftX": 36.8,
+    "rightX": 66.1
+  },
+  "raccoon:dark": {
+    "pupilY": 53.7,
+    "ipd": 33,
+    "leftX": 34.5,
+    "rightX": 67.5
+  },
+  "pig:pink": {
+    "pupilY": 48.6,
+    "ipd": 34.2,
+    "leftX": 33.9,
+    "rightX": 68.2
+  },
+  "pig:spotted": {
+    "pupilY": 51.5,
+    "ipd": 34.5,
+    "leftX": 34.1,
+    "rightX": 68.5
+  },
+  "pig:blackear": {
+    "pupilY": 53.8,
+    "ipd": 34.1,
+    "leftX": 33.7,
+    "rightX": 67.9
+  },
+  "hamster:golden": {
+    "pupilY": 48.8,
+    "ipd": 30.8,
+    "leftX": 35.9,
+    "rightX": 66.7
+  },
+  "hamster:white": {
+    "pupilY": 49.1,
+    "ipd": 31.9,
+    "leftX": 35.2,
+    "rightX": 67.1
+  },
+  "hamster:gray": {
+    "pupilY": 47,
+    "ipd": 30.6,
+    "leftX": 35.8,
+    "rightX": 66.4
+  }
+}

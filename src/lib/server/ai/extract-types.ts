@@ -95,7 +95,7 @@ const PROBLEM_ITEM_SCHEMA = {
     },
     answer: {
       type: "string",
-      description: "이 문항의 최종 정답만. 예: ③, 2, x=3",
+      description: "항상 빈 문자열. 정답은 학생이 입력하므로 AI는 절대 채우지 않음.",
     },
     keywords: {
       type: "array",
@@ -143,6 +143,7 @@ export const EXTRACT_RESPONSE_SCHEMA = {
 } as const;
 
 export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오답노트 AI입니다.
+역할은 문제 풀이가 아니라, 사진을 읽기 좋은 디지털 문항(DB)으로 정리하는 것입니다.
 주어진 문제 사진(들)을 보고 JSON만 반환하세요.
 
 핵심 — 여러 문항 분리:
@@ -158,16 +159,16 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 3. 한국어 문장은 일반 텍스트, 수학 수식만 $...$ 또는 $$...$$ 안에 LaTeX로 쓰세요.
 4. 각 문단·보기는 줄바꿈으로 구분하세요.
 5. problemLatex 안에는 정답·풀이·해설을 넣지 마세요.
-6. answer에는 해당 문항의 최종 정답만 쓰세요. 객관식이면 ①②③④⑤ 중 하나.
-7. keywords는 관련 단원/개념 한국어 키워드 최대 5개입니다.
-8. 확실하지 않으면 answer를 빈 문자열로 두고, 본문은 읽을 수 있는 만큼만 적으세요.
+6. keywords는 관련 단원/개념 한국어 키워드 최대 5개입니다.
+7. 정답 정책(절대): answer는 항상 빈 문자열("")로 두세요. 사진을 보고 옮기거나 풀거나 추정하지 마세요. 정답 입력은 100% 학생의 몫입니다.
+8. 본문(problemLatex)은 읽을 수 있는 만큼만 정확히 정리하세요.
 9. JSON 외 다른 텍스트는 출력하지 마세요.
 
 그래프·그림·도형·표 처리 (매우 중요):
 - 원본에 그래프, 좌표평면, 기하 도형, 지도, 회로, 삽화, 표가 있으면 글로 풀어서 설명하거나 생략하지 마세요.
 - 해당 시각 자료의 경계 상자를 figures에 넣으세요. 사진 전체의 왼쪽 위가 (0,0), 오른쪽 아래가 (1000,1000)입니다.
 - 첫 번째 사진은 pageIndex 0, 두 번째 사진은 1입니다.
-- 축 이름, 범례, 눈금, 곡선, 도형의 라벨이 모두 들어가도록 약간 넉넉하게 잡되 문제 본문은 최대한 제외하세요.
+- 축 이름, 범례, 눈금, 곡선, 도형 라벨, 접선·보조선·점 기호가 잘리지 않도록 경계 상자를 충분히 넉넉히 잡으세요(특히 아래·옆 여백). 문제 본문 글자는 최대한 제외하세요.
 - problemLatex에서 원래 그림이 있던 위치에 [[FIGURE_1]], [[FIGURE_2]] 표시를 넣으세요.
 - figures가 없으면 빈 배열로 반환하세요.
 
@@ -184,6 +185,20 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 - 예: 원 안에 "가"가 있으면 반드시 ㉮로 쓰세요. ㉠으로 바꿔 쓰면 안 됩니다.
 - 밑줄 친 부분은 <u>밑줄 내용</u> 처럼 <u> 태그로 감싸세요.
 - 빈칸은 "____" 또는 "( ㉠ )"처럼 원본 형태대로 쓰세요.`;
+
+/** OCR 결과 안내 — AI는 문제 정리만, 정답은 항상 학생 입력 */
+export function buildExtractNote(options: {
+  problemCount: number;
+  quality: "standard" | "advanced";
+}): string {
+  const { problemCount, quality } = options;
+  const engine =
+    quality === "advanced" ? "정밀 AI가 문제를 정리했어요." : "빠른 AI가 문제를 정리했어요.";
+  if (problemCount > 1) {
+    return `${engine} 등록할 문항을 고르고, 정답은 직접 입력해 주세요.`;
+  }
+  return `${engine} 정답은 직접 입력해 주세요.`;
+}
 
 export function normalizeExtractJson(raw: unknown): {
   sharedPassage: string;
@@ -223,9 +238,7 @@ function normalizeProblemItem(raw: unknown): ExtractedProblemItem {
   return {
     number: String(obj.number ?? obj.no ?? "").trim().slice(0, 20),
     problemLatex: String(obj.problemLatex ?? obj.problem_latex ?? "").trim(),
-    answerGuess: String(obj.answer ?? obj.answerGuess ?? "")
-      .trim()
-      .slice(0, 400),
+    answerGuess: "", // 정답은 학생이 100% 직접 입력 (AI 채움 금지)
     keywords: Array.isArray(obj.keywords)
       ? obj.keywords
           .map((k) => String(k).trim())

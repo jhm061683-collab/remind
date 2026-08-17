@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { formatStaffLabel } from "@/lib/admin/staff-label";
 import { getHomePathForRole, verifyUser } from "@/lib/auth/users";
 import { clearSession, setSession } from "@/lib/auth/session";
+import { recordDailyVisitOnServer } from "@/lib/server/record-daily-visit";
 import { isSupabaseEnabled, toAuthEmail } from "@/lib/supabase/config";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
@@ -296,8 +297,7 @@ export async function loginAction(
 
     const userId = data.user.id;
     after(async () => {
-      const client = await createClient();
-      await client.from("login_events").insert({ user_id: userId });
+      await recordDailyVisitOnServer(userId);
     });
     mark("scheduleLoginEvent");
 

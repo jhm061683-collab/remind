@@ -11,7 +11,7 @@ export default async function NotificationsPage() {
     <>
       <PageHeader
         title="알림 발송"
-        description="학생에게 인앱 알림 발송 (선택 일괄 가능)"
+        description="학생에게 인앱 알림 + 푸시 발송 (알림을 켠 학생만 푸시 수신)"
       />
 
       <NotificationComposer students={data.students} />

@@ -13,6 +13,22 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ParentReportGenerator } from "@/components/admin/parent-report-generator";
 import type { StudentDetailData } from "@/lib/types/admin";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const WrongNotePacketPanel = dynamic(
+  () =>
+    import("@/components/admin/wrong-note-packet-panel").then(
+      (m) => m.WrongNotePacketPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 text-sm text-[var(--rm-text-muted)]">
+        오답모음 PDF 불러오는 중…
+      </div>
+    ),
+  },
+);
 
 type Props = {
   detail: StudentDetailData;
@@ -63,10 +79,69 @@ export function StudentDetailPanel({ detail }: Props) {
       />
 
       <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-[var(--rm-text)]">{student.displayName}</h2>
-        <p className="text-sm text-[var(--rm-text-muted)]">
-          아이디 {student.username} · 마지막 로그인 {student.lastLoginAt ?? "없음"}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--rm-text)]">
+              {student.displayName}
+            </h2>
+            <p className="text-sm text-[var(--rm-text-muted)]">
+              아이디 {student.username} · 마지막 로그인{" "}
+              {student.lastLoginAt ?? "없음"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {student.dueToday > 0 ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900">
+                오늘 복습 {student.dueToday}
+              </span>
+            ) : (
+              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
+                오늘 복습 없음
+              </span>
+            )}
+            {student.inactiveDays >= 7 ? (
+              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-800">
+                {student.inactiveDays}일 미접속
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SummaryStat
+            label="오늘 복습"
+            value={`${student.dueToday}`}
+            hint="대기 문제"
+          />
+          <SummaryStat
+            label="오늘 완료"
+            value={`${student.reviewedToday}`}
+            hint="다시 푼 횟수"
+          />
+          <SummaryStat
+            label="연속 출석"
+            value={`${student.loginStreakDays}일`}
+            hint={
+              student.inactiveDays > 0
+                ? `${student.inactiveDays}일 전 접속`
+                : "오늘 접속"
+            }
+          />
+          <SummaryStat
+            label="취약 신호"
+            value={
+              detail.topWeaknesses[0]
+                ? detail.topWeaknesses[0].reason
+                : "—"
+            }
+            hint={
+              detail.topWeaknesses[0]
+                ? `${detail.topWeaknesses[0].count}회`
+                : "데이터 부족"
+            }
+          />
+        </div>
+
         <div className="mt-3 rounded-xl bg-[var(--rm-surface-raised)] px-3 py-2 text-sm text-[var(--rm-text)]">
           <p>
             <span className="font-medium">소속 반:</span> {classDisplay}
@@ -79,7 +154,7 @@ export function StudentDetailPanel({ detail }: Props) {
             href="/admin/classes"
             className="mt-2 inline-block text-xs font-semibold text-[var(--rm-nav-active)] hover:underline"
           >
-            반 관리에서 배정 변경 →
+            반 설정에서 배정 변경 →
           </Link>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -128,6 +203,11 @@ export function StudentDetailPanel({ detail }: Props) {
       </section>
 
       <ParentReportGenerator
+        studentId={student.id}
+        studentName={student.displayName}
+      />
+
+      <WrongNotePacketPanel
         studentId={student.id}
         studentName={student.displayName}
       />
@@ -264,6 +344,32 @@ export function StudentDetailPanel({ detail }: Props) {
       </section>
 
       {message ? <p className="text-sm text-[var(--rm-text-muted)]">{message}</p> : null}
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-xl bg-[var(--rm-surface-raised)] px-3 py-2.5">
+      <p className="text-[10px] font-semibold text-[var(--rm-text-muted)]">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-bold text-[var(--rm-text)]">
+        {value}
+      </p>
+      {hint ? (
+        <p className="mt-0.5 truncate text-[10px] text-[var(--rm-text-faint)]">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

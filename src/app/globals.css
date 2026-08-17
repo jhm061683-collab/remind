@@ -64,6 +64,13 @@ html {
   text-size-adjust: 100%;
 }
 
+html.tour-scroll-lock,
+html.tour-scroll-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto;
+}
+
 /* 데스크톱에서 크롬 125% 배율과 같은 체감 크기 (모바일은 기존 크기 유지) */
 @media (min-width: 768px) {
   html {

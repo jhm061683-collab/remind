@@ -6,6 +6,7 @@ import {
   bulkAssignClassAction,
   deleteStudentsAction,
 } from "@/lib/actions/admin";
+import { StudentConsultingModal } from "@/components/admin/student-consulting-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 
@@ -66,6 +67,10 @@ export function AdminStudentsTable({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [consulting, setConsulting] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const classNameFilters = useMemo(() => {
     const names = new Set<string>();
@@ -132,7 +137,10 @@ export function AdminStudentsTable({
 
   if (students.length === 0) {
     return (
-      <p className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)] shadow-sm">
+      <p
+        data-tour-id="admin-students-table"
+        className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 py-6 text-center text-sm text-[var(--rm-text-muted)] shadow-sm"
+      >
         등록된 학생이 없습니다.
       </p>
     );
@@ -168,7 +176,7 @@ export function AdminStudentsTable({
         }}
       />
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour-id="admin-students-table">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -350,12 +358,18 @@ export function AdminStudentsTable({
                   </td>
                 ) : null}
                 <td className="whitespace-nowrap px-3 py-2 font-medium">
-                  <Link
-                    href={`/admin/students/${student.id}`}
-                    className="text-[var(--rm-text-on-info)] hover:underline"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConsulting({
+                        id: student.id,
+                        name: student.displayName,
+                      })
+                    }
+                    className="text-left text-[var(--rm-text-on-info)] hover:underline"
                   >
                     {student.displayName}
-                  </Link>
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {student.username}
@@ -426,12 +440,18 @@ export function AdminStudentsTable({
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <div>
-                <Link
-                  href={`/admin/students/${student.id}`}
-                  className="font-semibold text-[var(--rm-text-on-info)]"
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConsulting({
+                      id: student.id,
+                      name: student.displayName,
+                    })
+                  }
+                  className="text-left font-semibold text-[var(--rm-text-on-info)]"
                 >
                   {student.displayName}
-                </Link>
+                </button>
                 <p className="text-xs text-[var(--rm-text-muted)]">{student.username}</p>
               </div>
               {canManage ? (
@@ -478,6 +498,15 @@ export function AdminStudentsTable({
           </div>
         ))}
       </div>
+
+      {consulting ? (
+        <StudentConsultingModal
+          open
+          studentId={consulting.id}
+          studentName={consulting.name}
+          onClose={() => setConsulting(null)}
+        />
+      ) : null}
     </div>
   );
 }

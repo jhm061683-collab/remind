@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:unit": "node --experimental-strip-types --import ./scripts/ts-extension-resolver.mjs --test src/lib/pwa/browser-environment.test.ts src/lib/tutorial/preferences.test.ts src/lib/utils/packet-pdf-settings.test.ts src/lib/utils/packet-pdf-math-fixtures.test.ts",
     "supabase:seed": "node scripts/seed-demo-users.mjs",
     "supabase:seed-platform": "node scripts/seed-platform-admin.mjs",
     "supabase:seed-questions": "node scripts/seed-demo-questions.mjs",
@@ -14,14 +15,19 @@
     "supabase:test-upload": "node scripts/test-upload.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@tosspayments/tosspayments-sdk": "^2.7.1",
+    "framer-motion": "^13.0.0",
     "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "katex": "^0.18.0",
     "next": "16.2.9",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -30,8 +36,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "fontkit": "^2.0.4",
+    "pdfjs-dist": "^4.10.38",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

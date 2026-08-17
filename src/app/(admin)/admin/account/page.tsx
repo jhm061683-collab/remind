@@ -1,6 +1,7 @@
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { RecoveryEmailForm } from "@/components/account/recovery-email-form";
 import { StaffProfileForm } from "@/components/admin/staff-profile-form";
+import { ReplayTutorials } from "@/components/tutorial/replay-tutorials";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -24,6 +25,7 @@ export default async function AdminAccountPage() {
       />
 
       <div className="mx-auto max-w-lg space-y-4">
+        <ReplayTutorials compact />
         <StaffProfileForm
           displayName={me?.display_name ?? session.name}
           nickname={(me?.nickname as string | null) ?? null}

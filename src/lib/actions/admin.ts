@@ -42,11 +42,16 @@ export async function createAcademyUserAction(
     return { error: "잘못된 계정 유형입니다." };
   }
 
+  const usernameRaw = String(formData.get("username") ?? "").trim();
+  const nicknameRaw = String(formData.get("nickname") ?? "").trim();
+  const passwordRaw = String(formData.get("password") ?? "").trim();
+
   const result = await createAcademyUser(session.id, {
-    username: String(formData.get("username") ?? ""),
-    password: String(formData.get("password") ?? ""),
+    // 학생 폼에는 username 칸이 없음 → 빈 문자열을 넘기면 검증이 이름을 무시함
+    username: usernameRaw || undefined,
+    password: passwordRaw || undefined,
     displayName: String(formData.get("displayName") ?? ""),
-    nickname: String(formData.get("nickname") ?? ""),
+    nickname: nicknameRaw || undefined,
     phone: String(formData.get("phone") ?? ""),
     schoolLevel:
       role === "student"
@@ -163,10 +168,13 @@ export async function deleteStudentsAction(
 
   const { data: targets, error: listError } = await supabase
     .from("profiles")
-    .select("id, role, academy_id, display_name")
+    .select(
+      "id, role, academy_id, display_name, avatar_url, school_level, grade_number, withdrawn_at",
+    )
     .in("id", studentIds)
     .eq("role", "student")
-    .eq("academy_id", me.academy_id);
+    .eq("academy_id", me.academy_id)
+    .is("withdrawn_at", null);
 
   if (listError) return { error: listError.message };
   const deletable = targets ?? [];
@@ -177,6 +185,11 @@ export async function deleteStudentsAction(
   let deleted = 0;
   const failures: string[] = [];
   for (const student of deletable) {
+    await supabase
+      .from("profiles")
+      .update({ withdrawn_at: new Date().toISOString() })
+      .eq("id", student.id);
+
     const { error } = await supabase.auth.admin.deleteUser(student.id);
     if (error) {
       failures.push(`${student.display_name}: ${error.message}`);
@@ -360,8 +373,25 @@ export async function sendAdminNotificationAction(
   }));
   const { error } = await supabase.from("admin_notifications").insert(payload);
   if (error) return { error: error.message };
+
+  let pushNote = "";
+  try {
+    const { sendPushToUsers } = await import("@/lib/server/push/send");
+    const { sent } = await sendPushToUsers(targetUserIds, {
+      title: title.trim(),
+      body: body.trim(),
+      url: "/notifications",
+      tag: "remind-admin-notice",
+    });
+    if (sent > 0) pushNote = ` (푸시 ${sent}건)`;
+  } catch (pushErr) {
+    console.error("[admin-notification-push]", pushErr);
+  }
+
   revalidatePath("/admin/notifications");
-  return { success: `${targetUserIds.length}명에게 알림을 등록했습니다.` };
+  return {
+    success: `${targetUserIds.length}명에게 알림을 등록했습니다.${pushNote}`,
+  };
 }
 
 export async function bulkAssignClassAction(

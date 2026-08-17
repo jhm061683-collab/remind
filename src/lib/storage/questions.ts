@@ -12,6 +12,8 @@ export type StoredQuestion = {
   extraImageDataUrls?: string[];
   /** AI가 원본 문제를 다시 조판한 LaTeX 혼합 문서 */
   problemLatex?: string;
+  /** 국어·영어 공통 지문 (있으면 PDF에서 지문/문항 분리) */
+  sharedPassage?: string;
   /** AI가 사진에서 읽은 원문 OCR 텍스트 */
   ocrText?: string;
   /** 학생 수동 입력 또는 AI 추출 */
@@ -21,6 +23,8 @@ export type StoredQuestion = {
   createdByRole?: "student" | "admin" | "sub_admin";
   answerText?: string;
   answerImageDataUrl?: string;
+  /** 해설 사진 2번째 이후 (자르기·여러 장, LaTeX 변환 없음) */
+  extraAnswerImageDataUrls?: string[];
   keywords: string[];
   /** 문제 출처 — 예: 26년 6월 모평 22번 */
   source?: string;
@@ -192,6 +196,7 @@ function normalizeQuestion(question: StoredQuestion): StoredQuestion {
     ...question,
     keywords: question.keywords ?? [],
     extraImageDataUrls: question.extraImageDataUrls ?? [],
+    extraAnswerImageDataUrls: question.extraAnswerImageDataUrls ?? [],
     problemLatex: question.problemLatex ?? undefined,
     source: question.source ?? undefined,
     wrongReason: question.wrongReason ?? undefined,

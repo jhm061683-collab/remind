@@ -21,6 +21,39 @@ export function startOfTodayKstIso(now = new Date()): string {
   return new Date(`${toDateKey(now)}T00:00:00+09:00`).toISOString();
 }
 
+/** 한국 기준 해당일 끝 (UTC ISO) */
+export function endOfKstDayIso(dateKey: string): string {
+  return new Date(`${dateKey}T23:59:59.999+09:00`).toISOString();
+}
+
+export type ConsultingPeriodPreset = "7d" | "14d" | "30d" | "month";
+
+/** 상담 모달·보고서용 기간 (KST YYYY-MM-DD) */
+export function resolveConsultingPeriod(
+  preset: ConsultingPeriodPreset,
+  now = new Date(),
+): { start: string; end: string; periodDays: number; label: string } {
+  const end = toDateKey(now);
+  if (preset === "month") {
+    const start = `${end.slice(0, 7)}-01`;
+    const startMs = new Date(`${start}T00:00:00+09:00`).getTime();
+    const endMs = new Date(`${end}T00:00:00+09:00`).getTime();
+    const periodDays =
+      Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
+    return { start, end, periodDays: Math.max(1, periodDays), label: "이번 달" };
+  }
+  const days = preset === "7d" ? 7 : preset === "14d" ? 14 : 30;
+  const endDate = new Date(`${end}T12:00:00+09:00`);
+  const startDate = new Date(endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+  const start = toDateKey(startDate);
+  return {
+    start,
+    end,
+    periodDays: days,
+    label: `최근 ${days}일`,
+  };
+}
+
 export function parseDateKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y, m - 1, d);

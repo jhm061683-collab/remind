@@ -1,6 +1,8 @@
 "use client";
 
+import { AnswerMathInput } from "@/components/student/answer-math-input";
 import { LatexContent } from "@/components/math/latex-content";
+import { MathAwareTextarea } from "@/components/math/math-symbol-panel";
 import { embedProblemFigures } from "@/lib/utils/problem-figures";
 
 export type ProblemDraft = {
@@ -21,6 +23,8 @@ type Props = {
   drafts: ProblemDraft[];
   onChange: (next: ProblemDraft[]) => void;
   onSharedPassageChange: (value: string) => void;
+  /** 수학 과목이면 분수·로그·루트 버튼 표시 */
+  showMathTools?: boolean;
 };
 
 export function ProblemDraftList({
@@ -28,6 +32,7 @@ export function ProblemDraftList({
   drafts,
   onChange,
   onSharedPassageChange,
+  showMathTools = false,
 }: Props) {
   const selectedCount = drafts.filter((d) => d.selected).length;
 
@@ -39,9 +44,17 @@ export function ProblemDraftList({
 
   return (
     <div className="mt-3 space-y-3">
+      <p className="rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] px-3 py-2 text-[11px] leading-4 text-[var(--rm-text-on-info)]">
+        {drafts.length > 1
+          ? `사진에서 문제 ${drafts.length}개를 찾았어요. 등록할 문항만 고르고, 정답은 직접 입력해 주세요.`
+          : "AI는 문제만 정리해요. 정답은 직접 입력해 주세요."}
+      </p>
+
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-bold text-[var(--rm-text)]">
-          AI가 나눈 문항 ({selectedCount}/{drafts.length}개 선택)
+          {drafts.length > 1
+            ? `문제 ${drafts.length}개로 나눴어요 (${selectedCount}개 선택)`
+            : `AI가 읽은 문항 (${selectedCount}/${drafts.length}개 선택)`}
         </p>
         <div className="flex gap-1.5">
           <button
@@ -65,20 +78,18 @@ export function ProblemDraftList({
         </div>
       </div>
 
-      {sharedPassage ? (
-        <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)]">
+      <div className="overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)]">
           <p className="border-b border-[var(--rm-border)] px-3 py-2 text-[11px] font-bold text-[var(--rm-text-muted)]">
-            공통 지문 (선택한 문항에 함께 저장돼요)
+            공통 지문 (국어·영어 · 선택 · 추가 AI 비용 없음)
           </p>
           <textarea
             rows={5}
             value={sharedPassage}
             onChange={(e) => onSharedPassageChange(e.target.value)}
             className="remind-input w-full rounded-none border-0 font-serif text-sm leading-6"
-            placeholder="공통 지문"
+            placeholder="지문이 있으면 여기에 두고, 아래 문항에는 문제만 남겨 주세요."
           />
         </div>
-      ) : null}
 
       {drafts.map((draft, index) => (
         <div
@@ -120,12 +131,10 @@ export function ProblemDraftList({
                 placeholder="문항 번호 (예: 28)"
                 className="remind-input w-full text-sm"
               />
-              <textarea
+              <MathAwareTextarea
                 rows={7}
                 value={draft.bodyLatex}
-                onChange={(e) =>
-                  patch(draft.id, { bodyLatex: e.target.value })
-                }
+                onChange={(bodyLatex) => patch(draft.id, { bodyLatex })}
                 className="remind-input w-full font-mono text-sm leading-6"
                 placeholder="문항 본문 (수식은 $...$)"
               />
@@ -136,26 +145,20 @@ export function ProblemDraftList({
                 draft.bodyLatex,
                 draft.figureDataUrls,
               )}
-              className="max-h-56 overflow-auto px-4 py-3 text-[15px]"
+              className="max-h-[min(28rem,70vh)] overflow-auto px-4 py-3 text-[15px]"
             />
           )}
 
           <div className="border-t border-[var(--rm-border)] px-3 py-2">
-            <label className="block">
-              <span className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
-                정답 {draft.selected ? "*" : ""}
-              </span>
-              <input
-                type="text"
-                value={draft.answerText}
-                onChange={(e) =>
-                  patch(draft.id, { answerText: e.target.value })
-                }
-                placeholder="예: ③"
-                className="remind-input mt-1 text-base"
-                autoComplete="off"
-              />
-            </label>
+            <AnswerMathInput
+              value={draft.answerText}
+              onChange={(answerText) => patch(draft.id, { answerText })}
+              required={draft.selected}
+              showMathTools={showMathTools}
+              placeholder={
+                showMathTools ? "예: ③ · 분수·로그·루트 버튼 사용" : "예: ③ 또는 119°"
+              }
+            />
           </div>
         </div>
       ))}

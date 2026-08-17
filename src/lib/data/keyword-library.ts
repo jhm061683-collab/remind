@@ -8,6 +8,7 @@ import {
   type KeywordLibrary,
 } from "@/lib/keywords/library";
 import {
+  clearLegacyKeywordLibraryLocal,
   getKeywordLibraryLocal,
   saveKeywordLibraryLocal,
 } from "@/lib/storage/keyword-library";
@@ -15,8 +16,17 @@ import { isSupabaseEnabled } from "@/lib/supabase/config";
 
 const LIBRARY_KEY = "__keyword_library__";
 
+function emptyForUser(): KeywordLibrary {
+  return { problem: [], wrong: [] };
+}
+
 export async function getKeywordLibrary(userId: string): Promise<KeywordLibrary> {
-  if (!isSupabaseEnabled()) return getKeywordLibraryLocal();
+  clearLegacyKeywordLibraryLocal();
+  if (!userId) return emptyForUser();
+
+  if (!isSupabaseEnabled()) {
+    return getKeywordLibraryLocal(userId);
+  }
 
   const supabase = createClient();
   const { data, error } = await supabase
@@ -28,16 +38,19 @@ export async function getKeywordLibrary(userId: string): Promise<KeywordLibrary>
 
   if (error) {
     console.error("[getKeywordLibrary]", error);
-    return getKeywordLibraryLocal();
+    return getKeywordLibraryLocal(userId);
   }
 
   const settings = data?.settings as Partial<KeywordLibrary> | null;
-  if (!settings) return getKeywordLibraryLocal();
+  if (!settings) {
+    // 새 계정: 다른 계정 로컬 캐시를 절대 끌어오지 않음
+    return getKeywordLibraryLocal(userId);
+  }
   const library: KeywordLibrary = {
     problem: Array.isArray(settings.problem) ? settings.problem : [],
     wrong: Array.isArray(settings.wrong) ? settings.wrong : [],
   };
-  saveKeywordLibraryLocal(library);
+  saveKeywordLibraryLocal(userId, library);
   return library;
 }
 
@@ -45,7 +58,8 @@ export async function saveKeywordLibrary(
   userId: string,
   library: KeywordLibrary,
 ): Promise<boolean> {
-  saveKeywordLibraryLocal(library);
+  if (!userId) return false;
+  saveKeywordLibraryLocal(userId, library);
   if (!isSupabaseEnabled()) return true;
 
   const supabase = createClient();

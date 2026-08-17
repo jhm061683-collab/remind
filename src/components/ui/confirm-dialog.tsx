@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type Props = {
   open: boolean;
   title: string;
@@ -12,6 +14,7 @@ type Props = {
   onCancel: () => void;
 };
 
+/** 하단 네비 위에 잘리지 않도록 화면 중앙 확인창 */
 export function ConfirmDialog({
   open,
   title,
@@ -23,7 +26,22 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!mounted || !open) return null;
 
   const confirmClass =
     variant === "danger"
@@ -32,12 +50,22 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+      style={{
+        paddingBottom: "max(1.5rem, calc(5.5rem + env(safe-area-inset-bottom)))",
+        paddingTop: "max(1.5rem, env(safe-area-inset-top))",
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onCancel();
+      }}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-[var(--rm-shadow-soft)]">
+      <div
+        className="w-full max-w-sm rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2
           id="confirm-dialog-title"
           className="text-lg font-bold text-[var(--rm-text)]"

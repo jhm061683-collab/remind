@@ -30,10 +30,15 @@ function isMissingTableError(error: { code?: string; message?: string }): boolea
 
 export async function getActivityEvents(userId: string): Promise<ActivityEvent[]> {
   const supabase = createClient();
+  // 홈/통계용 — 평생 이력이 아니라 최근 180일만 (연속출석·주간 리포트에 충분)
+  const since = new Date(
+    Date.now() - 180 * 24 * 60 * 60 * 1000,
+  ).toISOString();
   const { data, error } = await supabase
     .from("activity_events")
-    .select("*")
+    .select("id, user_id, event_type, question_id, wrong_reason, created_at")
     .eq("user_id", userId)
+    .gte("created_at", since)
     .order("created_at", { ascending: true });
 
   if (error) {

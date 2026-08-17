@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { ImagePickButton } from "@/components/student/image-pick-button";
-import { ImageCropDialog } from "@/components/student/image-crop-dialog";
+import { ImageEditSheet } from "@/components/student/image-edit-sheet";
+import {
+  CameraCaptureSheet,
+  canUseGetUserMediaCamera,
+} from "@/components/student/camera-capture-sheet";
+import {
+  CameraInstallNudge,
+} from "@/components/pwa/install-app-prompt";
+import { usePwaInstall } from "@/components/pwa/use-pwa-install";
+import { readBrowserEnvironment } from "@/lib/pwa/browser-environment";
 import { compressImage } from "@/lib/utils/compress-image";
 
 type Page = {
@@ -20,6 +29,13 @@ type Props = {
   maxImages?: number;
 };
 
+type Draft = {
+  preview: string;
+  file: File | null;
+  replaceIndex?: number;
+  fromCapture: boolean;
+};
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -30,6 +46,20 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error("read failed"));
     reader.readAsDataURL(file);
   });
+}
+
+async function prepareFile(original: File): Promise<{ file: File; dataUrl: string }> {
+  let file = original;
+  try {
+    const compressed = await compressImage(file);
+    if (compressed.size > 0 && compressed.size < file.size) {
+      file = compressed;
+    }
+  } catch {
+    // 원본 사용
+  }
+  const dataUrl = await readFileAsDataUrl(file);
+  return { file, dataUrl };
 }
 
 let pageIdCounter = 0;
@@ -49,7 +79,71 @@ export function MultiImagePicker({
   const [pages, setPages] = useState<Page[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [menuIndex, setMenuIndex] = useState<number | null>(null);
+  const [replaceCamOpen, setReplaceCamOpen] = useState(false);
+  const [preferCustomCam, setPreferCustomCam] = useState(true);
+  const replaceCaptureRef = useRef<HTMLInputElement>(null);
+  const replaceAlbumRef = useRef<HTMLInputElement>(null);
+  const pendingCaptureAfterNudge = useRef<(() => void) | null>(null);
+  const nudgeCaptureRef = useRef<HTMLInputElement>(null);
+  const {
+    cameraNudgeOpen,
+    maybeOpenCameraNudge,
+    dismissCameraNudge,
+    closeCameraNudge,
+    openExternalBrowser,
+  } = usePwaInstall();
+
+  useEffect(() => {
+    replaceCaptureRef.current?.setAttribute("capture", "environment");
+    nudgeCaptureRef.current?.setAttribute("capture", "environment");
+    const env = readBrowserEnvironment();
+    setPreferCustomCam(env.cameraStrategy === "custom_get_user_media");
+  }, []);
+
+  const openNativeReplaceCapture = useCallback(() => {
+    const el = replaceCaptureRef.current;
+    if (!el) return;
+    el.setAttribute("capture", "environment");
+    el.click();
+  }, []);
+
+  const startReplaceCapture = useCallback(() => {
+    if (preferCustomCam && canUseGetUserMediaCamera()) {
+      setReplaceCamOpen(true);
+      return;
+    }
+    openNativeReplaceCapture();
+  }, [preferCustomCam, openNativeReplaceCapture]);
+
+  const gateCapture = useCallback(() => {
+    const allowed = maybeOpenCameraNudge();
+    if (!allowed) {
+      pendingCaptureAfterNudge.current = () => {
+        const el = nudgeCaptureRef.current;
+        if (!el) return;
+        el.setAttribute("capture", "environment");
+        el.click();
+      };
+      return false;
+    }
+    return true;
+  }, [maybeOpenCameraNudge]);
+
+  const handleNudgeContinueWeb = useCallback(() => {
+    dismissCameraNudge();
+    const run = pendingCaptureAfterNudge.current;
+    pendingCaptureAfterNudge.current = null;
+    // 모달 버튼 클릭 = 새 사용자 제스처 → 네이티브 촬영 가능
+    window.setTimeout(() => run?.(), 0);
+  }, [dismissCameraNudge]);
+
+  const handleNudgeOpenApp = useCallback(() => {
+    pendingCaptureAfterNudge.current = null;
+    closeCameraNudge();
+    openExternalBrowser();
+  }, [closeCameraNudge, openExternalBrowser]);
 
   function emit(next: Page[]) {
     setPages(next);
@@ -57,38 +151,22 @@ export function MultiImagePicker({
     onReadyChange?.(next.length > 0);
   }
 
-  async function handleSelect(file: File, replaceIndex?: number) {
+  async function openDraft(
+    file: File,
+    opts: { replaceIndex?: number; fromCapture: boolean },
+  ) {
     setError(null);
     setStatus("사진 불러오는 중...");
-
+    setMenuIndex(null);
     try {
-      try {
-        const compressed = await compressImage(file);
-        if (compressed.size > 0 && compressed.size < file.size) {
-          file = compressed;
-        }
-      } catch {
-        // 원본 사용
-      }
-      // 원본 전체를 base64로 읽은 뒤 압축하면 iOS에서 원본+압축본이 동시에
-      // 메모리에 남는다. 반드시 압축할 파일을 결정한 다음 한 번만 읽는다.
-      const dataUrl = await readFileAsDataUrl(file);
-
-      const page: Page = { id: nextPageId(), preview: dataUrl, file };
-
-      if (replaceIndex !== undefined) {
-        const next = [...pages];
-        next[replaceIndex] = page;
-        emit(next);
-      } else {
-        emit([...pages, page]);
-      }
-
-      setStatus(
-        pages.length + (replaceIndex === undefined ? 1 : 0) > 0
-          ? `✓ ${replaceIndex !== undefined ? "교체" : "추가"}됨`
-          : "✓ 사진 선택됨",
-      );
+      const prepared = await prepareFile(file);
+      setDraft({
+        preview: prepared.dataUrl,
+        file: prepared.file,
+        replaceIndex: opts.replaceIndex,
+        fromCapture: opts.fromCapture,
+      });
+      setStatus(null);
     } catch {
       setError("사진을 불러오지 못했습니다. 다시 시도해 주세요.");
       setStatus(null);
@@ -107,27 +185,39 @@ export function MultiImagePicker({
 
     setStatus(`${selected.length}장 불러오는 중...`);
     try {
-      const added: Page[] = [];
-      // Promise.all로 5장을 동시에 디코딩하면 iOS Safari의 메모리 상한을
-      // 쉽게 넘는다. 한 장씩 압축·직렬화하여 피크 메모리를 제한한다.
+      const preparedList: Page[] = [];
       for (const original of selected) {
-        let file = original;
-        try {
-          const compressed = await compressImage(file);
-          if (compressed.size > 0 && compressed.size < file.size) {
-            file = compressed;
-          }
-        } catch {
-          // 압축을 지원하지 않는 형식은 원본을 사용한다.
-        }
-        const dataUrl = await readFileAsDataUrl(file);
-        added.push({ id: nextPageId(), preview: dataUrl, file });
-        setStatus(`${added.length}/${selected.length}장 불러오는 중...`);
+        const prepared = await prepareFile(original);
+        preparedList.push({
+          id: nextPageId(),
+          preview: prepared.dataUrl,
+          file: prepared.file,
+        });
+        setStatus(`${preparedList.length}/${selected.length}장 불러오는 중...`);
       }
 
-      const next = [...pages, ...added];
-      emit(next);
-      setStatus(`✓ ${next.length}장 선택됨`);
+      if (preparedList.length === 1) {
+        const only = preparedList[0]!;
+        setDraft({
+          preview: only.preview,
+          file: only.file,
+          fromCapture: false,
+        });
+        setStatus(null);
+        return;
+      }
+
+      const first = preparedList[0]!;
+      const rest = preparedList.slice(1);
+      emit([...pages, ...rest]);
+      setDraft({
+        preview: first.preview,
+        file: first.file,
+        fromCapture: false,
+      });
+      setStatus(
+        rest.length > 0 ? `✓ ${rest.length}장 추가 · 첫 장을 확인해 주세요` : null,
+      );
       if (files.length > selected.length) {
         setError(
           `최대 ${maxImages}장까지만 등록되어 나머지 ${files.length - selected.length}장은 제외했어요.`,
@@ -139,33 +229,111 @@ export function MultiImagePicker({
     }
   }
 
+  function confirmDraft(dataUrl: string) {
+    if (!draft) return;
+    const page: Page = {
+      id: nextPageId(),
+      preview: dataUrl,
+      file: null,
+    };
+    if (draft.replaceIndex !== undefined) {
+      const next = [...pages];
+      next[draft.replaceIndex] = page;
+      emit(next);
+      setStatus("✓ 사진을 바꿨어요");
+    } else {
+      emit([...pages, page]);
+      setStatus("✓ 사진 추가됨");
+    }
+    setDraft(null);
+  }
+
   function removePage(index: number) {
     const next = pages.filter((_, i) => i !== index);
     emit(next);
     setStatus(next.length > 0 ? `✓ ${next.length}장` : null);
+    setMenuIndex(null);
   }
 
   return (
-    <div>
-      <ImageCropDialog
-        open={cropIndex !== null}
-        source={cropIndex !== null ? (pages[cropIndex]?.preview ?? "") : ""}
-        onCancel={() => setCropIndex(null)}
-        onApply={(croppedDataUrl) => {
-          if (cropIndex === null) return;
-          const next = [...pages];
-          const current = next[cropIndex];
-          if (!current) return;
-          next[cropIndex] = {
-            ...current,
-            preview: croppedDataUrl,
-            file: null,
-          };
-          emit(next);
-          setCropIndex(null);
-          setStatus("✓ 사진을 잘랐어요");
+    <div data-tour-id="student-upload-photos">
+      <input
+        ref={nudgeCaptureRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          void openDraft(file, { fromCapture: true });
         }}
       />
+
+      <CameraInstallNudge
+        open={cameraNudgeOpen}
+        onOpenApp={handleNudgeOpenApp}
+        onContinueWeb={handleNudgeContinueWeb}
+      />
+
+      {draft ? (
+        <ImageEditSheet
+          open
+          source={draft.preview}
+          allowRetake
+          onCancel={() => setDraft(null)}
+          onConfirm={confirmDraft}
+          onRetake={(file) => {
+            void openDraft(file, {
+              replaceIndex: draft.replaceIndex,
+              fromCapture: true,
+            });
+          }}
+        />
+      ) : null}
+
+      <input
+        ref={replaceCaptureRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file || menuIndex === null) return;
+          void openDraft(file, { replaceIndex: menuIndex, fromCapture: true });
+        }}
+      />
+      <input
+        ref={replaceAlbumRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file || menuIndex === null) return;
+          void openDraft(file, { replaceIndex: menuIndex, fromCapture: false });
+        }}
+      />
+
+      <CameraCaptureSheet
+        open={replaceCamOpen}
+        onCancel={() => setReplaceCamOpen(false)}
+        onUseNativeCapture={() => {
+          setReplaceCamOpen(false);
+          openNativeReplaceCapture();
+        }}
+        onCapture={(file) => {
+          const idx = menuIndex;
+          setReplaceCamOpen(false);
+          if (idx === null) return;
+          void openDraft(file, { replaceIndex: idx, fromCapture: true });
+        }}
+      />
+
       {label ? (
         <p className="mb-1 text-sm font-medium text-[var(--rm-text)]">
           {label}
@@ -176,12 +344,6 @@ export function MultiImagePicker({
       ) : null}
       {hint ? (
         <p className="mb-2 text-xs text-[var(--rm-text-muted)]">{hint}</p>
-      ) : null}
-
-      {pages.length === 0 ? (
-        <p className="mb-2 rounded-lg bg-[var(--rm-info-bg)] px-3 py-2 text-xs font-medium text-[var(--rm-text-on-info)]">
-          밝은 곳에서 문제가 화면에 꽉 차게, 또렷하게 찍어 주세요.
-        </p>
       ) : null}
 
       {status ? (
@@ -195,59 +357,85 @@ export function MultiImagePicker({
 
       {pages.length > 0 ? (
         <div className="space-y-2">
-          {pages.map((page, index) => (
-            <div key={page.id} className="relative">
-              <span className="absolute left-2 top-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
-                {index + 1}장
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={page.preview}
-                alt={`${label || "문제"} ${index + 1}`}
-                className="max-h-52 w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] object-contain"
-              />
-              <div className="mt-1.5 grid grid-cols-4 gap-1.5">
-                <ImagePickButton
-                  text="다시 찍기"
-                  capture
-                  variant="outline"
-                  onPick={(f) => void handleSelect(f, index)}
+          {pages.map((page, index) => {
+            const open = menuIndex === index;
+            return (
+              <div
+                key={page.id}
+                className="relative overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)]"
+              >
+                <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
+                  {index + 1}장
+                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={page.preview}
+                  alt={`${label || "문제"} ${index + 1}`}
+                  className="max-h-52 w-full object-contain"
                 />
-                <ImagePickButton
-                  text="교체"
-                  variant="outline"
-                  onPick={(f) => void handleSelect(f, index)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setCropIndex(index)}
-                  className="min-h-11 rounded-[var(--rm-radius-md)] border border-[var(--rm-border)] bg-[var(--rm-surface)] text-sm font-bold text-[var(--rm-text)]"
-                >
-                  자르기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removePage(index)}
-                  className="min-h-11 rounded-[var(--rm-radius-md)] border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] text-sm font-bold text-[var(--rm-text-on-error)]"
-                >
-                  삭제
-                </button>
+
+                {open ? (
+                  <div className="absolute inset-0 z-20 flex flex-col justify-end bg-black/55 p-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-white/95 px-2 py-2.5 text-xs font-bold text-[var(--rm-text)]"
+                        onClick={() => replaceAlbumRef.current?.click()}
+                      >
+                        앨범에서 교체
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-white/95 px-2 py-2.5 text-xs font-bold text-[var(--rm-text)]"
+                        onClick={startReplaceCapture}
+                      >
+                        다시 촬영
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-[var(--rm-danger)] px-2 py-2.5 text-xs font-bold text-white"
+                        onClick={() => removePage(index)}
+                      >
+                        삭제
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-black/50 px-2 py-2.5 text-xs font-bold text-white"
+                        onClick={() => setMenuIndex(null)}
+                      >
+                        닫기
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setMenuIndex(index)}
+                    className="absolute inset-0 z-10"
+                    aria-label={`${index + 1}장 교체·삭제`}
+                  >
+                    <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      눌러서 교체·삭제
+                    </span>
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {pages.length < maxImages ? (
             <div className="grid grid-cols-2 gap-2">
               <ImagePickButton
-                text="장 추가 촬영"
+                text="사진 추가 · 촬영"
                 capture
                 variant="primary"
-                onPick={(f) => void handleSelect(f)}
+                onBeforeCapture={gateCapture}
+                onPick={(f) => void openDraft(f, { fromCapture: true })}
               />
               <ImagePickButton
-                text="앨범에서 추가"
+                text="사진 추가 · 앨범"
                 variant="secondary"
-                onPick={(f) => void handleSelect(f)}
+                onPick={(f) => void openDraft(f, { fromCapture: false })}
                 onPickMany={(files) => void handleSelectMany(files)}
                 multiple
               />
@@ -264,12 +452,14 @@ export function MultiImagePicker({
             text="촬영"
             capture
             variant="primary"
-            onPick={(f) => void handleSelect(f)}
+            tourId="student-upload-camera"
+            onBeforeCapture={gateCapture}
+            onPick={(f) => void openDraft(f, { fromCapture: true })}
           />
           <ImagePickButton
             text="앨범"
             variant="secondary"
-            onPick={(f) => void handleSelect(f)}
+            onPick={(f) => void openDraft(f, { fromCapture: false })}
             onPickMany={(files) => void handleSelectMany(files)}
             multiple
           />

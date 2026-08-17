@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ParentReportSnapshot } from "@/lib/types/parent-report";
+import { getSubjectName } from "@/lib/subjects";
 
 type Props = {
   report: ParentReportSnapshot;
@@ -17,6 +18,10 @@ const PHASE_LABELS: Record<string, string> = {
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("ko-KR");
+}
+
+function looksLikeSubjectId(name: string): boolean {
+  return name === "math" || name === "english" || name === "korean" || /^sub-/i.test(name);
 }
 
 export function ParentReportView({ report, expiresAt }: Props) {
@@ -97,7 +102,11 @@ export function ParentReportView({ report, expiresAt }: Props) {
                     key={subject.subjectId}
                     className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-0"
                   >
-                    <span className="font-bold">{subject.subjectName}</span>
+                    <span className="font-bold">
+                      {looksLikeSubjectId(subject.subjectName)
+                        ? getSubjectName(subject.subjectId)
+                        : subject.subjectName}
+                    </span>
                     <span>{subject.count}개 등록</span>
                     <span className="text-blue-700">
                       {subject.completed}개 완료

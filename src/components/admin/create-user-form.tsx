@@ -144,7 +144,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
               ))}
             </div>
             <p className="mt-1 text-xs text-[var(--rm-text-faint)]">
-              나중에 학생 목록·반 관리에서도 일괄 배정할 수 있어요.
+              나중에 학생 목록·반 설정에서도 일괄 배정할 수 있어요.
             </p>
           </div>
         ) : null}
@@ -153,7 +153,7 @@ export function CreateUserForm({ role, title, classOptions = [] }: Props) {
           <p className="rounded-lg bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] px-3 py-2 text-xs text-[var(--rm-text)]">
             아직 반이 없어요.{" "}
             <a href="/admin/classes" className="font-semibold underline">
-              반 관리
+              반 설정
             </a>
             에서 반을 만든 뒤, 등록 시 바로 배정하거나 나중에 일괄 배정하세요.
           </p>

@@ -1,5 +1,6 @@
 import { AcademyPlanSelect } from "@/components/platform/academy-plan-select";
 import { AcademyStatusActions } from "@/components/platform/academy-status-actions";
+import { AvatarPreferencePanel } from "@/components/platform/avatar-preference-panel";
 import { DirectorPasswordReset } from "@/components/platform/director-password-reset";
 import { CreateAcademyForm } from "@/components/platform/create-academy-form";
 import { CreateInviteForm } from "@/components/platform/create-invite-form";
@@ -13,8 +14,11 @@ import {
   listPlatformAcademies,
   listSubscriptionPlans,
 } from "@/lib/server/platform/queries";
+import { getStudentAvatarPreferenceStats } from "@/lib/server/platform/avatar-prefs";
 import { getPlatformAiCostSummary } from "@/lib/server/ai/cost";
 import { AiCostPanel } from "@/components/platform/ai-cost-panel";
+import { PlatformOperationsPanel } from "@/components/platform/platform-operations-panel";
+import { getPlatformOperationsOverview } from "@/lib/server/platform/operations";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -27,12 +31,15 @@ function formatDate(value: string | null): string {
 
 export default async function PlatformHomePage() {
   await requirePlatformAdmin();
-  const [academies, plans, invites, aiCost] = await Promise.all([
-    listPlatformAcademies(),
-    listSubscriptionPlans(),
-    listAcademyInvites(),
-    getPlatformAiCostSummary(),
-  ]);
+  const [academies, plans, invites, aiCost, avatarPrefs, operations] =
+    await Promise.all([
+      listPlatformAcademies(),
+      listSubscriptionPlans(),
+      listAcademyInvites(),
+      getPlatformAiCostSummary(),
+      getStudentAvatarPreferenceStats(),
+      getPlatformOperationsOverview(),
+    ]);
 
   const planOptions = plans.map((p) => ({
     code: p.code,
@@ -50,7 +57,11 @@ export default async function PlatformHomePage() {
         description="학원 코드(영문·숫자 4~12) · Basic/Pro/Premium · owner가 플랜 변경(일할계산)"
       />
 
+      <PlatformOperationsPanel overview={operations} />
+
       <AiCostPanel summary={aiCost} />
+
+      <AvatarPreferencePanel stats={avatarPrefs} />
 
       <section className="mb-8 rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 md:p-5">
         <h2 className="mb-1 text-sm font-semibold">원장 초대 링크</h2>

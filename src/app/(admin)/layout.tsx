@@ -9,6 +9,7 @@ import {
   AdminThemeProvider,
   AdminThemeToggle,
 } from "@/components/theme/admin-theme-provider";
+import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 import { getSession } from "@/lib/auth/session";
 import {
   canSwitchStaffMode,
@@ -16,6 +17,8 @@ import {
   resolveStaffMode,
 } from "@/lib/auth/staff-mode";
 import { canViewSuggestions } from "@/lib/constants/suggestions";
+import { listTutorialPreferences } from "@/lib/server/tutorial/preferences";
+import { isSupabaseUserId } from "@/lib/supabase/config";
 import {
   ADMIN_THEME_COOKIE,
   parseAdminThemeCookie,
@@ -38,9 +41,20 @@ export default async function AdminLayout({
   const initialTheme =
     parseAdminThemeCookie(cookieStore.get(ADMIN_THEME_COOKIE)?.value) ??
     DEFAULT_STUDENT_THEME;
+  const tutorialPrefs =
+    session?.id && isSupabaseUserId(session.id)
+      ? await listTutorialPreferences(session.id)
+      : [];
+  const tourRole =
+    navRole === "admin" || navRole === "sub_admin" ? navRole : null;
 
   return (
     <AdminThemeProvider userId={userId} initialTheme={initialTheme}>
+      <TutorialProvider
+        userId={userId}
+        role={tourRole}
+        initialPrefs={tutorialPrefs}
+      >
       <div className="relative z-[1] flex min-h-full flex-1 flex-col bg-[var(--rm-bg-base)]">
         <header className="rm-header sticky top-0 z-40 border-b border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
@@ -69,6 +83,7 @@ export default async function AdminLayout({
 
         <AdminMobileNav role={navRole} />
       </div>
+      </TutorialProvider>
     </AdminThemeProvider>
   );
 }

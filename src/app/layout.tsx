@@ -4,7 +4,6 @@ import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SITE_DESCRIPTION } from "@/lib/constants/brand-copy";
 import { getSiteUrl } from "@/lib/site-url";
-import "katex/dist/katex.min.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,6 +30,10 @@ export const metadata: Metadata = {
     capable: true,
     title: "Re:mind",
     statusBarStyle: "default",
+  },
+  other: {
+    "apple-mobile-web-app-orientations": "portrait",
+    "screen-orientation": "portrait",
   },
   formatDetection: {
     telephone: false,

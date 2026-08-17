@@ -16,12 +16,14 @@ type QuestionRow = {
   image_url: string;
   extra_image_urls: string[] | null;
   problem_latex: string | null;
+  shared_passage?: string | null;
   ocr_text: string | null;
   entry_mode: "manual" | "ai";
   created_by: string | null;
   created_by_role: "student" | "admin" | "sub_admin" | null;
   answer_text: string | null;
   answer_image_url: string | null;
+  extra_answer_image_urls?: string[] | null;
   keywords: string[] | null;
   source: string | null;
   wrong_reason: string | null;
@@ -44,12 +46,14 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     imageDataUrl: row.image_url,
     extraImageDataUrls: row.extra_image_urls ?? [],
     problemLatex: row.problem_latex ?? undefined,
+    sharedPassage: row.shared_passage ?? undefined,
     ocrText: row.ocr_text ?? undefined,
     entryMode: row.entry_mode,
     createdBy: row.created_by ?? undefined,
     createdByRole: row.created_by_role ?? undefined,
     answerText: row.answer_text ?? undefined,
     answerImageDataUrl: row.answer_image_url ?? undefined,
+    extraAnswerImageDataUrls: row.extra_answer_image_urls ?? [],
     keywords: row.keywords ?? [],
     source: row.source ?? undefined,
     wrongReason: row.wrong_reason ?? undefined,
@@ -78,10 +82,12 @@ export type SaveQuestionInput = {
   imageDataUrl: string;
   extraImageDataUrls?: string[];
   problemLatex?: string;
+  sharedPassage?: string;
   ocrText?: string;
   entryMode?: "manual" | "ai";
   answerText?: string;
   answerImageDataUrl?: string;
+  extraAnswerImageDataUrls?: string[];
   keywords: string[];
   source?: string;
   wrongReason?: string;
@@ -146,6 +152,13 @@ export async function saveQuestionsBatchOnServer(
           )
         : input.answerImageDataUrl
       : null;
+    const extraAnswerImageUrls = await Promise.all(
+      (input.extraAnswerImageDataUrls ?? []).map((url) =>
+        url.startsWith("data:")
+          ? uploadDataUrlOnServer(url, userId, "answer")
+          : Promise.resolve(url),
+      ),
+    );
     const wrongReasonDetail =
       input.wrongReasonDetail ??
       (input.wrongKeywords?.length ? input.wrongKeywords.join(", ") : null);
@@ -155,10 +168,12 @@ export async function saveQuestionsBatchOnServer(
       image_url: imageUrl,
       extra_image_urls: extraImageUrls,
       problem_latex: input.problemLatex?.trim() || null,
+      shared_passage: input.sharedPassage?.trim() || null,
       ocr_text: input.ocrText?.trim() || null,
       entry_mode: input.entryMode ?? (input.problemLatex ? "ai" : "manual"),
       answer_text: answerText,
       answer_image_url: answerImageUrl,
+      extra_answer_image_urls: extraAnswerImageUrls,
       keywords: input.keywords,
       source: input.source?.trim() || null,
       wrong_reason: input.wrongReason ?? null,
@@ -216,6 +231,15 @@ export async function saveQuestionOnServer(
         ),
       )
     : [];
+  const extraAnswerImageUrls = input.extraAnswerImageDataUrls?.length
+    ? await Promise.all(
+        input.extraAnswerImageDataUrls.map(async (url) =>
+          url.startsWith("data:")
+            ? uploadDataUrlOnServer(url, userId, "answer")
+            : url,
+        ),
+      )
+    : [];
 
   const answerText = input.answerText?.trim();
   if (!answerText) {
@@ -239,12 +263,14 @@ export async function saveQuestionOnServer(
     image_url: imageUrl,
     extra_image_urls: extraImageUrls,
     problem_latex: input.problemLatex?.trim() || null,
+    shared_passage: input.sharedPassage?.trim() || null,
     ocr_text: input.ocrText?.trim() || null,
     entry_mode: input.entryMode ?? (input.problemLatex ? "ai" : "manual"),
     created_by: actor?.id ?? userId,
     created_by_role: actor?.role ?? "student",
     answer_text: answerText,
     answer_image_url: answerImageUrl ?? null,
+    extra_answer_image_urls: extraAnswerImageUrls,
     keywords: input.keywords,
     source: input.source ?? null,
     wrong_reason: input.wrongReason ?? null,
@@ -273,6 +299,26 @@ export async function saveQuestionOnServer(
       .single());
   }
 
+  // 040 마이그레이션 전: 해설 추가 사진 컬럼 없이 1장만 저장
+  if (error && isMissingExtraAnswerImagesColumn(error)) {
+    const { extra_answer_image_urls: _drop, ...withoutExtras } = baseRow;
+    ({ data, error } = await supabase
+      .from("questions")
+      .insert({
+        ...withoutExtras,
+        wrong_keywords: input.wrongKeywords ?? [],
+      })
+      .select("*")
+      .single());
+    if (error && isMissingWrongKeywordsColumn(error)) {
+      ({ data, error } = await supabase
+        .from("questions")
+        .insert(withoutExtras)
+        .select("*")
+        .single());
+    }
+  }
+
   if (error) throw error;
   const question = rowToStored(data as QuestionRow);
 
@@ -295,6 +341,17 @@ function isMissingWrongKeywordsColumn(error: {
     error.code === "PGRST204" ||
     message.includes("wrong_keywords") ||
     message.includes("schema cache")
+  );
+}
+
+function isMissingExtraAnswerImagesColumn(error: {
+  message?: string;
+  code?: string;
+}): boolean {
+  const message = error.message ?? "";
+  return (
+    message.includes("extra_answer_image_urls") ||
+    (error.code === "PGRST204" && message.includes("extra_answer"))
   );
 }
 

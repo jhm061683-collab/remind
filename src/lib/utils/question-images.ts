@@ -7,6 +7,14 @@ export function getQuestionImageUrls(
   return [question.imageDataUrl, ...extras].filter((url) => Boolean(url?.trim()));
 }
 
+export function getAnswerImageUrls(
+  question: Pick<StoredQuestion, "answerImageDataUrl" | "extraAnswerImageDataUrls">,
+): string[] {
+  const main = question.answerImageDataUrl?.trim() ?? "";
+  const extras = question.extraAnswerImageDataUrls ?? [];
+  return [main, ...extras].filter((url) => Boolean(url?.trim()));
+}
+
 export async function uploadDataUrlsIfNeeded(
   urls: string[],
   userId: string,

@@ -40,8 +40,8 @@ export type AdminNavItem = {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "대시보드", shortLabel: "홈" },
-  { href: "/admin/students", label: "학생 관리", shortLabel: "학생" },
-  { href: "/admin/classes", label: "반 관리", shortLabel: "반", adminOnly: true },
+  { href: "/admin/students", label: "학생 설정", shortLabel: "학생" },
+  { href: "/admin/classes", label: "반 설정", shortLabel: "반", adminOnly: true },
   {
     href: "/admin/sub-admins",
     label: "서브관리자",

@@ -54,7 +54,7 @@ export function StudyPulseCard({
     },
     {
       key: "archived",
-      label: "정복",
+      label: "보관 완료",
       value: weekly?.archived ?? 0,
       color: "var(--rm-success)",
       Icon: IconArchive,
@@ -83,7 +83,7 @@ export function StudyPulseCard({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-[var(--rm-text-muted)]">누적 복습</p>
+          <p className="text-[10px] text-[var(--rm-text-muted)]">누적 다시 풀기</p>
           <p className="text-base font-bold tabular-nums text-[var(--rm-accent-bright)]">
             {loading ? "—" : totalReviews}
           </p>

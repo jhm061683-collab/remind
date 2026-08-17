@@ -47,7 +47,7 @@ export function RecordsOverview({ userId }: Props) {
         <p className="rm-rules-panel__title">집계 기준</p>
         <ul className="rm-rules-panel__list">
           <li>등록: {REGISTERED_COUNT_RULE}</li>
-          <li>복습: {REVIEW_COUNT_RULE}</li>
+          <li>다시 풀기: {REVIEW_COUNT_RULE}</li>
           <li>연속: {STREAK_RULE}</li>
         </ul>
       </section>
@@ -65,7 +65,7 @@ export function RecordsOverview({ userId }: Props) {
         />
         <RecordStat
           icon={<IconArchive size={16} />}
-          label="정복한 문제"
+          label="보관 완료한 문제"
           value={stats.totalArchived}
         />
         <RecordStat

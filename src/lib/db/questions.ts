@@ -11,12 +11,14 @@ type QuestionRow = {
   image_url: string;
   extra_image_urls: string[] | null;
   problem_latex: string | null;
+  shared_passage: string | null;
   ocr_text: string | null;
   entry_mode: "manual" | "ai";
   created_by: string | null;
   created_by_role: "student" | "admin" | "sub_admin" | null;
   answer_text: string | null;
   answer_image_url: string | null;
+  extra_answer_image_urls: string[] | null;
   keywords: string[] | null;
   source: string | null;
   wrong_reason: string | null;
@@ -39,12 +41,14 @@ function rowToStored(row: QuestionRow): StoredQuestion {
     imageDataUrl: row.image_url,
     extraImageDataUrls: row.extra_image_urls ?? [],
     problemLatex: row.problem_latex ?? undefined,
+    sharedPassage: row.shared_passage ?? undefined,
     ocrText: row.ocr_text ?? undefined,
     entryMode: row.entry_mode,
     createdBy: row.created_by ?? undefined,
     createdByRole: row.created_by_role ?? undefined,
     answerText: row.answer_text ?? undefined,
     answerImageDataUrl: row.answer_image_url ?? undefined,
+    extraAnswerImageDataUrls: row.extra_answer_image_urls ?? [],
     keywords: row.keywords ?? [],
     source: row.source ?? undefined,
     wrongReason: row.wrong_reason ?? undefined,
@@ -87,6 +91,52 @@ async function fetchAll(userId: string): Promise<StoredQuestion[]> {
   return (data as QuestionRow[]).map(rowToStored);
 }
 
+/** 홈 대시보드용 — 이미지/수식 본문 없이 메타만 */
+/**
+ * 홈에서 쓰는 슬림 로드.
+ * latex/ocr 등 큰 텍스트 컬럼을 빼고, 카운트·피드에 필요한 필드만 가져온다.
+ */
+export async function getHomeQuestionMeta(
+  userId: string,
+): Promise<StoredQuestion[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("questions")
+    .select(
+      "id, user_id, subject_id, phase, next_review_date, last_answered_at, archived, created_at, source, streak_count",
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return ((data ?? []) as Array<{
+    id: string;
+    user_id: string;
+    subject_id: string;
+    phase: ReviewPhase;
+    next_review_date: string;
+    last_answered_at: string | null;
+    archived: boolean;
+    created_at: string;
+    source: string | null;
+    streak_count: number;
+  }>).map((row) => ({
+    id: row.id,
+    subjectId: row.subject_id,
+    userId: row.user_id,
+    imageDataUrl: "",
+    extraImageDataUrls: [],
+    source: row.source ?? undefined,
+    keywords: [],
+    phase: row.phase,
+    streakCount: row.streak_count,
+    nextReviewDate: row.next_review_date,
+    lastAnsweredAt: row.last_answered_at ?? undefined,
+    archived: row.archived,
+    createdAt: row.created_at,
+  }));
+}
+
 export async function getQuestionsBySubject(
   userId: string,
   subjectId: string,
@@ -115,14 +165,20 @@ export async function getTodayReviewQuestions(
   subjectId?: string,
   today = new Date(),
 ): Promise<StoredQuestion[]> {
-  const todayKey = toDateKey(today);
-  const all = await fetchAll(userId);
-  return all.filter((question) => {
-    if (question.phase === "completed") return false;
-    if (question.archived) return false;
-    if (subjectId && question.subjectId !== subjectId) return false;
-    return toDateKey(new Date(question.nextReviewDate)) <= todayKey;
-  });
+  const todayEnd = `${toDateKey(today)}T23:59:59.999+09:00`;
+  const supabase = createClient();
+  let query = supabase
+    .from("questions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("archived", false)
+    .neq("phase", "completed")
+    .lte("next_review_date", todayEnd)
+    .order("next_review_date", { ascending: true });
+  if (subjectId) query = query.eq("subject_id", subjectId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as QuestionRow[]).map(rowToStored);
 }
 
 export async function getArchivedQuestions(
@@ -139,12 +195,33 @@ export async function getAllQuestions(userId: string): Promise<StoredQuestion[]>
 export async function getUpcomingReviewQuestions(
   userId: string,
 ): Promise<StoredQuestion[]> {
-  const todayKey = toDateKey(new Date());
-  const all = await fetchAll(userId);
-  return all.filter((question) => {
-    if (question.phase === "completed" || question.archived) return false;
-    return toDateKey(new Date(question.nextReviewDate)) > todayKey;
-  });
+  const todayEnd = `${toDateKey(new Date())}T23:59:59.999+09:00`;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("archived", false)
+    .neq("phase", "completed")
+    .gt("next_review_date", todayEnd)
+    .order("next_review_date", { ascending: true });
+  if (error) throw error;
+  return (data as QuestionRow[]).map(rowToStored);
+}
+
+/** 예정 문제 개수만 — 본문 없이 count */
+export async function getUpcomingReviewCount(userId: string): Promise<number> {
+  const todayEnd = `${toDateKey(new Date())}T23:59:59.999+09:00`;
+  const supabase = createClient();
+  const { count, error } = await supabase
+    .from("questions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("archived", false)
+    .neq("phase", "completed")
+    .gt("next_review_date", todayEnd);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function saveQuestion(
@@ -187,6 +264,14 @@ export async function saveQuestion(
         uploadDataUrl,
       )
     : [];
+  const extraAnswerImageUrls = input.extraAnswerImageDataUrls?.length
+    ? await uploadDataUrlsIfNeeded(
+        input.extraAnswerImageDataUrls,
+        userId,
+        "answer",
+        uploadDataUrl,
+      )
+    : [];
 
   const answerText = input.answerText?.trim();
   if (!answerText) {
@@ -210,12 +295,14 @@ export async function saveQuestion(
     image_url: imageUrl,
     extra_image_urls: extraImageUrls,
     problem_latex: input.problemLatex?.trim() || null,
+    shared_passage: input.sharedPassage?.trim() || null,
     ocr_text: input.ocrText?.trim() || null,
     entry_mode: input.entryMode ?? (input.problemLatex ? "ai" : "manual"),
     created_by: input.createdBy ?? userId,
     created_by_role: input.createdByRole ?? "student",
     answer_text: answerText,
     answer_image_url: answerImageUrl ?? null,
+    extra_answer_image_urls: extraAnswerImageUrls,
     keywords: input.keywords,
     source: input.source ?? null,
     wrong_reason: input.wrongReason ?? null,
@@ -244,6 +331,18 @@ export async function saveQuestion(
     ({ data, error } = await supabase
       .from("questions")
       .insert(baseRow)
+      .select("*")
+      .single());
+  }
+
+  if (error && (error.message ?? "").includes("extra_answer_image_urls")) {
+    const { extra_answer_image_urls: _drop, ...withoutExtras } = baseRow;
+    ({ data, error } = await supabase
+      .from("questions")
+      .insert({
+        ...withoutExtras,
+        wrong_keywords: input.wrongKeywords ?? [],
+      })
       .select("*")
       .single());
   }

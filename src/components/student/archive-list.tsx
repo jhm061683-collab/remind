@@ -94,6 +94,7 @@ export function ArchiveList({ userId }: Props) {
   const [dateTo, setDateTo] = useState("");
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => {
     setStatusFilter(parseStatusFilter(searchParams.get("status")));
   }, [searchParams]);
@@ -252,9 +253,9 @@ export function ArchiveList({ userId }: Props) {
       parts.push("", "※ 필터·검색으로 좁힌 목록만 삭제됩니다.");
     }
     if (statusFilter === "archived") {
-      parts.push("※ 「보관함에 저장」된 문제만 대상입니다.");
+      parts.push("※ 「보관 완료」된 문제만 대상입니다.");
     } else if (statusFilter === "active") {
-      parts.push("※ 「복습 중」인 문제만 대상입니다.");
+      parts.push("※ 「다시 푸는 중」인 문제만 대상입니다.");
     }
     return parts.join("\n");
   }, [filtered.length, hasDetailFilters, statusFilter]);
@@ -318,22 +319,47 @@ export function ArchiveList({ userId }: Props) {
       </div>
 
       {statusFilter === "archived" ? (
-        <p className="mb-4 rounded-xl border border-violet-100 bg-[var(--rm-accent-muted)] px-4 py-3 text-sm text-violet-900">
-          복습을 끝내고 「보관함 저장」한 문제만 모아 둔 곳이에요.
+        <p className="mb-4 rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] px-4 py-3 text-sm text-[var(--rm-text-on-info)]">
+          다시 풀기를 끝내고 「보관 완료」로 저장한 문제만 모아 둔 곳이에요.
+        </p>
+      ) : statusFilter === "active" ? (
+        <p className="mb-4 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-4 py-3 text-sm text-[var(--rm-text-muted)]">
+          아직 다시 푸는 중인 문제예요. 오늘 할 일은 「다시 풀기」 탭에서도 볼 수
+          있어요.
         </p>
       ) : null}
 
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex w-full items-center justify-between rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm font-semibold text-[var(--rm-text)]"
+        >
+          <span>
+            검색 · 필터
+            {hasDetailFilters ? (
+              <span className="ml-1.5 text-[11px] font-medium text-[var(--rm-nav-active)]">
+                적용 중
+              </span>
+            ) : null}
+          </span>
+          <span className="text-xs text-[var(--rm-text-muted)]">
+            {filtersOpen ? "접기" : "펼치기"}
+          </span>
+        </button>
+      </div>
+
+      {filtersOpen ? (
       <div className="remind-filter-panel space-y-4">
         <div>
           <p className="remind-section-title">검색 · 상세 필터</p>
           <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-            틀린 이유는 여러 개 고를 수 있고, 고른 이유마다 아래 오답 키워드가
-            나와요.
+            과목·출처·키워드·틀린 이유로 찾을 수 있어요.
           </p>
         </div>
 
         <label className="block">
-          <span className="remind-field-label">문제 키워드</span>
+          <span className="remind-field-label">검색 (과목·출처·키워드)</span>
           <input
             type="search"
             value={problemQuery}
@@ -466,31 +492,22 @@ export function ArchiveList({ userId }: Props) {
           </button>
         ) : null}
       </div>
+      ) : null}
 
       <p className="mt-4 text-sm text-[var(--rm-text-muted)]">
         <span className="font-semibold text-[var(--rm-text)]">{filtered.length}건</span>
         {hasDetailFilters ? " · 검색/필터 적용" : null}
       </p>
 
-      {filtered.length > 0 ? (
-        <button
-          type="button"
-          onClick={() => setShowBulkDeleteConfirm(true)}
-          className="mt-3 w-full rounded-xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] py-3 text-sm font-semibold text-[var(--rm-text-on-error)] touch-manipulation hover:bg-[var(--rm-error-bg)]"
-        >
-          지금 목록 {filtered.length}개 전부 삭제
-        </button>
-      ) : null}
-
       {filtered.length === 0 ? (
         <div className="remind-empty-state mt-6">
           {statusFilter === "archived"
             ? hasDetailFilters
-              ? "조건에 맞는 보관 문제가 없습니다."
-              : "아직 보관한 문제가 없어요. 복습을 끝낸 뒤 「보관함 저장」을 누르면 여기에 쌓여요."
+              ? "조건에 맞는 보관 완료 문제가 없습니다."
+              : "아직 보관한 문제가 없어요. 다시 풀기를 끝낸 뒤 「보관 완료」를 누르면 여기에 쌓여요."
             : hasDetailFilters
               ? "조건에 맞는 문제가 없습니다. 키워드·필터를 바꿔 보세요."
-              : "등록된 문제가 없습니다. 문제 등록 탭에서 올려 주세요."}
+              : "등록된 문제가 없습니다. 「등록」 탭에서 올려 주세요."}
         </div>
       ) : (
         <ul className="mt-3 space-y-2.5">
@@ -513,6 +530,18 @@ export function ArchiveList({ userId }: Props) {
           ))}
         </ul>
       )}
+
+      {filtered.length > 0 ? (
+        <div className="mt-6 border-t border-[var(--rm-border)] pt-4">
+          <button
+            type="button"
+            onClick={() => setShowBulkDeleteConfirm(true)}
+            className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] py-2.5 text-xs font-semibold text-[var(--rm-text-muted)] touch-manipulation hover:border-[var(--rm-error-border)] hover:text-[var(--rm-danger)]"
+          >
+            지금 목록 {filtered.length}개 삭제…
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

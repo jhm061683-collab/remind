@@ -77,8 +77,8 @@ export function ShareStatsCard({ summary }: Props) {
 
         <div className="mt-4 grid grid-cols-3 gap-3">
           <ShareStat value={summary.registeredThisWeek} label="등록" />
-          <ShareStat value={summary.reviewedThisWeek} label="복습" />
-          <ShareStat value={summary.archivedThisWeek} label="정복" />
+          <ShareStat value={summary.reviewedThisWeek} label="다시 풀기" />
+          <ShareStat value={summary.archivedThisWeek} label="보관 완료" />
         </div>
 
         {summary.topWeakness ? (
@@ -97,7 +97,7 @@ export function ShareStatsCard({ summary }: Props) {
           </div>
           {summary.studyStreak > 0 ? (
             <div className="text-right">
-              <p className="text-xs text-[var(--rm-text-faint)]">연속 복습</p>
+              <p className="text-xs text-[var(--rm-text-faint)]">연속 학습</p>
               <p className="text-2xl font-bold text-blue-300">
                 {summary.studyStreak}
                 <span className="ml-0.5 text-sm font-semibold">일</span>

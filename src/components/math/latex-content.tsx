@@ -1,9 +1,14 @@
 import katex from "katex";
+import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
+import { normalizeUnderlineMarkup, renumberChoiceOptions, latexToReadableText } from "@/lib/utils/packet-content";
+import { splitMixedMathSegments } from "@/lib/utils/packet-math";
 
 type Props = {
   content: string;
   className?: string;
+  /** PDF/인쇄 캡처: 가로 스크롤 UI를 만들지 않음 */
+  printSafe?: boolean;
 };
 
 const MATH_PATTERN =
@@ -44,12 +49,86 @@ function renderTextWithUnderline(
   return nodes;
 }
 
+function renderKatexNode(
+  expression: string,
+  displayMode: boolean,
+  printSafe: boolean,
+  key: string,
+): ReactNode {
+  let html = "";
+  try {
+    html = katex.renderToString(expression, {
+      displayMode,
+      throwOnError: false,
+      strict: "ignore",
+      output: "htmlAndMathml",
+    });
+  } catch {
+    html = "";
+  }
+  if (!html) {
+    return <span key={key}>{latexToReadableText(expression) || expression}</span>;
+  }
+  const Tag = displayMode ? "div" : "span";
+  return (
+    <Tag
+      key={key}
+      className={
+        displayMode
+          ? printSafe
+            ? "my-2 max-w-full overflow-hidden py-0.5 text-center"
+            : "my-3 overflow-x-auto py-1 text-center"
+          : ""
+      }
+      style={
+        printSafe && displayMode
+          ? { overflow: "hidden", overflowX: "hidden", maxWidth: "100%" }
+          : undefined
+      }
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+/** `$` 없이 남은 \frac · \sqrt 등을 KaTeX로 */
+function renderBareLatexRun(
+  text: string,
+  keyPrefix: string,
+  printSafe: boolean,
+): ReactNode[] {
+  return splitMixedMathSegments(text).map((seg, i) => {
+    if (seg.type === "math") {
+      return renderKatexNode(seg.value, false, printSafe, `${keyPrefix}-${i}`);
+    }
+    return (
+      <span key={`${keyPrefix}-t-${i}`}>
+        {renderTextWithUnderline(seg.value, `${keyPrefix}-u-${i}`)}
+      </span>
+    );
+  });
+}
+
+function renderPlainSlice(
+  text: string,
+  keyPrefix: string,
+  printSafe: boolean,
+): ReactNode[] {
+  if (/\\[a-zA-Z]+/.test(text)) {
+    return renderBareLatexRun(text, `${keyPrefix}-bare`, printSafe);
+  }
+  return renderTextWithUnderline(text, keyPrefix);
+}
+
 /**
  * 일반 문장과 LaTeX 수식이 섞인 AI 추출 결과를 KaTeX로 조판한다.
  * 원문 텍스트는 React가 이스케이프하고, 수식 HTML만 KaTeX가 생성한다.
  * 텍스트 구간의 <u>...</u> 는 밑줄로 표시한다.
  */
-function renderTextAndMath(content: string, keyPrefix: string): ReactNode[] {
+function renderTextAndMath(
+  content: string,
+  keyPrefix: string,
+  printSafe: boolean,
+): ReactNode[] {
   const nodes: ReactNode[] = [];
   let cursor = 0;
   let key = 0;
@@ -58,38 +137,26 @@ function renderTextAndMath(content: string, keyPrefix: string): ReactNode[] {
     const index = match.index ?? 0;
     if (index > cursor) {
       nodes.push(
-        ...renderTextWithUnderline(
+        ...renderPlainSlice(
           content.slice(cursor, index),
           `${keyPrefix}-t-${key}`,
+          printSafe,
         ),
       );
     }
 
     const expression = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
     const displayMode = Boolean(match[1] ?? match[3]);
-    const html = katex.renderToString(expression, {
-      displayMode,
-      throwOnError: false,
-      strict: "ignore",
-      output: "htmlAndMathml",
-    });
-
-    const Tag = displayMode ? "div" : "span";
-    nodes.push(
-      <Tag
-        key={`${keyPrefix}-math-${key++}`}
-        className={displayMode ? "my-3 overflow-x-auto py-1 text-center" : ""}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />,
-    );
+    nodes.push(renderKatexNode(expression, displayMode, printSafe, `${keyPrefix}-math-${key++}`));
     cursor = index + match[0].length;
   }
 
   if (cursor < content.length) {
     nodes.push(
-      ...renderTextWithUnderline(
+      ...renderPlainSlice(
         content.slice(cursor),
         `${keyPrefix}-t-end-${key}`,
+        printSafe,
       ),
     );
   }
@@ -103,18 +170,24 @@ function isSafeFigureUrl(url: string): boolean {
   );
 }
 
-export function LatexContent({ content, className = "" }: Props) {
+export function LatexContent({
+  content,
+  className = "",
+  printSafe = false,
+}: Props) {
+  const normalized = renumberChoiceOptions(normalizeUnderlineMarkup(content));
   const nodes: ReactNode[] = [];
   let cursor = 0;
   let figureKey = 0;
 
-  for (const match of content.matchAll(FIGURE_PATTERN)) {
+  for (const match of normalized.matchAll(FIGURE_PATTERN)) {
     const index = match.index ?? 0;
     if (index > cursor) {
       nodes.push(
         ...renderTextAndMath(
-          content.slice(cursor, index),
+          normalized.slice(cursor, index),
           `segment-${figureKey}`,
+          printSafe,
         ),
       );
     }
@@ -135,8 +208,6 @@ export function LatexContent({ content, className = "" }: Props) {
         </figure>,
       );
     } else {
-      // 잘못된 좌표, 업로드 실패, 안전하지 않은 URL 때문에 그림을 표시하지
-      // 못해도 문제 본문 전체가 깨지지 않도록 원본 확인 안내를 남긴다.
       nodes.push(
         <aside
           key={`figure-fallback-${figureKey++}`}
@@ -150,9 +221,13 @@ export function LatexContent({ content, className = "" }: Props) {
     cursor = index + match[0].length;
   }
 
-  if (cursor < content.length) {
+  if (cursor < normalized.length) {
     nodes.push(
-      ...renderTextAndMath(content.slice(cursor), `segment-end-${figureKey}`),
+      ...renderTextAndMath(
+        normalized.slice(cursor),
+        `segment-end-${figureKey}`,
+        printSafe,
+      ),
     );
   }
 

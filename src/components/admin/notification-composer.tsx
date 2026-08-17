@@ -88,7 +88,7 @@ export function NotificationComposer({ students }: Props) {
         }
         className="rounded-xl rm-fill-brand px-4 py-2 text-sm font-semibold disabled:opacity-50"
       >
-        선택 학생 일괄 알림 등록
+        선택 학생 일괄 알림 등록 (푸시 포함)
       </button>
       {message ? <p className="text-xs text-[var(--rm-text-muted)] whitespace-pre-line">{message}</p> : null}
     </div>

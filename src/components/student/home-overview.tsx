@@ -2,22 +2,46 @@
 
 import Link from "next/link";
 import { MissionList } from "@/components/student/dashboard/mission-list";
-import { PrimaryActions } from "@/components/student/dashboard/primary-actions";
+import { ForgettingCurveFeed } from "@/components/student/dashboard/forgetting-curve-feed";
+import { HomeSideBoost } from "@/components/student/dashboard/home-side-boost";
 import { StudyPulseCard } from "@/components/student/dashboard/study-pulse-card";
+import { StudentAvatarBadge } from "@/components/student/dashboard/student-avatar-badge";
+import dynamic from "next/dynamic";
+import { StudentMotivationPanel } from "@/components/student/dashboard/student-motivation-panel";
+import { TodayFocusHero } from "@/components/student/dashboard/today-focus-hero";
 import { useSubjects } from "@/components/student/subject-provider";
 import type { UserStats } from "@/lib/data/user-stats";
 import { getActivityEvents } from "@/lib/data/activity";
 import { IconArchive, IconChevronRight } from "@/components/ui/icons";
 import {
-  getAllQuestions,
+  getHomeQuestionMeta,
   type StoredQuestion,
 } from "@/lib/data/questions";
+import type {
+  AcademyHallOfFame,
+  AcademyMonthlyBoard,
+  StudentRankCard,
+} from "@/lib/server/rankings";
 import { computeUserStats } from "@/lib/stats/compute";
+import { UI_LABELS } from "@/lib/constants/ui-labels";
+import { toDateKey } from "@/lib/utils/date-range";
 import { useEffect, useMemo, useState } from "react";
+
+const StudentAvatarPicker = dynamic(
+  () =>
+    import("@/components/student/dashboard/student-avatar-picker").then(
+      (m) => m.StudentAvatarPicker,
+    ),
+  { ssr: false },
+);
 
 type Props = {
   userId: string;
   userName?: string;
+  rank?: StudentRankCard | null;
+  monthlyBoard?: AcademyMonthlyBoard | null;
+  hallOfFame?: AcademyHallOfFame | null;
+  avatarUrl?: string | null;
 };
 
 function isArchived(q: StoredQuestion): boolean {
@@ -30,27 +54,60 @@ function formatTodayLabel(): string {
   return `${now.getMonth() + 1}월 ${now.getDate()}일 · ${weekdays[now.getDay()]}요일`;
 }
 
-export function HomeOverview({ userId, userName = "학생" }: Props) {
+export function HomeOverview({
+  userId,
+  userName = "학생",
+  rank = null,
+  monthlyBoard = null,
+  hallOfFame = null,
+  avatarUrl = null,
+}: Props) {
   const { subjects } = useSubjects();
   const [todayCount, setTodayCount] = useState<number | null>(null);
+  const [overdueCount, setOverdueCount] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
   const [upcomingCount, setUpcomingCount] = useState<number | null>(null);
   const [allQuestions, setAllQuestions] = useState<StoredQuestion[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [avatarValue, setAvatarValue] = useState<string | null>(avatarUrl);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   useEffect(() => {
-    function load() {
-      void Promise.all([getAllQuestions(userId), getActivityEvents(userId)]).then(
+    setAvatarValue(avatarUrl);
+  }, [avatarUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let lastLoadedAt = 0;
+
+    function load(force = false) {
+      const now = Date.now();
+      if (!force && now - lastLoadedAt < 60_000) return;
+      lastLoadedAt = now;
+      void Promise.all([getHomeQuestionMeta(userId), getActivityEvents(userId)]).then(
         ([all, events]) => {
+          if (cancelled) return;
           const todayKey = toDateKey(new Date());
           const today = all.filter((q) => {
             if (q.phase === "completed" || q.archived) return false;
             return toDateKey(new Date(q.nextReviewDate)) <= todayKey;
           });
+          const overdue = all.filter((q) => {
+            if (q.phase === "completed" || q.archived) return false;
+            return toDateKey(new Date(q.nextReviewDate)) < todayKey;
+          });
           const upcoming = all.filter((q) => {
             if (q.phase === "completed" || q.archived) return false;
             return toDateKey(new Date(q.nextReviewDate)) > todayKey;
           });
+          const reviewedToday = events.filter(
+            (e) =>
+              e.type === "reviewed" &&
+              toDateKey(new Date(e.createdAt)) === todayKey,
+          ).length;
           setTodayCount(today.length);
+          setOverdueCount(overdue.length);
+          setDoneToday(reviewedToday);
           setUpcomingCount(upcoming.length);
           setAllQuestions(all);
           setUserStats(computeUserStats(all, events));
@@ -58,12 +115,15 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
       );
     }
 
-    load();
+    load(true);
     function onVisible() {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") load(false);
     }
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [userId]);
 
   const stats = useMemo(() => {
@@ -112,23 +172,63 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
       }));
   }, [allQuestions, subjects]);
 
+  const todayFeed = useMemo(() => {
+    const todayKey = toDateKey(new Date());
+    const nameOf = new Map(subjects.map((s) => [s.id, s.name]));
+    return allQuestions
+      .filter((q) => {
+        if (q.phase === "completed" || q.archived) return false;
+        return toDateKey(new Date(q.nextReviewDate)) <= todayKey;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.nextReviewDate).getTime() -
+          new Date(b.nextReviewDate).getTime(),
+      )
+      .map((q) => ({
+        id: q.id,
+        subjectName: nameOf.get(q.subjectId) ?? "과목",
+        source: q.source,
+        phase: q.phase,
+      }));
+  }, [allQuestions, subjects]);
+
   const loading = todayCount === null;
+  const targetToday = (todayCount ?? 0) + (doneToday ?? 0);
+  const rankWithAvatar = rank
+    ? { ...rank, avatarUrl: avatarValue ?? rank.avatarUrl }
+    : null;
 
   return (
     <div className="rm-page">
       <header className="rm-page-header flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="rm-display">
-            {userName}
-            <span className="text-[var(--rm-text-muted)]">님</span>
-          </h1>
-          <p className="rm-body-muted">{formatTodayLabel()}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setAvatarPickerOpen((v) => !v)}
+            className="shrink-0 touch-manipulation rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--rm-brand)]"
+            aria-label="내 캐릭터 바꾸기"
+          >
+            <StudentAvatarBadge
+              value={avatarValue}
+              seed={userId}
+              size="lg"
+              className="border border-[var(--rm-border)] shadow-sm"
+            />
+          </button>
+          <div className="min-w-0">
+            <h1 className="rm-display">
+              {userName}
+              <span className="text-[var(--rm-text-muted)]">님</span>
+            </h1>
+            <p className="rm-body-muted">{formatTodayLabel()}</p>
+          </div>
         </div>
         <Link
           href="/records"
           className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--rm-nav-active)] touch-manipulation"
         >
-          기록
+          내 기록
           {!loading && (userStats?.studyStreak ?? 0) > 0
             ? ` · ${userStats?.studyStreak}일`
             : ""}
@@ -136,37 +236,95 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
         </Link>
       </header>
 
-      <PrimaryActions todayCount={todayCount ?? 0} loading={loading} />
+      {avatarPickerOpen ? (
+        <div className="rm-glass rm-glass--compact">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-[var(--rm-text)]">캐릭터 고르기</p>
+            <button
+              type="button"
+              onClick={() => setAvatarPickerOpen(false)}
+              className="text-[11px] font-bold text-[var(--rm-nav-active)]"
+            >
+              닫기
+            </button>
+          </div>
+          <StudentAvatarPicker
+            initialValue={avatarValue}
+            seed={userId}
+            gridOnly
+            onSaved={(next) => {
+              setAvatarValue(next);
+              setAvatarPickerOpen(false);
+            }}
+          />
+        </div>
+      ) : null}
 
-      {/* 한 줄 통계 스트립 — 카드 4장 대신 divider */}
+      <TodayFocusHero
+        todayCount={todayCount ?? 0}
+        overdueCount={overdueCount ?? 0}
+        doneToday={doneToday ?? 0}
+        targetToday={targetToday}
+        loading={loading}
+      />
+
       <div className="rm-stat-strip">
         <QuickStat label="전체" value={loading ? "—" : stats.total} />
-        <QuickStat label="정리" value={loading ? "—" : stats.active} />
         <QuickStat
-          label="정복"
+          label={UI_LABELS.activeStatLabel}
+          value={loading ? "—" : stats.active}
+        />
+        <QuickStat
+          label="정복률"
           value={loading ? "—" : `${masteryPct}%`}
           accent
         />
         <QuickStat label="예정" value={loading ? "—" : (upcomingCount ?? 0)} />
       </div>
 
-      {/* 데스크톱에서는 두 카드를 나란히 배치해 가로 공간을 활용 */}
-      <div className="grid grid-cols-1 gap-[var(--rm-stack)] md:grid-cols-2 md:items-start">
-        <StudyPulseCard
-          streak={userStats?.studyStreak ?? 0}
-          longestStreak={userStats?.longestStreak ?? 0}
-          weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
-          weekly={userStats?.weekly ?? null}
-          totalReviews={userStats?.totalReviews ?? 0}
-          loading={loading}
-        />
-
-        <MissionList
-          todayCount={todayCount ?? 0}
-          missions={todayBySubject}
-          loading={loading}
-        />
+      <div className="grid gap-[var(--rm-stack)] md:grid-cols-2 md:grid-rows-[auto_minmax(0,1fr)] md:items-stretch">
+        <div className="md:col-start-1 md:row-start-1">
+          <StudyPulseCard
+            streak={userStats?.studyStreak ?? 0}
+            longestStreak={userStats?.longestStreak ?? 0}
+            weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
+            weekly={userStats?.weekly ?? null}
+            totalReviews={userStats?.totalReviews ?? 0}
+            loading={loading}
+          />
+        </div>
+        <div className="md:col-start-2 md:row-span-2 md:min-h-0 md:h-full">
+          <MissionList
+            todayCount={todayCount ?? 0}
+            missions={todayBySubject}
+            loading={loading}
+            fillHeight
+          />
+        </div>
+        <div className="md:col-start-1 md:row-start-2 md:min-h-0 md:h-full">
+          <HomeSideBoost
+            todayCount={todayCount ?? 0}
+            upcomingCount={upcomingCount ?? 0}
+            conqueredCount={stats.archived}
+            rank={rankWithAvatar}
+            loading={loading}
+            fillHeight
+          />
+        </div>
       </div>
+
+      <StudentMotivationPanel
+        rank={rankWithAvatar}
+        monthlyBoard={monthlyBoard}
+        hallOfFame={hallOfFame}
+      />
+
+      <ForgettingCurveFeed
+        items={todayFeed}
+        streak={userStats?.studyStreak ?? 0}
+        conqueredCount={stats.archived}
+        loading={loading}
+      />
 
       {!loading && recentQuestions.length > 0 ? (
         <section className="rm-glass rm-glass--compact">
@@ -197,7 +355,7 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
                 <span className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--rm-text-muted)]">
                   {q.done ? (
                     <span className="font-semibold text-[var(--rm-success)]">
-                      정복
+                      보관 완료
                     </span>
                   ) : null}
                   {formatShortDate(q.createdAt)}
@@ -211,7 +369,7 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
       <div className="rm-inline-links">
         <Link href="/archive" className="rm-inline-link">
           <IconArchive size={14} />
-          보관 {loading ? "—" : stats.archived}
+          보관함 {loading ? "—" : stats.archived}
         </Link>
         <Link href="/subjects" className="rm-inline-link">
           과목 설정
@@ -221,11 +379,17 @@ export function HomeOverview({ userId, userName = "학생" }: Props) {
       {!loading && stats.total === 0 ? (
         <div className="rm-glass rm-glass--compact border-dashed text-center">
           <p className="text-sm font-medium text-[var(--rm-text)]">
-            아직 저장한 문제가 없어요
+            아직 등록된 오답이 없습니다
           </p>
           <p className="mt-0.5 text-xs text-[var(--rm-text-muted)]">
-            위 「사진 올리기」로 첫 오답을 등록해 보세요
+            아래 버튼으로 첫 오답을 올려 보세요
           </p>
+          <a
+            href="/upload"
+            className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[var(--rm-brand)] px-4 text-sm font-bold text-white"
+          >
+            첫 오답 등록하기
+          </a>
         </div>
       ) : null}
     </div>
@@ -259,11 +423,4 @@ function formatShortDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function toDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }

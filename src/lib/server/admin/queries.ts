@@ -5,7 +5,6 @@ import { computePromotedGrade } from "@/lib/admin/grade";
 import { formatClassLabel } from "@/lib/admin/class-label";
 import { formatStaffLabel } from "@/lib/admin/staff-label";
 import type { StoredQuestion } from "@/lib/storage/questions";
-import { computeUserStats } from "@/lib/stats/compute";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
 import { DEMO_USERS } from "@/lib/auth/users";
@@ -14,6 +13,7 @@ import type {
   AdminDashboardData,
   AdminStudentRow,
   ClassManagementData,
+  ClassOption,
   ClassRoomSummary,
   ClassStudentBrief,
   DailyActivity,
@@ -39,6 +39,7 @@ type ProfileRow = {
   grade_number: number | null;
   is_director?: boolean | null;
   nickname?: string | null;
+  withdrawn_at?: string | null;
 };
 
 type AssignmentRow = {
@@ -61,6 +62,7 @@ type ClassRoomRow = {
   name: string;
   school_level: "elementary" | "middle" | "high" | "adult" | null;
   grade_number: number | null;
+  image_url: string | null;
 };
 
 type ClassTeacherRow = {
@@ -343,11 +345,30 @@ async function fetchDashboardForStudentIds(
     assignments.map((a) => [a.student_id, a.sub_admin_id]),
   );
 
+  // 대시보드에 평생 이력 풀스캔은 하지 않는다.
+  // - 활성 문항만 (due/이행률)
+  // - 최근 activity/login만 (차트·출석)
+  // - 등록 수는 user_id만
+  const loginSince = new Date(
+    Date.now() - 90 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const activitySince = new Date(
+    Date.now() - 14 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const reviewCountSince = loginSince;
+
+  const emptyLogins = Promise.resolve({ data: [] as LoginRow[] });
+  const emptyQuestions = Promise.resolve({ data: [] as QuestionRow[] });
+  const emptyActivities = Promise.resolve({ data: [] as ActivityRow[] });
+  const emptySlim = Promise.resolve({ data: [] as { user_id: string }[] });
+  const emptyClasses = Promise.resolve({ data: [] as ClassStudentRow[] });
+
   const [
     { data: allLoginRows },
     { data: todayLoginRows },
     { data: questionRows },
     { data: activityRows },
+    { data: reviewCountRows },
     { data: classStudentsRows },
   ] = await Promise.all([
     studentIds.length > 0
@@ -355,15 +376,17 @@ async function fetchDashboardForStudentIds(
           .from("login_events")
           .select("user_id, logged_in_at")
           .in("user_id", studentIds)
+          .gte("logged_in_at", loginSince)
           .order("logged_in_at", { ascending: false })
-      : Promise.resolve({ data: [] as LoginRow[] }),
+      : emptyLogins,
     studentIds.length > 0
       ? supabase
           .from("login_events")
           .select("user_id, logged_in_at")
           .in("user_id", studentIds)
           .gte("logged_in_at", startOfTodayKstIso())
-      : Promise.resolve({ data: [] as LoginRow[] }),
+      : emptyLogins,
+    // 미보관 문항 메타만 1회 (등록수 + due/이행률)
     studentIds.length > 0
       ? supabase
           .from("questions")
@@ -371,26 +394,52 @@ async function fetchDashboardForStudentIds(
             "id, user_id, phase, next_review_date, last_answered_at, archived, created_at, wrong_reason",
           )
           .in("user_id", studentIds)
-      : Promise.resolve({ data: [] as QuestionRow[] }),
+          .eq("archived", false)
+      : emptyQuestions,
     studentIds.length > 0
       ? supabase
           .from("activity_events")
           .select("id, user_id, event_type, question_id, wrong_reason, created_at")
           .in("user_id", studentIds)
-      : Promise.resolve({ data: [] as ActivityRow[] }),
+          .gte("created_at", activitySince)
+      : emptyActivities,
+    studentIds.length > 0
+      ? supabase
+          .from("activity_events")
+          .select("user_id")
+          .in("user_id", studentIds)
+          .eq("event_type", "reviewed")
+          .gte("created_at", reviewCountSince)
+      : emptySlim,
     studentIds.length > 0
       ? supabase
           .from("class_room_students")
           .select("student_id, class_room_id, class_rooms(name, school_level, grade_number)")
           .in("student_id", studentIds)
-      : Promise.resolve({ data: [] as ClassStudentRow[] }),
+      : emptyClasses,
   ]);
 
-  const questions = (questionRows ?? []) as QuestionRow[];
+  const allOpenQuestions = (questionRows ?? []) as QuestionRow[];
+  const questions = allOpenQuestions.filter((q) => q.phase !== "completed");
   const activities = (activityRows ?? []) as ActivityRow[];
   const allLogins = (allLoginRows ?? []) as LoginRow[];
   const todayLogins = (todayLoginRows ?? []) as LoginRow[];
   const classStudents = (classStudentsRows ?? []) as ClassStudentRow[];
+
+  const registeredCount = new Map<string, number>();
+  for (const row of allOpenQuestions) {
+    registeredCount.set(
+      row.user_id,
+      (registeredCount.get(row.user_id) ?? 0) + 1,
+    );
+  }
+  const totalReviewCount = new Map<string, number>();
+  for (const row of (reviewCountRows ?? []) as { user_id: string }[]) {
+    totalReviewCount.set(
+      row.user_id,
+      (totalReviewCount.get(row.user_id) ?? 0) + 1,
+    );
+  }
   const classRoomIds = Array.from(
     new Set(classStudents.map((row) => row.class_room_id)),
   );
@@ -488,7 +537,6 @@ async function fetchDashboardForStudentIds(
   const students: AdminStudentRow[] = studentIds.map((id) => {
     const userQuestions = questionsByUser.get(id) ?? [];
     const userEvents = (activityByUser.get(id) ?? []).map(rowToEvent);
-    const stats = computeUserStats(userQuestions, userEvents);
     const todayEnd = endOfDay(new Date());
     const dueToday = userQuestions.filter(
       (q) =>
@@ -549,8 +597,8 @@ async function fetchDashboardForStudentIds(
       subAdminName: subAdmin?.display_name ?? null,
       subAdminId,
       lastLoginAt: lastLogin,
-      totalRegistered: stats.totalRegistered,
-      totalReviews: stats.totalReviews,
+      totalRegistered: registeredCount.get(id) ?? 0,
+      totalReviews: totalReviewCount.get(id) ?? 0,
       loginStreakDays: calcLoginStreakDays(loginsForStudent),
       inactiveDays: calcInactiveDays(lastLogin),
       dueToday,
@@ -626,21 +674,33 @@ export async function getAdminDashboard(
   if (academyId) await applyAutoPromotionIfDue(academyId);
   const supabase = createServiceClient();
 
-  const { data: rawProfiles } = await supabase
+  let profilesQuery = supabase
     .from("profiles")
-    .select("id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname")
+    .select(
+      "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname, withdrawn_at",
+    )
     .in("role", ["student", "sub_admin", "admin"]);
+  if (academyId) {
+    profilesQuery = profilesQuery.eq("academy_id", academyId);
+  }
+
+  const { data: rawProfiles } = await profilesQuery;
 
   const allProfiles = ((rawProfiles ?? []) as ProfileRow[]).filter(
-    (p) => !academyId || !p.academy_id || p.academy_id === academyId,
+    (p) => p.role !== "student" || !p.withdrawn_at,
   );
   const studentIds = allProfiles
     .filter((p) => p.role === "student")
     .map((p) => p.id);
 
-  const { data: assignmentRows, error: assignError } = await supabase
+  let assignmentsQuery = supabase
     .from("student_assignments")
     .select("sub_admin_id, student_id");
+  if (academyId) {
+    assignmentsQuery = assignmentsQuery.eq("academy_id", academyId);
+  }
+
+  const { data: assignmentRows, error: assignError } = await assignmentsQuery;
 
   const assignments = assignError
     ? ([] as AssignmentRow[])
@@ -788,13 +848,49 @@ export async function getStudentDetailForStaff(
   staffRole: "admin" | "sub_admin",
   studentId: string,
 ): Promise<StudentDetailData | null> {
-  const dashboard =
-    staffRole === "admin"
-      ? await getAdminDashboard(staffId)
-      : await getSubAdminDashboard(staffId);
-  const student = dashboard.students.find((s) => s.id === studentId);
-  if (!student) return null;
+  if (
+    !isSupabaseEnabled() ||
+    !isServiceRoleConfigured() ||
+    !isSupabaseUserId(staffId) ||
+    !isSupabaseUserId(studentId)
+  ) {
+    const demo = demoDashboard();
+    const student = demo.students.find((s) => s.id === studentId) ?? null;
+    if (!student) return null;
+    return {
+      student,
+      weeklyReviews: buildDailyReviews([], 14),
+      topWeaknesses: [],
+      aiEngine: null,
+    };
+  }
+
+  const allowed = await staffCanAccessStudent(staffId, staffRole, studentId);
+  if (!allowed) return null;
+
   const supabase = createServiceClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select(
+      "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname, withdrawn_at",
+    )
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!profile || profile.role !== "student") return null;
+
+  const { data: assignmentRows } = await supabase
+    .from("student_assignments")
+    .select("sub_admin_id, student_id")
+    .eq("student_id", studentId);
+  const assignments = (assignmentRows ?? []) as AssignmentRow[];
+
+  const [studentRow] = await fetchSlimStudentListRows(
+    [studentId],
+    [profile as ProfileRow],
+    assignments,
+  );
+  if (!studentRow) return null;
+
   const { data: events } = await supabase
     .from("activity_events")
     .select("id, user_id, event_type, question_id, wrong_reason, created_at")
@@ -813,7 +909,6 @@ export async function getStudentDetailForStaff(
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // AI 엔진 설정: 학생 프로필 토글 + 학원 플랜 코드
   let aiEngine: StudentDetailData["aiEngine"] = null;
   const { data: studentProfile } = await supabase
     .from("profiles")
@@ -844,11 +939,68 @@ export async function getStudentDetailForStaff(
   }
 
   return {
-    student,
+    student: studentRow,
     weeklyReviews: weekly,
     topWeaknesses,
     aiEngine,
   };
+}
+
+async function staffCanAccessStudent(
+  staffId: string,
+  staffRole: "admin" | "sub_admin",
+  studentId: string,
+): Promise<boolean> {
+  const supabase = createServiceClient();
+  const [{ data: staff }, { data: student }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id")
+      .eq("id", staffId)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id, withdrawn_at")
+      .eq("id", studentId)
+      .maybeSingle(),
+  ]);
+  if (!staff || !student || student.role !== "student") return false;
+  if (student.withdrawn_at) return false;
+  if (
+    staff.academy_id &&
+    student.academy_id &&
+    staff.academy_id !== student.academy_id
+  ) {
+    return false;
+  }
+
+  if (staffRole === "admin") {
+    return staff.role === "admin" || staff.role === "sub_admin";
+  }
+
+  const [{ data: assignment }, { data: classTeacherRows }] = await Promise.all([
+    supabase
+      .from("student_assignments")
+      .select("student_id")
+      .eq("sub_admin_id", staffId)
+      .eq("student_id", studentId)
+      .maybeSingle(),
+    supabase
+      .from("class_room_teachers")
+      .select("class_room_id")
+      .eq("teacher_id", staffId),
+  ]);
+  if (assignment) return true;
+  const classIds = (classTeacherRows ?? []).map((r) => r.class_room_id as string);
+  if (classIds.length === 0) return false;
+  const { data: membership } = await supabase
+    .from("class_room_students")
+    .select("student_id")
+    .eq("student_id", studentId)
+    .in("class_room_id", classIds)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(membership);
 }
 
 export async function getClassManagementData(
@@ -866,14 +1018,14 @@ export async function getClassManagementData(
     await Promise.all([
     supabase
       .from("class_rooms")
-      .select("id, name, school_level, grade_number")
+      .select("id, name, school_level, grade_number, image_url")
       .eq("academy_id", academyId)
       .order("school_level", { ascending: true })
       .order("grade_number", { ascending: true })
       .order("name", { ascending: true }),
     supabase
       .from("profiles")
-      .select("id, display_name, username, role, school_level, grade_number, is_director, nickname")
+      .select("id, display_name, username, role, school_level, grade_number, is_director, nickname, withdrawn_at")
       .eq("academy_id", academyId)
       .in("role", ["student", "sub_admin", "admin"]),
     supabase
@@ -959,6 +1111,7 @@ export async function getClassManagementData(
       gradeNumber: room.grade_number,
       gradeLabel: toGradeLabel(room.school_level, room.grade_number),
       displayLabel: formatClassLabel(room.name, room.school_level, room.grade_number),
+      imageUrl: room.image_url ?? null,
       teacherIds: teacherIdsByClass.get(room.id) ?? [],
       teacherNames: teachersByClass.get(room.id) ?? [],
       studentIds,
@@ -988,7 +1141,7 @@ export async function getClassManagementData(
   }
 
   const students = profileList
-    .filter((p) => p.role === "student")
+    .filter((p) => p.role === "student" && !p.withdrawn_at)
     .map((p) => ({
       id: p.id,
       displayName: p.display_name,
@@ -1035,4 +1188,380 @@ export async function getClassManagementData(
   });
 
   return { classes, students, teachers, teacherOverviews };
+}
+
+/** 반 선택용 — class_rooms만 (반 관리 풀데이터 불필요) */
+export async function getAdminClassOptions(
+  adminId: string,
+): Promise<ClassOption[]> {
+  if (
+    !isSupabaseEnabled() ||
+    !isServiceRoleConfigured() ||
+    !isSupabaseUserId(adminId)
+  ) {
+    return [];
+  }
+  const academyId = await getAdminAcademyId(adminId);
+  if (!academyId) return [];
+
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("class_rooms")
+    .select("id, name, school_level, grade_number")
+    .eq("academy_id", academyId)
+    .order("school_level", { ascending: true })
+    .order("grade_number", { ascending: true })
+    .order("name", { ascending: true });
+
+  return ((data ?? []) as ClassRoomRow[]).map((room) => {
+    const gradeLabel = toGradeLabel(room.school_level, room.grade_number);
+    const displayLabel = formatClassLabel(
+      room.name,
+      room.school_level,
+      room.grade_number,
+    );
+    return {
+      id: room.id,
+      displayLabel,
+      gradeLabel,
+      name: room.name,
+    };
+  });
+}
+
+type SlimQuestionCountRow = { user_id: string };
+type SlimDueRow = { user_id: string };
+type SlimReviewRow = { user_id: string };
+
+/**
+ * 학생 설정 목록용 — questions/activity 전 이력을 끌어오지 않고
+ * 등록 수·오늘 할 것·오늘 품·최근 로그인만 집계한다.
+ */
+async function fetchSlimStudentListRows(
+  studentIds: string[],
+  profiles: ProfileRow[],
+  assignments: AssignmentRow[],
+): Promise<AdminStudentRow[]> {
+  if (studentIds.length === 0) return [];
+
+  const supabase = createServiceClient();
+  const profileMap = new Map(profiles.map((p) => [p.id, p]));
+  const assignmentByStudent = new Map(
+    assignments.map((a) => [a.student_id, a.sub_admin_id]),
+  );
+
+  const loginSince = new Date(
+    Date.now() - 90 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const todayStart = startOfTodayKstIso();
+  const todayEndIso = endOfDay(new Date()).toISOString();
+
+  const [
+    { data: questionIdRows },
+    { data: dueRows },
+    { data: reviewRows },
+    { data: loginRows },
+    { data: classStudentsRows },
+    passwordMap,
+  ] = await Promise.all([
+    supabase
+      .from("questions")
+      .select("user_id")
+      .in("user_id", studentIds)
+      .eq("archived", false),
+    supabase
+      .from("questions")
+      .select("user_id")
+      .in("user_id", studentIds)
+      .eq("archived", false)
+      .neq("phase", "completed")
+      .lte("next_review_date", todayEndIso),
+    supabase
+      .from("activity_events")
+      .select("user_id")
+      .in("user_id", studentIds)
+      .eq("event_type", "reviewed")
+      .gte("created_at", todayStart),
+    supabase
+      .from("login_events")
+      .select("user_id, logged_in_at")
+      .in("user_id", studentIds)
+      .gte("logged_in_at", loginSince)
+      .order("logged_in_at", { ascending: false }),
+    supabase
+      .from("class_room_students")
+      .select(
+        "student_id, class_room_id, class_rooms(name, school_level, grade_number)",
+      )
+      .in("student_id", studentIds),
+    getAdminVisiblePasswords(studentIds),
+  ]);
+
+  const registeredCount = new Map<string, number>();
+  for (const row of (questionIdRows ?? []) as SlimQuestionCountRow[]) {
+    registeredCount.set(
+      row.user_id,
+      (registeredCount.get(row.user_id) ?? 0) + 1,
+    );
+  }
+
+  const dueCount = new Map<string, number>();
+  for (const row of (dueRows ?? []) as SlimDueRow[]) {
+    dueCount.set(row.user_id, (dueCount.get(row.user_id) ?? 0) + 1);
+  }
+
+  const reviewedCount = new Map<string, number>();
+  for (const row of (reviewRows ?? []) as SlimReviewRow[]) {
+    reviewedCount.set(
+      row.user_id,
+      (reviewedCount.get(row.user_id) ?? 0) + 1,
+    );
+  }
+
+  const lastLoginMap = new Map<string, string>();
+  const loginByStudent = new Map<string, LoginRow[]>();
+  for (const row of (loginRows ?? []) as LoginRow[]) {
+    if (!lastLoginMap.has(row.user_id)) {
+      lastLoginMap.set(row.user_id, row.logged_in_at);
+    }
+    const arr = loginByStudent.get(row.user_id) ?? [];
+    arr.push(row);
+    loginByStudent.set(row.user_id, arr);
+  }
+
+  const classStudents = (classStudentsRows ?? []) as unknown as ClassStudentRow[];
+  const classRoomIds = Array.from(
+    new Set(classStudents.map((row) => row.class_room_id)),
+  );
+  const classTeachers: ClassTeacherRow[] =
+    classRoomIds.length > 0
+      ? (
+          (
+            await supabase
+              .from("class_room_teachers")
+              .select("class_room_id, teacher_id")
+              .in("class_room_id", classRoomIds)
+          ).data ?? []
+        )
+      : [];
+
+  const missingTeacherIds = Array.from(
+    new Set(
+      classTeachers
+        .map((ct) => ct.teacher_id)
+        .filter((id) => !profileMap.has(id)),
+    ),
+  );
+  if (missingTeacherIds.length > 0) {
+    const { data: teacherProfiles } = await supabase
+      .from("profiles")
+      .select(
+        "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname",
+      )
+      .in("id", missingTeacherIds);
+    for (const row of (teacherProfiles ?? []) as ProfileRow[]) {
+      profileMap.set(row.id, row);
+    }
+  }
+
+  const classByStudent = new Map<string, ClassStudentRow[]>();
+  for (const row of classStudents) {
+    const arr = classByStudent.get(row.student_id) ?? [];
+    arr.push(row);
+    classByStudent.set(row.student_id, arr);
+  }
+
+  const teacherNamesByClass = new Map<string, string[]>();
+  for (const ct of classTeachers) {
+    const teacher = profileMap.get(ct.teacher_id);
+    if (!teacher) continue;
+    const name = formatStaffLabel({
+      displayName: teacher.display_name,
+      nickname: teacher.nickname,
+      role: teacher.role,
+      isDirector: teacher.is_director,
+    });
+    const arr = teacherNamesByClass.get(ct.class_room_id) ?? [];
+    arr.push(name);
+    teacherNamesByClass.set(ct.class_room_id, arr);
+  }
+
+  return studentIds
+    .map((id) => {
+      const profile = profileMap.get(id);
+      if (!profile) return null;
+
+      const subAdminId = assignmentByStudent.get(id) ?? null;
+      const subAdmin = subAdminId ? profileMap.get(subAdminId) : null;
+      const classRows = classByStudent.get(id) ?? [];
+      const classNames = classRows
+        .map((row) => {
+          if (!row.class_rooms?.name) return null;
+          return formatClassLabel(
+            row.class_rooms.name,
+            row.class_rooms.school_level,
+            row.class_rooms.grade_number,
+          );
+        })
+        .filter((name): name is string => Boolean(name));
+      const className = classNames.length > 0 ? classNames.join(", ") : null;
+
+      const teacherNameSet = new Set<string>();
+      for (const classRow of classRows) {
+        for (const name of teacherNamesByClass.get(classRow.class_room_id) ??
+          []) {
+          teacherNameSet.add(name);
+        }
+      }
+      const teacherNames = [...teacherNameSet];
+      if (subAdmin && teacherNames.length === 0) {
+        teacherNames.push(
+          formatStaffLabel({
+            displayName: subAdmin.display_name,
+            nickname: subAdmin.nickname,
+            role: subAdmin.role,
+            isDirector: subAdmin.is_director,
+          }),
+        );
+      }
+
+      const lastLogin = lastLoginMap.get(id) ?? null;
+      return {
+        id,
+        displayName: profile.display_name,
+        username: profile.username ?? "—",
+        phone: profile.phone ?? null,
+        schoolLevel: profile.school_level,
+        gradeNumber: profile.grade_number,
+        gradeLabel: toGradeLabel(profile.school_level, profile.grade_number),
+        className,
+        classNames,
+        teacherNames,
+        subAdminName: subAdmin?.display_name ?? null,
+        subAdminId,
+        lastLoginAt: lastLogin,
+        totalRegistered: registeredCount.get(id) ?? 0,
+        totalReviews: 0,
+        loginStreakDays: calcLoginStreakDays(loginByStudent.get(id) ?? []),
+        inactiveDays: calcInactiveDays(lastLogin),
+        dueToday: dueCount.get(id) ?? 0,
+        reviewedToday: reviewedCount.get(id) ?? 0,
+        passwordPlain: passwordMap.get(id) ?? null,
+      } satisfies AdminStudentRow;
+    })
+    .filter((row): row is AdminStudentRow => Boolean(row))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+}
+
+export async function getAdminStudentList(
+  adminId: string,
+): Promise<AdminStudentRow[]> {
+  if (
+    !isSupabaseEnabled() ||
+    !isServiceRoleConfigured() ||
+    !isSupabaseUserId(adminId)
+  ) {
+    return demoDashboard().students;
+  }
+
+  const academyId = await getAdminAcademyId(adminId);
+  const supabase = createServiceClient();
+
+  let profilesQuery = supabase
+    .from("profiles")
+    .select(
+      "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname, withdrawn_at",
+    )
+    .eq("role", "student");
+  if (academyId) {
+    profilesQuery = profilesQuery.eq("academy_id", academyId);
+  }
+
+  const [{ data: rawProfiles }, { data: assignmentRows }, { data: staffRows }] =
+    await Promise.all([
+      profilesQuery,
+      academyId
+        ? supabase
+            .from("student_assignments")
+            .select("sub_admin_id, student_id")
+            .eq("academy_id", academyId)
+        : supabase.from("student_assignments").select("sub_admin_id, student_id"),
+      academyId
+        ? supabase
+            .from("profiles")
+            .select(
+              "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname",
+            )
+            .eq("academy_id", academyId)
+            .in("role", ["sub_admin", "admin"])
+        : Promise.resolve({ data: [] as ProfileRow[] }),
+    ]);
+
+  const students = ((rawProfiles ?? []) as ProfileRow[]).filter(
+    (p) => !p.withdrawn_at,
+  );
+  const staff = (staffRows ?? []) as ProfileRow[];
+  const profiles = [...students, ...staff];
+  const studentIds = students.map((p) => p.id);
+  const assignments = (assignmentRows ?? []) as AssignmentRow[];
+
+  return fetchSlimStudentListRows(studentIds, profiles, assignments);
+}
+
+export async function getSubAdminStudentList(
+  subAdminId: string,
+): Promise<AdminStudentRow[]> {
+  if (
+    !isSupabaseEnabled() ||
+    !isServiceRoleConfigured() ||
+    !isSupabaseUserId(subAdminId)
+  ) {
+    return demoDashboard().students;
+  }
+
+  const supabase = createServiceClient();
+  const [{ data: assignmentRows }, { data: classTeacherRows }] =
+    await Promise.all([
+      supabase
+        .from("student_assignments")
+        .select("sub_admin_id, student_id")
+        .eq("sub_admin_id", subAdminId),
+      supabase
+        .from("class_room_teachers")
+        .select("class_room_id")
+        .eq("teacher_id", subAdminId),
+    ]);
+
+  const assignments = (assignmentRows ?? []) as AssignmentRow[];
+  const classRoomIds = (classTeacherRows ?? []).map((row) => row.class_room_id);
+
+  let classStudentIds: string[] = [];
+  if (classRoomIds.length > 0) {
+    const { data: classStudentRows } = await supabase
+      .from("class_room_students")
+      .select("student_id")
+      .in("class_room_id", classRoomIds);
+    classStudentIds = (classStudentRows ?? []).map((row) => row.student_id);
+  }
+
+  const studentIds = Array.from(
+    new Set([...assignments.map((a) => a.student_id), ...classStudentIds]),
+  );
+  if (studentIds.length === 0) return [];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select(
+      "id, display_name, username, role, academy_id, phone, school_level, grade_number, is_director, nickname, withdrawn_at",
+    )
+    .in("id", [...studentIds, subAdminId]);
+
+  const profileList = ((profiles ?? []) as ProfileRow[]).filter(
+    (p) => p.role !== "student" || !p.withdrawn_at,
+  );
+  const activeStudentIds = profileList
+    .filter((p) => p.role === "student")
+    .map((p) => p.id);
+
+  return fetchSlimStudentListRows(activeStudentIds, profileList, assignments);
 }

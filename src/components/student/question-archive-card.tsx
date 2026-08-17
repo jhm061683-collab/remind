@@ -9,8 +9,9 @@ import {
 import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuestionImages } from "@/components/student/question-images";
-import { ZoomableQuestionImage } from "@/components/student/zoomable-question-image";
 import { LatexContent } from "@/components/math/latex-content";
+import { MathAnswerView } from "@/components/math/math-answer-view";
+import { MathAwareTextarea } from "@/components/math/math-symbol-panel";
 import { LatexLightbox } from "@/components/math/latex-lightbox";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
@@ -19,7 +20,10 @@ import { deleteQuestion, updateQuestion, type StoredQuestion } from "@/lib/data/
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import { formatDate } from "@/lib/utils/labels";
-import { getQuestionImageUrls } from "@/lib/utils/question-images";
+import {
+  getAnswerImageUrls,
+  getQuestionImageUrls,
+} from "@/lib/utils/question-images";
 import {
   cropExtractedFigures,
   embedProblemFigures,
@@ -74,7 +78,8 @@ export function QuestionArchiveCard({
   const [latexZoomOpen, setLatexZoomOpen] = useState(false);
   const [aiPending, startAi] = useTransition();
 
-  const hasAnswer = Boolean(question.answerText || question.answerImageDataUrl);
+  const answerImageUrls = getAnswerImageUrls(question);
+  const hasAnswer = Boolean(question.answerText || answerImageUrls.length > 0);
   const hasReflection = Boolean(
     question.reflectionMemo ||
       question.wrongReason ||
@@ -305,6 +310,9 @@ export function QuestionArchiveCard({
                   ? "AI가 문제 만드는 중…"
                   : "사진 → 깔끔한 문제로 바꾸기"}
               </button>
+              <p className="pointer-events-none mt-1 text-center text-[10px] font-medium text-white/90">
+                AI 분석 1회 사용
+              </p>
             </div>
           </div>
         )}
@@ -357,7 +365,7 @@ export function QuestionArchiveCard({
               onClick={handleRebuildWithAi}
               className="mt-2 w-full rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface)] py-2 text-xs font-semibold text-[var(--rm-text-muted)] touch-manipulation disabled:opacity-60"
             >
-              {aiPending ? "AI 다시 읽는 중…" : "AI로 문제 다시 만들기"}
+              {aiPending ? "AI 다시 읽는 중…" : "AI로 문제 다시 만들기 (1회)"}
             </button>
           ) : null}
 
@@ -388,21 +396,21 @@ export function QuestionArchiveCard({
               ) : (
                 <div className="mt-3 space-y-3">
                   {question.answerText ? (
-                    <LatexContent
+                    <MathAnswerView
                       content={question.answerText}
                       className="text-base"
                     />
                   ) : null}
-                  {question.answerImageDataUrl ? (
-                    <div className="relative overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)]">
-                      <ZoomableQuestionImage
-                        src={question.answerImageDataUrl}
-                        alt="해설"
-                        width={800}
-                        height={400}
-                        className="max-h-64 w-full object-contain"
-                      />
-                    </div>
+                  {answerImageUrls.length > 0 ? (
+                    <QuestionImages
+                      question={{
+                        imageDataUrl: answerImageUrls[0]!,
+                        extraImageDataUrls: answerImageUrls.slice(1),
+                      }}
+                      alt="해설"
+                      className="overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)]"
+                      imageClassName="max-h-64 w-full object-contain"
+                    />
                   ) : null}
                 </div>
               )}
@@ -563,10 +571,10 @@ export function QuestionArchiveCard({
 
                   {editingLatex ? (
                     <div className="space-y-2 p-3">
-                      <textarea
+                      <MathAwareTextarea
                         rows={8}
                         value={problemLatexDraft}
-                        onChange={(e) => setProblemLatexDraft(e.target.value)}
+                        onChange={setProblemLatexDraft}
                         className="remind-input w-full font-mono text-sm leading-6"
                         placeholder="문제 내용 (수식은 $...$ 로)"
                       />
@@ -598,7 +606,7 @@ export function QuestionArchiveCard({
                       >
                         {aiPending
                           ? "AI가 문제 만드는 중…"
-                          : "사진 → 깔끔한 문제로 바꾸기"}
+                          : "사진 → 깔끔한 문제로 바꾸기 (AI 1회)"}
                       </button>
                     </div>
                   )}
