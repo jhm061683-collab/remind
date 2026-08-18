@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   buildExternalBrowserOpenUrl,
   readBrowserEnvironment,
@@ -26,6 +26,14 @@ export type BeforeInstallPromptEvent = Event & {
 
 /** React 마운트 전 이벤트를 잡아 둔다 */
 let cachedPrompt: BeforeInstallPromptEvent | null = null;
+let cachedEnvironment: BrowserEnvironment | null = null;
+
+const subscribeBrowserEnvironment = () => () => {};
+
+function getBrowserEnvironmentSnapshot(): BrowserEnvironment {
+  cachedEnvironment ??= readBrowserEnvironment();
+  return cachedEnvironment;
+}
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeinstallprompt", (e) => {
@@ -68,8 +76,10 @@ function readInitialUiState(): InstallUiState {
 }
 
 export function usePwaInstall() {
-  const [env] = useState<BrowserEnvironment | null>(() =>
-    typeof window !== "undefined" ? readBrowserEnvironment() : null,
+  const env = useSyncExternalStore<BrowserEnvironment | null>(
+    subscribeBrowserEnvironment,
+    getBrowserEnvironmentSnapshot,
+    () => null,
   );
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     () => cachedPrompt,

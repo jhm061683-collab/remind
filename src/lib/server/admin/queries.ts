@@ -890,8 +890,8 @@ export async function getStudentDetailForStaff(
   if (!staff || !student || student.role !== "student") return null;
   if (student.withdrawn_at) return null;
   if (
-    staff.academy_id &&
-    student.academy_id &&
+    !staff.academy_id ||
+    !student.academy_id ||
     staff.academy_id !== student.academy_id
   ) {
     return null;
@@ -998,8 +998,8 @@ async function staffCanAccessStudent(
   if (!staff || !student || student.role !== "student") return false;
   if (student.withdrawn_at) return false;
   if (
-    staff.academy_id &&
-    student.academy_id &&
+    !staff.academy_id ||
+    !student.academy_id ||
     staff.academy_id !== student.academy_id
   ) {
     return false;

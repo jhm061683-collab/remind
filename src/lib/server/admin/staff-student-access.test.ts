@@ -29,6 +29,25 @@ describe("tenant · 학생 레코드 접근", () => {
     );
   });
 
+  it("학원 ID가 없으면 접근을 거절", () => {
+    assert.equal(
+      canStaffAccessStudentRecord({
+        ...sameAcademy,
+        staffRole: "admin",
+        staffAcademyId: null,
+      }),
+      false,
+    );
+    assert.equal(
+      canStaffAccessStudentRecord({
+        ...sameAcademy,
+        staffRole: "admin",
+        studentAcademyId: null,
+      }),
+      false,
+    );
+  });
+
   it("선생님은 미배정 학생 조회 불가", () => {
     assert.equal(
       canStaffAccessStudentRecord({

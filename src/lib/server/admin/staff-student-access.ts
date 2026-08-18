@@ -12,13 +12,8 @@ export function canStaffAccessStudentRecord(input: {
 }): boolean {
   if (input.studentRole !== "student") return false;
   if (input.studentWithdrawn) return false;
-  if (
-    input.staffAcademyId &&
-    input.studentAcademyId &&
-    input.staffAcademyId !== input.studentAcademyId
-  ) {
-    return false;
-  }
+  if (!input.staffAcademyId || !input.studentAcademyId) return false;
+  if (input.staffAcademyId !== input.studentAcademyId) return false;
   if (input.staffRole === "admin") return true;
   return input.isAssigned;
 }
