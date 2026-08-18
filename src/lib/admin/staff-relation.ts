@@ -1,5 +1,13 @@
 export type StaffAccessReason = "primary" | "co" | "class" | "academy";
 
+export function missingStaffProfileIds(
+  knownIds: Iterable<string>,
+  referencedIds: Iterable<string>,
+): string[] {
+  const known = new Set(knownIds);
+  return [...new Set(referencedIds)].filter((id) => id && !known.has(id));
+}
+
 export function staffAccessLabel(reason: StaffAccessReason): string {
   if (reason === "primary") return "주 담당";
   if (reason === "co") return "공동 담당";

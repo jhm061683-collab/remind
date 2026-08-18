@@ -218,12 +218,14 @@ export function StudentDetailPanel({ detail, canManageAccount }: Props) {
               }).label
             }
           </p>
-          <Link
-            href="/admin/classes"
-            className="mt-2 inline-block text-xs font-semibold text-[var(--rm-nav-active)] hover:underline"
-          >
-            반 설정에서 배정 변경 →
-          </Link>
+          {canManageAccount ? (
+            <Link
+              href="/admin/classes"
+              className="mt-2 inline-flex min-h-[44px] items-center text-xs font-semibold text-[var(--rm-nav-active)] hover:underline"
+            >
+              반 설정에서 배정 변경 →
+            </Link>
+          ) : null}
         </div>
         {canManageAccount ? (
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

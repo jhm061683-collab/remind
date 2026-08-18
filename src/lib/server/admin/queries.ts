@@ -4,6 +4,7 @@ import { toGradeLabel } from "@/lib/admin/grade";
 import { computePromotedGrade } from "@/lib/admin/grade";
 import { formatClassLabel } from "@/lib/admin/class-label";
 import { formatStaffLabel } from "@/lib/admin/staff-label";
+import { missingStaffProfileIds } from "@/lib/admin/staff-relation";
 import type { StoredQuestion } from "@/lib/storage/questions";
 import { createServiceClient, isServiceRoleConfigured } from "@/lib/supabase/service";
 import { isSupabaseEnabled, isSupabaseUserId } from "@/lib/supabase/config";
@@ -467,12 +468,12 @@ async function fetchDashboardForStudentIds(
         ).data ?? []
       : [];
 
-  const missingTeacherIds = Array.from(
-    new Set(
-      classTeachers
-        .map((ct) => ct.teacher_id)
-        .filter((id) => !profileMap.has(id)),
-    ),
+  const missingTeacherIds = missingStaffProfileIds(
+    profileMap.keys(),
+    [
+      ...classTeachers.map((ct) => ct.teacher_id),
+      ...assignments.map((assignment) => assignment.sub_admin_id),
+    ],
   );
   if (missingTeacherIds.length > 0) {
     const { data: teacherProfiles } = await supabase
@@ -1374,12 +1375,12 @@ async function fetchSlimStudentListRows(
         )
       : [];
 
-  const missingTeacherIds = Array.from(
-    new Set(
-      classTeachers
-        .map((ct) => ct.teacher_id)
-        .filter((id) => !profileMap.has(id)),
-    ),
+  const missingTeacherIds = missingStaffProfileIds(
+    profileMap.keys(),
+    [
+      ...classTeachers.map((ct) => ct.teacher_id),
+      ...assignments.map((assignment) => assignment.sub_admin_id),
+    ],
   );
   if (missingTeacherIds.length > 0) {
     const { data: teacherProfiles } = await supabase

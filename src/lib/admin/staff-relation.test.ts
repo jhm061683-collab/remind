@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { describeStaffing, staffAccessLabel } from "./staff-relation.ts";
+import {
+  describeStaffing,
+  missingStaffProfileIds,
+  staffAccessLabel,
+} from "./staff-relation.ts";
 
 describe("담당 표시", () => {
   it("직접 배정이 주 담당이다", () => {
@@ -21,5 +25,13 @@ describe("담당 표시", () => {
   it("접근 이유 문구가 역할별로 다르다", () => {
     assert.equal(staffAccessLabel("primary"), "주 담당");
     assert.equal(staffAccessLabel("academy"), "학원 전체");
+  });
+
+  it("상세 조회도 직접 배정 담당자 프로필을 빠뜨리지 않는다", () => {
+    const missing = missingStaffProfileIds(
+      ["student", "class-teacher"],
+      ["class-teacher", "direct-teacher", "direct-teacher"],
+    );
+    assert.deepEqual(missing, ["direct-teacher"]);
   });
 });
