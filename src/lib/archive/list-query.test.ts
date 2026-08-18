@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseArchivePage, shouldShowArchiveEmpty } from "./list-query.ts";
+import {
+  parseArchiveFilters,
+  parseArchivePage,
+  shouldShowArchiveEmpty,
+} from "./list-query.ts";
 
 describe("보관함 목록 상태", () => {
   it("로딩 중에는 빈 화면을 보여주지 않는다", () => {
@@ -15,5 +19,19 @@ describe("보관함 목록 상태", () => {
     assert.equal(parseArchivePage("-1", 4), 1);
     assert.equal(parseArchivePage("99", 2), 2);
     assert.equal(parseArchivePage("abc", 3), 1);
+  });
+
+  it("검색·과목·기간·다중 분류를 URL에서 복원한다", () => {
+    const filters = parseArchiveFilters(
+      new URLSearchParams(
+        "q=함수&subject=math&from=2026-08-01&to=2026-08-19&reason=계산+실수&reason=개념+혼동&wrongKeyword=부호",
+      ),
+    );
+    assert.equal(filters.q, "함수");
+    assert.equal(filters.subject, "math");
+    assert.deepEqual(filters.reasons, ["계산 실수", "개념 혼동"]);
+    assert.deepEqual(filters.wrongKeywords, ["부호"]);
+    assert.equal(filters.from, "2026-08-01");
+    assert.equal(filters.to, "2026-08-19");
   });
 });

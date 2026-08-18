@@ -16,9 +16,14 @@ import { LatexLightbox } from "@/components/math/latex-lightbox";
 import { KeywordPicker } from "@/components/student/keyword-picker";
 import { WrongReasonFields } from "@/components/student/wrong-reason-fields";
 import { recordKeywordUsage } from "@/lib/data/keyword-library";
-import { deleteQuestion, updateQuestion, type StoredQuestion } from "@/lib/data/questions";
+import {
+  deleteQuestion,
+  updateQuestion,
+  type StoredQuestion,
+} from "@/lib/data/questions";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
+import { categorizeWrongReason } from "@/lib/archive/wrong-reason-category";
 import { formatDate } from "@/lib/utils/labels";
 import {
   getAnswerImageUrls,
@@ -82,10 +87,10 @@ export function QuestionArchiveCard({
   const hasAnswer = Boolean(question.answerText || answerImageUrls.length > 0);
   const hasReflection = Boolean(
     question.reflectionMemo ||
-      question.wrongReason ||
-      (question.wrongKeywords && question.wrongKeywords.length > 0) ||
-      question.wrongReasonDetail ||
-      question.source,
+    question.wrongReason ||
+    (question.wrongKeywords && question.wrongKeywords.length > 0) ||
+    question.wrongReasonDetail ||
+    question.source,
   );
   const displayLatex = question.problemLatex ?? "";
 
@@ -117,7 +122,8 @@ export function QuestionArchiveCard({
         const updated = await updateQuestion(userId, question.id, patch);
         if (updated) onUpdate(updated);
       }
-      if (keywords.length > 0) void recordKeywordUsage(userId, "problem", keywords);
+      if (keywords.length > 0)
+        void recordKeywordUsage(userId, "problem", keywords);
       if (wrongKeywords.length > 0) {
         void recordKeywordUsage(userId, "wrong", wrongKeywords);
       }
@@ -279,19 +285,27 @@ export function QuestionArchiveCard({
           <button
             type="button"
             onClick={() => setLatexZoomOpen(true)}
-            className="relative block max-h-64 w-full overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)] text-left"
+            className="relative block max-h-36 min-h-[72px] w-full overflow-hidden border-b border-[var(--rm-border)] bg-[var(--rm-surface)] text-left"
           >
             <LatexContent
               content={displayLatex}
-              className="px-4 py-3.5 text-[15px]"
+              className="px-4 py-2.5 text-sm"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--rm-surface)] to-transparent" />
-            <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white">
+            <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-xs font-bold text-white">
               <span aria-hidden>🔍</span> 크게 보기
             </span>
           </button>
         ) : (
-          <div className="relative h-48 bg-[var(--rm-accent-muted)] sm:h-56">
+          <button
+            type="button"
+            onClick={() => {
+              setExpanded(true);
+              setShowProblemSection(true);
+            }}
+            className="relative block h-32 w-full bg-[var(--rm-accent-muted)] text-left"
+            aria-label="사진 문제 자세히 보기"
+          >
             <QuestionImages
               question={question}
               alt="문제"
@@ -299,27 +313,27 @@ export function QuestionArchiveCard({
               fill
               imageClassName="object-contain"
             />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-10">
-              <button
-                type="button"
-                disabled={aiPending}
-                onClick={handleRebuildWithAi}
-                className="pointer-events-auto w-full rounded-xl bg-[var(--rm-nav-active)] px-3 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-60"
-              >
-                {aiPending
-                  ? "AI가 문제 만드는 중…"
-                  : "사진 → 깔끔한 문제로 바꾸기"}
-              </button>
-              <p className="pointer-events-none mt-1 text-center text-[10px] font-medium text-white/90">
-                AI 분석 1회 사용
-              </p>
-            </div>
-          </div>
+            <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-xs font-bold text-white">
+              사진 문제 · 자세히
+            </span>
+          </button>
         )}
 
         <div className="p-3.5 text-base">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-semibold text-[var(--rm-text)]">{subjectName}</p>
+            <p className="min-w-0 truncate font-semibold text-[var(--rm-text)]">
+              {subjectName}
+              {question.source ? (
+                <span className="font-normal text-[var(--rm-text-muted)]">
+                  {" "}
+                  · {question.source}
+                </span>
+              ) : null}
+              <span className="font-normal text-[var(--rm-text-faint)]">
+                {" "}
+                · {formatDate(question.createdAt)}
+              </span>
+            </p>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 archived
@@ -330,49 +344,16 @@ export function QuestionArchiveCard({
               {archived ? UI_LABELS.statusArchived : UI_LABELS.statusKeeping}
             </span>
           </div>
-          {question.source ? (
-            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-              출처: {question.source}
-            </p>
-          ) : null}
           {question.wrongReason ? (
             <span className="mt-2 inline-block rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-              {question.wrongReason}
+              {categorizeWrongReason(question.wrongReason)}
             </span>
-          ) : null}
-          {question.keywords.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {question.keywords.slice(0, 4).map((tag) => (
-                <span key={tag} className="remind-tag">
-                  #{tag}
-                </span>
-              ))}
-              {question.keywords.length > 4 ? (
-                <span className="text-[11px] text-[var(--rm-text-faint)]">
-                  +{question.keywords.length - 4}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-          <p className="mt-1 text-[var(--rm-text-muted)]">
-            등록: {formatDate(question.createdAt)}
-          </p>
-
-          {displayLatex ? (
-            <button
-              type="button"
-              disabled={aiPending}
-              onClick={handleRebuildWithAi}
-              className="mt-2 w-full rounded-xl border border-dashed border-[var(--rm-border)] bg-[var(--rm-surface)] py-2 text-xs font-semibold text-[var(--rm-text-muted)] touch-manipulation disabled:opacity-60"
-            >
-              {aiPending ? "AI 다시 읽는 중…" : "AI로 문제 다시 만들기 (1회)"}
-            </button>
           ) : null}
 
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-3 w-full rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] py-2.5 text-xs font-bold text-[var(--rm-text-on-info)] touch-manipulation"
+            className="mt-3 min-h-[44px] w-full rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] py-2.5 text-xs font-bold text-[var(--rm-text-on-info)] touch-manipulation"
           >
             {expanded ? "접기 ↑" : "자세히 보기 · 정답·오답 분석 ↓"}
           </button>
@@ -388,7 +369,9 @@ export function QuestionArchiveCard({
 
             {/* 1) 정답·해설 — 가장 먼저 */}
             <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
-              <p className="text-sm font-bold text-[var(--rm-text)]">정답 · 해설</p>
+              <p className="text-sm font-bold text-[var(--rm-text)]">
+                정답 · 해설
+              </p>
               {!hasAnswer ? (
                 <p className="mt-2 text-sm text-[var(--rm-text-muted)]">
                   등록할 때 넣은 해설이 없어요.

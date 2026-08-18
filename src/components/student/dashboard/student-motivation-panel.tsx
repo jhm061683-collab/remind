@@ -19,7 +19,30 @@ type Props = {
 
 type BoardPeriod = "this" | "prev";
 
-const LIST_PREVIEW = 10;
+const LIST_PREVIEW = 6;
+
+function previewStudents(
+  students: HallOfFamePerson[],
+  currentStudentId?: string,
+): HallOfFamePerson[] {
+  if (students.length <= LIST_PREVIEW) return students;
+  const currentIndex = currentStudentId
+    ? students.findIndex((student) => student.studentId === currentStudentId)
+    : -1;
+  if (currentIndex < 0) return students.slice(0, LIST_PREVIEW);
+  const nearby = students.slice(
+    Math.max(3, currentIndex - 1),
+    Math.min(students.length, currentIndex + 2),
+  );
+  return [...students.slice(0, 3), ...nearby]
+    .filter(
+      (student, index, list) =>
+        list.findIndex((item) => item.studentId === student.studentId) ===
+        index,
+    )
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, LIST_PREVIEW);
+}
 
 function RankPill({
   label,
@@ -35,15 +58,17 @@ function RankPill({
   if (rank == null || total == null || total <= 0) {
     return (
       <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-2.5 py-2">
-        <p className="text-[10px] font-semibold text-[var(--rm-text-muted)]">
+        <p className="text-xs font-semibold text-[var(--rm-text-muted)]">
           {label}
         </p>
         {sub ? (
-          <p className="mt-0.5 truncate text-[9px] text-[var(--rm-text-faint)]">
+          <p className="mt-0.5 truncate text-xs text-[var(--rm-text-faint)]">
             {sub}
           </p>
         ) : null}
-        <p className="mt-0.5 text-sm font-bold text-[var(--rm-text-faint)]">—</p>
+        <p className="mt-0.5 text-sm font-bold text-[var(--rm-text-faint)]">
+          —
+        </p>
       </div>
     );
   }
@@ -56,11 +81,11 @@ function RankPill({
           : "border-[var(--rm-border)] bg-[var(--rm-bg-elevated)]"
       }`}
     >
-      <p className="text-[10px] font-semibold text-[var(--rm-text-muted)]">
+      <p className="text-xs font-semibold text-[var(--rm-text-muted)]">
         {label}
       </p>
       {sub ? (
-        <p className="mt-0.5 truncate text-[9px] text-[var(--rm-text-faint)]">
+        <p className="mt-0.5 truncate text-xs text-[var(--rm-text-faint)]">
           {sub}
         </p>
       ) : null}
@@ -126,7 +151,7 @@ function ClassTabs({
           key={slice.classId}
           type="button"
           onClick={() => onSelect(slice.classId)}
-          className={`rounded-lg px-2 py-1 text-[11px] font-bold touch-manipulation ${
+          className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold touch-manipulation ${
             selectedId === slice.classId
               ? "bg-[var(--rm-brand)] text-white"
               : "bg-[var(--rm-bg-elevated)] text-[var(--rm-text-muted)]"
@@ -206,7 +231,10 @@ export function StudentMotivationPanel({
   const boardClasses = activeBoard?.classes ?? [];
   const visibleStudents = showAll
     ? boardStudents
-    : boardStudents.slice(0, LIST_PREVIEW);
+    : previewStudents(
+        boardStudents,
+        period === "this" ? rank?.studentId : undefined,
+      );
   const canExpand = boardStudents.length > LIST_PREVIEW;
   const hasBoard = Boolean(monthlyBoard || hallOfFame);
 
@@ -231,7 +259,7 @@ export function StudentMotivationPanel({
                   </span>
                 ) : null}
               </p>
-              <p className="mt-0.5 text-[11px] leading-snug text-[var(--rm-text-muted)]">
+              <p className="mt-0.5 text-xs leading-snug text-[var(--rm-text-muted)]">
                 {nudgeCopy(rank)}
               </p>
             </div>
@@ -243,7 +271,7 @@ export function StudentMotivationPanel({
             onSelect={setPickedClassId}
           />
 
-          <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
+          <p className="mb-1.5 text-xs font-bold tracking-wide text-[var(--rm-text-muted)]">
             내 순위
           </p>
           <div className="grid grid-cols-3 gap-1.5">
@@ -268,14 +296,14 @@ export function StudentMotivationPanel({
               sub={personalTeacher}
             />
           </div>
-          <p className="mt-1.5 text-[10px] leading-snug text-[var(--rm-text-faint)]">
+          <p className="mt-1.5 text-xs leading-snug text-[var(--rm-text-faint)]">
             학습 점수: 이번 달 다시 풀기·출석으로 쌓여요
             {typeof rank.studyScore === "number"
               ? ` · 지금 ${rank.studyScore}점`
               : ""}
           </p>
 
-          <p className="mb-1.5 mt-3 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
+          <p className="mb-1.5 mt-3 text-xs font-bold tracking-wide text-[var(--rm-text-muted)]">
             {classRanks.length === 1
               ? `${classRanks[0]!.displayLabel || classRanks[0]!.className} 반 순위`
               : activeSlice
@@ -298,8 +326,14 @@ export function StudentMotivationPanel({
       ) : null}
 
       {hasBoard ? (
-        <div className="rm-glass rm-glass--compact">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+        <details className="rm-glass rm-glass--compact">
+          <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-2 text-sm font-bold text-[var(--rm-text)]">
+            전체 랭킹과 반 랭킹
+            <span className="text-xs text-[var(--rm-nav-active)]">
+              펼쳐 보기
+            </span>
+          </summary>
+          <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="rm-label">
                 {period === "this" ? "이번 달 전체 랭킹" : "지난달 TOP 100"}
@@ -317,7 +351,7 @@ export function StudentMotivationPanel({
                 <button
                   type="button"
                   onClick={togglePeriod}
-                  className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-2.5 py-1 text-[11px] font-bold text-[var(--rm-nav-active)] touch-manipulation"
+                  className="min-h-[44px] rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-xs font-bold text-[var(--rm-nav-active)] touch-manipulation"
                 >
                   {period === "this" ? "지난달 TOP100" : "이번 달 랭킹"}
                 </button>
@@ -326,7 +360,7 @@ export function StudentMotivationPanel({
                 <button
                   type="button"
                   onClick={() => setShowAll((v) => !v)}
-                  className="rounded-lg border border-[var(--rm-border)] px-2.5 py-1 text-[11px] font-bold text-[var(--rm-nav-active)] touch-manipulation"
+                  className="min-h-[44px] rounded-lg border border-[var(--rm-border)] px-3 py-2 text-xs font-bold text-[var(--rm-nav-active)] touch-manipulation"
                 >
                   {showAll ? "접기" : "더 보기"}
                 </button>
@@ -367,55 +401,59 @@ export function StudentMotivationPanel({
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className={`min-w-0 ${boardTab === "class" ? "hidden sm:block" : ""}`}>
-                <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
-                  개인
-                </p>
-                {boardStudents.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">
-                    {period === "this"
-                      ? "아직 이번 달 점수가 없어요. 오늘 첫 복습을 완료하고 랭킹에 올라가 보세요."
-                      : "지난달 기록이 아직 없어요"}
+                <div
+                  className={`min-w-0 ${boardTab === "class" ? "hidden sm:block" : ""}`}
+                >
+                  <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
+                    개인
                   </p>
-                ) : (
-                  <ul className="space-y-1.5 pr-0.5">
-                    {visibleStudents.map((person) => (
-                      <MonthlyPersonRow
-                        key={`${period}-${person.studentId}`}
-                        person={person}
-                        highlight={
-                          period === "this" &&
-                          person.studentId === rank?.studentId
-                        }
-                      />
-                    ))}
-                  </ul>
-                )}
-              </div>
+                  {boardStudents.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">
+                      {period === "this"
+                        ? "아직 이번 달 점수가 없어요. 오늘 첫 복습을 완료하고 랭킹에 올라가 보세요."
+                        : "지난달 기록이 아직 없어요"}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5 pr-0.5">
+                      {visibleStudents.map((person) => (
+                        <MonthlyPersonRow
+                          key={`${period}-${person.studentId}`}
+                          person={person}
+                          highlight={
+                            period === "this" &&
+                            person.studentId === rank?.studentId
+                          }
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
 
-              <div className={`min-w-0 ${boardTab === "person" ? "hidden sm:block" : ""}`}>
-                <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
-                  반
-                </p>
-                {boardClasses.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">
-                    반 랭킹을 기다리는 중
+                <div
+                  className={`min-w-0 ${boardTab === "person" ? "hidden sm:block" : ""}`}
+                >
+                  <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
+                    반
                   </p>
-                ) : (
-                  <ul className="space-y-1.5 pr-0.5">
-                    {boardClasses.map((room) => (
-                      <MonthlyClassRow
-                        key={`${period}-${room.classId}`}
-                        room={room}
-                      />
-                    ))}
-                  </ul>
-                )}
+                  {boardClasses.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">
+                      반 랭킹을 기다리는 중
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5 pr-0.5">
+                      {boardClasses.map((room) => (
+                        <MonthlyClassRow
+                          key={`${period}-${room.classId}`}
+                          room={room}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-            </div>
             </div>
           )}
-        </div>
+        </details>
       ) : null}
     </section>
   );
@@ -437,8 +475,7 @@ function MonthlyPersonRow({
   highlight?: boolean;
 }) {
   const teachers = teacherLine(person.teacherNames);
-  const classBit =
-    person.classDisplayLabel ?? person.className ?? "반 미배정";
+  const classBit = person.classDisplayLabel ?? person.className ?? "반 미배정";
   return (
     <li
       className={`grid min-h-[3.5rem] grid-cols-[1.75rem_2.75rem_minmax(0,1fr)] items-center gap-2.5 overflow-hidden rounded-xl border px-2.5 py-1.5 ${rowTone(person.rank, highlight)}`}

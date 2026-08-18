@@ -1,6 +1,33 @@
 export type ArchiveLoadState = "loading" | "error" | "ready";
 
-export function parseArchivePage(raw: string | null, pageCount: number): number {
+export type ArchiveListFilters = {
+  q: string;
+  subject: string;
+  from: string;
+  to: string;
+  reasons: string[];
+  wrongKeywords: string[];
+};
+
+export function parseArchiveFilters(
+  searchParams:
+    | URLSearchParams
+    | { get(name: string): string | null; getAll(name: string): string[] },
+): ArchiveListFilters {
+  return {
+    q: searchParams.get("q") ?? "",
+    subject: searchParams.get("subject") ?? "all",
+    from: searchParams.get("from") ?? "",
+    to: searchParams.get("to") ?? "",
+    reasons: searchParams.getAll("reason").filter(Boolean),
+    wrongKeywords: searchParams.getAll("wrongKeyword").filter(Boolean),
+  };
+}
+
+export function parseArchivePage(
+  raw: string | null,
+  pageCount: number,
+): number {
   const parsed = Number.parseInt(raw ?? "1", 10);
   const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   return Math.min(Math.max(pageCount, 1), Math.max(1, page));

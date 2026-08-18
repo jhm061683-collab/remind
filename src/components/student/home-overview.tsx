@@ -13,10 +13,7 @@ import { useSubjects } from "@/components/student/subject-provider";
 import type { UserStats } from "@/lib/data/user-stats";
 import { getActivityEvents } from "@/lib/data/activity";
 import { IconArchive, IconChevronRight } from "@/components/ui/icons";
-import {
-  getHomeQuestionMeta,
-  type StoredQuestion,
-} from "@/lib/data/questions";
+import { getHomeQuestionMeta, type StoredQuestion } from "@/lib/data/questions";
 import type {
   AcademyHallOfFame,
   AcademyMonthlyBoard,
@@ -124,6 +121,20 @@ export function HomeOverview({
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!avatarPickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAvatarPickerOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [avatarPickerOpen]);
+
   const stats = useMemo(() => {
     let active = 0;
     let archived = 0;
@@ -225,7 +236,7 @@ export function HomeOverview({
         </div>
         <Link
           href="/records"
-          className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-[var(--rm-nav-active)] touch-manipulation"
+          className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-xs font-semibold text-[var(--rm-nav-active)] touch-manipulation"
         >
           내 기록
           {!loading && (userStats?.studyStreak ?? 0) > 0
@@ -236,26 +247,39 @@ export function HomeOverview({
       </header>
 
       {avatarPickerOpen ? (
-        <div className="rm-glass rm-glass--compact">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-[var(--rm-text)]">캐릭터 고르기</p>
-            <button
-              type="button"
-              onClick={() => setAvatarPickerOpen(false)}
-              className="text-[11px] font-bold text-[var(--rm-nav-active)]"
-            >
-              닫기
-            </button>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="avatar-picker-title"
+          className="fixed inset-0 z-[100] overflow-y-auto bg-black/45 p-3 sm:p-6"
+        >
+          <div className="mx-auto max-w-3xl rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-2xl">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p
+                id="avatar-picker-title"
+                className="text-lg font-bold text-[var(--rm-text)]"
+              >
+                내 캐릭터 꾸미기
+              </p>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setAvatarPickerOpen(false)}
+                className="min-h-[44px] rounded-xl px-3 text-sm font-bold text-[var(--rm-nav-active)]"
+              >
+                닫기
+              </button>
+            </div>
+            <StudentAvatarPicker
+              initialValue={avatarValue}
+              seed={userId}
+              gridOnly
+              onSaved={(next) => {
+                setPickedAvatar(next);
+                setAvatarPickerOpen(false);
+              }}
+            />
           </div>
-          <StudentAvatarPicker
-            initialValue={avatarValue}
-            seed={userId}
-            gridOnly
-            onSaved={(next) => {
-              setPickedAvatar(next);
-              setAvatarPickerOpen(false);
-            }}
-          />
         </div>
       ) : null}
 
@@ -273,51 +297,6 @@ export function HomeOverview({
         />
       )}
 
-      <div className="rm-stat-strip">
-        <QuickStat label="전체" value={loading ? "—" : stats.total} />
-        <QuickStat
-          label={UI_LABELS.activeStatLabel}
-          value={loading ? "—" : stats.active}
-        />
-        <QuickStat
-          label="정복률"
-          value={loading ? "—" : `${masteryPct}%`}
-          accent
-        />
-        <QuickStat label="예정" value={loading ? "—" : (upcomingCount ?? 0)} />
-      </div>
-
-      <div className="grid gap-[var(--rm-stack)] md:grid-cols-2 md:grid-rows-[auto_minmax(0,1fr)] md:items-stretch">
-        <div className="md:col-start-1 md:row-start-1">
-          <StudyPulseCard
-            streak={userStats?.studyStreak ?? 0}
-            longestStreak={userStats?.longestStreak ?? 0}
-            weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
-            weekly={userStats?.weekly ?? null}
-            totalReviews={userStats?.totalReviews ?? 0}
-            loading={loading}
-          />
-        </div>
-        <div className="md:col-start-2 md:row-span-2 md:min-h-0 md:h-full">
-          <MissionList
-            todayCount={todayCount ?? 0}
-            missions={todayBySubject}
-            loading={loading}
-            fillHeight
-          />
-        </div>
-        <div className="md:col-start-1 md:row-start-2 md:min-h-0 md:h-full">
-          <HomeSideBoost
-            todayCount={todayCount ?? 0}
-            upcomingCount={upcomingCount ?? 0}
-            conqueredCount={stats.archived}
-            rank={rankWithAvatar}
-            loading={loading}
-            fillHeight
-          />
-        </div>
-      </div>
-
       <div data-tour-id="student-ranking">
         <StudentMotivationPanel
           rank={rankWithAvatar}
@@ -325,6 +304,62 @@ export function HomeOverview({
           hallOfFame={hallOfFame}
         />
       </div>
+
+      <details className="rm-glass rm-glass--compact">
+        <summary className="flex min-h-[44px] cursor-pointer items-center justify-between text-sm font-bold text-[var(--rm-text)]">
+          이번 주 성장과 학습 계획
+          <span className="text-xs text-[var(--rm-nav-active)]">펼쳐 보기</span>
+        </summary>
+        <div className="mt-3 space-y-[var(--rm-stack)]">
+          <div className="rm-stat-strip">
+            <QuickStat label="전체" value={loading ? "—" : stats.total} />
+            <QuickStat
+              label={UI_LABELS.activeStatLabel}
+              value={loading ? "—" : stats.active}
+            />
+            <QuickStat
+              label="정복률"
+              value={loading ? "—" : `${masteryPct}%`}
+              accent
+            />
+            <QuickStat
+              label="예정"
+              value={loading ? "—" : (upcomingCount ?? 0)}
+            />
+          </div>
+
+          <div className="grid gap-[var(--rm-stack)] md:grid-cols-2 md:grid-rows-[auto_minmax(0,1fr)] md:items-stretch">
+            <div className="md:col-start-1 md:row-start-1">
+              <StudyPulseCard
+                streak={userStats?.studyStreak ?? 0}
+                longestStreak={userStats?.longestStreak ?? 0}
+                weeklyDone={Math.min(7, userStats?.studyStreak ?? 0)}
+                weekly={userStats?.weekly ?? null}
+                totalReviews={userStats?.totalReviews ?? 0}
+                loading={loading}
+              />
+            </div>
+            <div className="md:col-start-2 md:row-span-2 md:min-h-0 md:h-full">
+              <MissionList
+                todayCount={todayCount ?? 0}
+                missions={todayBySubject}
+                loading={loading}
+                fillHeight
+              />
+            </div>
+            <div className="md:col-start-1 md:row-start-2 md:min-h-0 md:h-full">
+              <HomeSideBoost
+                todayCount={todayCount ?? 0}
+                upcomingCount={upcomingCount ?? 0}
+                conqueredCount={stats.archived}
+                rank={rankWithAvatar}
+                loading={loading}
+                fillHeight
+              />
+            </div>
+          </div>
+        </div>
+      </details>
 
       <ForgettingCurveFeed
         items={todayFeed}
@@ -334,22 +369,32 @@ export function HomeOverview({
       />
 
       {!loading && recentQuestions.length > 0 ? (
-        <section className="rm-glass rm-glass--compact">
-          <div className="flex items-center justify-between gap-2">
-            <p className="rm-label">최근 등록한 문제</p>
+        <details className="rm-glass rm-glass--compact">
+          <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-2">
+            <span className="rm-label">
+              최근 등록한 문제 {recentQuestions.length}개
+            </span>
+            <span className="text-xs font-semibold text-[var(--rm-nav-active)]">
+              펼쳐 보기
+            </span>
+          </summary>
+          <div className="flex justify-end">
             <Link
               href="/archive"
-              className="text-[11px] font-semibold text-[var(--rm-nav-active)]"
+              className="min-h-[44px] px-2 py-3 text-xs font-semibold text-[var(--rm-nav-active)]"
             >
-              전체 보기
-              <IconChevronRight size={12} className="ml-0.5 inline align-[-1px]" />
+              보관함 전체 보기
+              <IconChevronRight
+                size={12}
+                className="ml-0.5 inline align-[-1px]"
+              />
             </Link>
           </div>
-          <ul className="mt-2 divide-y divide-[var(--rm-border)] overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)]">
+          <ul className="divide-y divide-[var(--rm-border)] overflow-hidden rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)]">
             {recentQuestions.map((q) => (
               <li
                 key={q.id}
-                className="flex items-center justify-between gap-3 px-3 py-2"
+                className="flex min-h-[44px] items-center justify-between gap-3 px-3 py-2"
               >
                 <span className="min-w-0 truncate text-sm text-[var(--rm-text)]">
                   <span className="font-semibold">{q.subjectName}</span>
@@ -359,7 +404,7 @@ export function HomeOverview({
                     </span>
                   ) : null}
                 </span>
-                <span className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--rm-text-muted)]">
+                <span className="flex shrink-0 items-center gap-2 text-xs text-[var(--rm-text-muted)]">
                   {q.done ? (
                     <span className="font-semibold text-[var(--rm-success)]">
                       보관 완료
@@ -370,7 +415,7 @@ export function HomeOverview({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
 
       <div className="rm-inline-links">

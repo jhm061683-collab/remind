@@ -21,9 +21,20 @@ type Props = {
 type SubjectFilter = "all" | string;
 type StatusFilter = "all" | "active" | "archived";
 
-import { EmptyState, ErrorState, FilterEmptyState, ListSkeleton } from "@/components/ui/status-state";
-import { categorizeWrongReason, SYSTEM_WRONG_REASON_CATEGORIES } from "@/lib/archive/wrong-reason-category";
-import { parseArchivePage } from "@/lib/archive/list-query";
+import {
+  EmptyState,
+  ErrorState,
+  FilterEmptyState,
+  ListSkeleton,
+} from "@/components/ui/status-state";
+import {
+  categorizeWrongReason,
+  SYSTEM_WRONG_REASON_CATEGORIES,
+} from "@/lib/archive/wrong-reason-category";
+import {
+  parseArchiveFilters,
+  parseArchivePage,
+} from "@/lib/archive/list-query";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
@@ -84,24 +95,40 @@ export function ArchiveList({ userId }: Props) {
   const searchParams = useSearchParams();
   const { subjects, getSubjectName } = useSubjects();
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
-  const [problemQuery, setProblemQuery] = useState("");
-  const [selectedWrongReasons, setSelectedWrongReasons] = useState<string[]>(
-    [],
-  );
-  const [selectedWrongKeywords, setSelectedWrongKeywords] = useState<string[]>(
-    [],
-  );
-  const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>("all");
+  const archiveFilters = parseArchiveFilters(searchParams);
+  const problemQuery = archiveFilters.q;
+  const selectedWrongReasons = archiveFilters.reasons;
+  const selectedWrongKeywords = archiveFilters.wrongKeywords;
+  const subjectFilter = archiveFilters.subject as SubjectFilter;
   const statusFilter = parseStatusFilter(searchParams.get("status"));
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const dateFrom = archiveFilters.from;
+  const dateTo = archiveFilters.to;
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [loadState, setLoadState] = useState<"loading" | "error" | "ready">(
     "loading",
   );
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() =>
+    ["q", "subject", "from", "to", "reason", "wrongKeyword"].some((key) =>
+      searchParams.has(key),
+    ),
+  );
+
+  function replaceFilter(
+    key: "q" | "subject" | "from" | "to" | "reason" | "wrongKeyword",
+    value: string | string[],
+  ) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (item && item !== "all") params.append(key, item);
+    }
+    params.delete("page");
+    const qs = params.toString();
+    router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
+  }
 
   const loadQuestions = () => {
     setLoadState((prev) => (prev === "ready" ? "ready" : "loading"));
@@ -113,7 +140,9 @@ export function ArchiveList({ userId }: Props) {
         setLoadError(null);
       })
       .catch(() => {
-        setLoadError("문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
+        setLoadError(
+          "문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+        );
         setLoadState("error");
       });
   };
@@ -129,7 +158,9 @@ export function ArchiveList({ userId }: Props) {
       })
       .catch(() => {
         if (cancelled) return;
-        setLoadError("문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
+        setLoadError(
+          "문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+        );
         setLoadState("error");
       });
     return () => {
@@ -158,7 +189,8 @@ export function ArchiveList({ userId }: Props) {
   /** 필터에는 학생 원문이 아니라 중립 분류만 올린다. */
   const wrongReasonOptions = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const category of SYSTEM_WRONG_REASON_CATEGORIES) counts.set(category, 0);
+    for (const category of SYSTEM_WRONG_REASON_CATEGORIES)
+      counts.set(category, 0);
     for (const q of questions) {
       const category = categorizeWrongReason(q.wrongReason);
       counts.set(category, (counts.get(category) ?? 0) + 1);
@@ -198,7 +230,10 @@ export function ArchiveList({ userId }: Props) {
   }, [selectedWrongReasons, wrongKeywordGroups]);
 
   const activeWrongKeywords = useMemo(
-    () => selectedWrongKeywords.filter((keyword) => allowedWrongKeywords.has(keyword)),
+    () =>
+      selectedWrongKeywords.filter((keyword) =>
+        allowedWrongKeywords.has(keyword),
+      ),
     [selectedWrongKeywords, allowedWrongKeywords],
   );
 
@@ -231,7 +266,9 @@ export function ArchiveList({ userId }: Props) {
       }
 
       if (activeWrongKeywords.length > 0) {
-        const keywords = getQuestionWrongKeywords(q).map((k) => k.toLowerCase());
+        const keywords = getQuestionWrongKeywords(q).map((k) =>
+          k.toLowerCase(),
+        );
         const hit = activeWrongKeywords.some((selected) =>
           keywords.includes(selected.toLowerCase()),
         );
@@ -273,12 +310,20 @@ export function ArchiveList({ userId }: Props) {
     activeWrongKeywords.length > 0;
 
   function clearDetailFilters() {
-    setProblemQuery("");
-    setSelectedWrongReasons([]);
-    setSelectedWrongKeywords([]);
-    setSubjectFilter("all");
-    setDateFrom("");
-    setDateTo("");
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of [
+      "q",
+      "subject",
+      "from",
+      "to",
+      "reason",
+      "wrongKeyword",
+      "page",
+    ]) {
+      params.delete(key);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
   }
 
   const bulkDeleteDescription = useMemo(() => {
@@ -341,7 +386,7 @@ export function ArchiveList({ userId }: Props) {
               key={tab.id}
               type="button"
               onClick={() => changeStatusFilter(tab.id)}
-              className={`rounded-xl px-2 py-2.5 text-center text-xs font-semibold transition touch-manipulation sm:text-sm ${
+              className={`min-h-[44px] rounded-xl px-2 py-2.5 text-center text-xs font-semibold transition touch-manipulation sm:text-sm ${
                 active
                   ? "bg-[var(--rm-surface)] text-[var(--rm-text-on-info)] shadow-sm"
                   : "text-[var(--rm-text-muted)] hover:text-[var(--rm-text)]"
@@ -362,8 +407,8 @@ export function ArchiveList({ userId }: Props) {
         </p>
       ) : statusFilter === "active" ? (
         <p className="mb-4 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-4 py-3 text-sm text-[var(--rm-text-muted)]">
-          아직 다시 푸는 중인 문제예요. 오늘 할 일은 「다시 풀기」 탭에서도 볼 수
-          있어요.
+          아직 다시 푸는 중인 문제예요. 오늘 할 일은 「다시 풀기」 탭에서도 볼
+          수 있어요.
         </p>
       ) : null}
 
@@ -371,7 +416,7 @@ export function ArchiveList({ userId }: Props) {
         <button
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
-          className="flex w-full items-center justify-between rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm font-semibold text-[var(--rm-text)]"
+          className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2.5 text-sm font-semibold text-[var(--rm-text)]"
         >
           <span>
             검색 · 필터
@@ -388,117 +433,125 @@ export function ArchiveList({ userId }: Props) {
       </div>
 
       {filtersOpen ? (
-      <div className="remind-filter-panel space-y-4">
-        <div>
-          <p className="remind-section-title">검색 · 상세 필터</p>
-          <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
-            과목·출처·키워드·틀린 이유로 찾을 수 있어요.
-          </p>
-        </div>
-
-        <label className="block">
-          <span className="remind-field-label">검색 (과목·출처·키워드)</span>
-          <input
-            type="search"
-            value={problemQuery}
-            onChange={(event) => setProblemQuery(event.target.value)}
-            placeholder="예: 이차함수, 모평22번"
-            className="remind-input mt-1"
-          />
-        </label>
-
-        <div className="space-y-2">
-          <p className="remind-field-label">틀린 이유 (시스템 분류)</p>
-          {wrongReasonOptions.length === 0 ? (
-            <p className="text-xs text-[var(--rm-text-faint)]">
-              아직 틀린 이유를 적은 문제가 없어요.
+        <div className="remind-filter-panel space-y-4">
+          <div>
+            <p className="remind-section-title">검색 · 상세 필터</p>
+            <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+              과목·출처·키워드·틀린 이유로 찾을 수 있어요.
             </p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {wrongReasonOptions.map((option) => {
-                const active = selectedWrongReasons.includes(option.label);
-                return (
-                  <button
-                    key={option.label}
-                    type="button"
-                    onClick={() =>
-                      setSelectedWrongReasons((prev) =>
-                        toggleInList(prev, option.label),
-                      )
-                    }
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                      active
-                        ? "border-rose-300 bg-rose-50 text-rose-800"
-                        : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
-                    }`}
-                  >
-                    {option.label}
-                    <span className="ml-1 text-[10px] opacity-60">
-                      {option.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {selectedWrongReasons.length > 0 ? (
-          <p className="text-xs text-[var(--rm-text-muted)]">
-            학생이 직접 적은 오답 메모는 문제 상세에서만 보여 줍니다. 필터에는
-            올리지 않습니다.
-          </p>
-        ) : null}
-
-        <label className="block">
-          <span className="remind-field-label">과목</span>
-          <select
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value as SubjectFilter)}
-            className="remind-input mt-1"
-          >
-            <option value="all">전체 과목</option>
-            {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
-                {subject.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="remind-field-label">시작일 (선택)</span>
+            <span className="remind-field-label">검색 (과목·출처·키워드)</span>
             <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              type="search"
+              value={problemQuery}
+              onChange={(event) => replaceFilter("q", event.target.value)}
+              placeholder="예: 이차함수, 모평22번"
               className="remind-input mt-1"
             />
           </label>
-          <label className="block">
-            <span className="remind-field-label">종료일 (선택)</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="remind-input mt-1"
-            />
-          </label>
-        </div>
 
-        {hasDetailFilters ? (
-          <button type="button" onClick={clearDetailFilters} className="remind-link-btn">
-            검색 · 필터 초기화
-          </button>
-        ) : null}
-      </div>
+          <div className="space-y-2">
+            <p className="remind-field-label">틀린 이유 (시스템 분류)</p>
+            {wrongReasonOptions.length === 0 ? (
+              <p className="text-xs text-[var(--rm-text-faint)]">
+                아직 틀린 이유를 적은 문제가 없어요.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {wrongReasonOptions.map((option) => {
+                  const active = selectedWrongReasons.includes(option.label);
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => {
+                        const next = toggleInList(
+                          selectedWrongReasons,
+                          option.label,
+                        );
+                        replaceFilter("reason", next);
+                      }}
+                      className={`min-h-[44px] rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                        active
+                          ? "border-rose-300 bg-rose-50 text-rose-800"
+                          : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
+                      }`}
+                    >
+                      {option.label}
+                      <span className="ml-1 text-[10px] opacity-60">
+                        {option.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selectedWrongReasons.length > 0 ? (
+            <p className="text-xs text-[var(--rm-text-muted)]">
+              학생이 직접 적은 오답 메모는 문제 상세에서만 보여 줍니다. 필터에는
+              올리지 않습니다.
+            </p>
+          ) : null}
+
+          <label className="block">
+            <span className="remind-field-label">과목</span>
+            <select
+              value={subjectFilter}
+              onChange={(e) => replaceFilter("subject", e.target.value)}
+              className="remind-input mt-1"
+            >
+              <option value="all">전체 과목</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="remind-field-label">시작일 (선택)</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => replaceFilter("from", e.target.value)}
+                className="remind-input mt-1"
+              />
+            </label>
+            <label className="block">
+              <span className="remind-field-label">종료일 (선택)</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => replaceFilter("to", e.target.value)}
+                className="remind-input mt-1"
+              />
+            </label>
+          </div>
+
+          {hasDetailFilters ? (
+            <button
+              type="button"
+              onClick={clearDetailFilters}
+              className="remind-link-btn"
+            >
+              검색 · 필터 초기화
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <p className="mt-4 text-sm text-[var(--rm-text-muted)]">
         {loadState === "ready" ? (
           <>
-            <span className="font-semibold text-[var(--rm-text)]">{filtered.length}건</span>
+            <span className="font-semibold text-[var(--rm-text)]">
+              {filtered.length}건
+            </span>
             {hasDetailFilters ? " · 검색/필터 적용" : null}
           </>
         ) : loadState === "loading" ? (
