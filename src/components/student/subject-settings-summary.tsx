@@ -23,7 +23,10 @@ export function SubjectSettingsSummary({ subjectId, userId }: Props) {
   }, [subjectId, userId]);
 
   useEffect(() => {
-    void refresh();
+    void (async () => {
+      await Promise.resolve();
+      await refresh();
+    })();
 
     function onUpdated(event: Event) {
       const detail = (event as CustomEvent<{ subjectId: string }>).detail;

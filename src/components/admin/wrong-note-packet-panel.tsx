@@ -84,8 +84,6 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
     DEFAULT_PACKET_PDF_ITEM_GAP,
   );
   const pdfSettings = normalizePacketPdfSettings({ itemGap });
-  const pdfSettingsRef = useRef(pdfSettings);
-  pdfSettingsRef.current = pdfSettings;
   const [data, setData] = useState<WrongNotePacketData | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -147,7 +145,10 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
   }
 
   useEffect(() => {
-    loadPreview();
+    void (async () => {
+      await Promise.resolve();
+      loadPreview();
+    })();
     // 첫 진입 시 기본 필터로 한 번만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId]);
@@ -157,7 +158,7 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
       setMessage("먼저 미리보기를 만들어 주세요.");
       return;
     }
-    const settingsSnapshot = pdfSettingsRef.current;
+    const settingsSnapshot = pdfSettings;
     setDownloading(true);
     setProgress({ label: "PDF 준비 중…", percent: 0 });
     setMessage(null);

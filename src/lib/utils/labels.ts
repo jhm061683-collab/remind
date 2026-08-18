@@ -25,9 +25,25 @@ export function getPhaseHint(phase: ReviewPhase): string {
 
 export function formatDate(date: string | Date): string {
   const value = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(value.getTime())) return "날짜 없음";
   return value.toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
     year: "numeric",
     month: "long",
     day: "numeric",
+  });
+}
+
+export function formatDateTime(date: string | Date | null | undefined): string {
+  if (!date) return "없음";
+  const value = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(value.getTime())) return "없음";
+  return value.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }

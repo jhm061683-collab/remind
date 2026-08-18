@@ -41,7 +41,7 @@ export function AdminSidebar({ role }: Props) {
 
   return (
     <aside
-      className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-44 shrink-0 self-start overflow-y-auto border-r border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_72%,transparent)] p-2 backdrop-blur-xl md:block"
+      className="sticky top-[calc(2.75rem+env(safe-area-inset-top))] hidden h-[calc(100dvh-2.75rem-env(safe-area-inset-top))] w-44 shrink-0 self-start overflow-y-auto border-r border-[var(--rm-border)] bg-[color-mix(in_srgb,var(--rm-surface)_72%,transparent)] p-2 backdrop-blur-xl lg:block"
     >
       <ul className="space-y-0.5 pt-1" data-tour-id="admin-nav">
         {links.map((link) => {
@@ -75,7 +75,7 @@ export function AdminMobileNav({ role }: Props) {
 
   return (
     <nav
-      className="rm-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md md:hidden"
+      className="rm-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md lg:hidden"
       aria-label="관리자 메뉴"
     >
       <ul

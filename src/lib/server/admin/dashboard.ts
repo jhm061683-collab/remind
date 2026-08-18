@@ -1,5 +1,8 @@
 import type { SessionUser } from "@/lib/auth/session";
-import { getEffectiveStaffRole, resolveViewScope } from "@/lib/auth/staff-mode";
+import {
+  getEffectiveStaffRoleForData,
+  resolveDataViewScope,
+} from "@/lib/auth/view-scope-routes";
 import { unstable_cache } from "next/cache";
 import {
   getAdminClassOptions,
@@ -13,9 +16,10 @@ import type { AdminDashboardData, AdminStudentRow, ClassOption } from "@/lib/typ
 export async function getStaffDashboard(
   session: SessionUser,
   urlScope?: string | null,
+  pathname?: string | null,
 ): Promise<AdminDashboardData> {
-  const effective = getEffectiveStaffRole(session, urlScope);
-  const scope = resolveViewScope(session, urlScope);
+  const effective = getEffectiveStaffRoleForData(session, urlScope, pathname);
+  const scope = resolveDataViewScope(session, urlScope, pathname);
   const cached = unstable_cache(
     async () => {
       if (effective === "sub_admin") {
@@ -33,9 +37,10 @@ export async function getStaffDashboard(
 export async function getStaffStudentList(
   session: SessionUser,
   urlScope?: string | null,
+  pathname?: string | null,
 ): Promise<AdminStudentRow[]> {
-  const effective = getEffectiveStaffRole(session, urlScope);
-  const scope = resolveViewScope(session, urlScope);
+  const effective = getEffectiveStaffRoleForData(session, urlScope, pathname);
+  const scope = resolveDataViewScope(session, urlScope, pathname);
   const cached = unstable_cache(
     async () => {
       if (effective === "sub_admin") {

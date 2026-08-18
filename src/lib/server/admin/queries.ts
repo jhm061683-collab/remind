@@ -874,10 +874,32 @@ export async function getStudentDetailForStaff(
     };
   }
 
+  const supabase = createServiceClient();
+  const [{ data: staff }, { data: student }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id")
+      .eq("id", staffId)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("id, role, academy_id, withdrawn_at")
+      .eq("id", studentId)
+      .maybeSingle(),
+  ]);
+  if (!staff || !student || student.role !== "student") return null;
+  if (student.withdrawn_at) return null;
+  if (
+    staff.academy_id &&
+    student.academy_id &&
+    staff.academy_id !== student.academy_id
+  ) {
+    return null;
+  }
+
   const allowed = await staffCanAccessStudent(staffId, staffRole, studentId);
   if (!allowed) return null;
 
-  const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select(

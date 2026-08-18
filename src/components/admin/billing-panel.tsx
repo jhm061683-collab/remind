@@ -103,9 +103,8 @@ export function BillingPanel({
     <div className="space-y-6">
       {mockMode ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          지금은 <strong>목(mock) 결제</strong> 모드입니다. 실제 돈은 나가지
-          않습니다. 사업자번호·토스 계약이 생기면 키만 넣으면 실결제로
-          바뀝니다.
+          지금은 연습용 결제 화면입니다. 실제 카드에서 돈이 빠져나가지 않습니다.
+          학원 결제 연동이 끝나면 이 안내가 실제 결제 안내로 바뀝니다.
         </p>
       ) : null}
 

@@ -10,6 +10,13 @@ export const TUTORIALS: TutorialDefinition[] = [
     matchPath: (pathname) => pathname === "/dashboard",
     steps: [
       {
+        id: "character",
+        target: "student-character",
+        title: "내 캐릭터",
+        description:
+          "캐릭터는 랭킹과 홈에서 나를 나타내는 얼굴이에요. 눌러서 종·모자·배경을 고를 수 있어요.",
+      },
+      {
         id: "nav",
         target: "student-nav",
         title: "메뉴를 눌러 이동해요",
@@ -36,6 +43,13 @@ export const TUTORIALS: TutorialDefinition[] = [
         title: "틀린 문제 등록",
         description:
           "「등록」에서 사진을 찍거나 앨범에서 올려 오답을 저장해요.",
+      },
+      {
+        id: "ranking",
+        target: "student-ranking",
+        title: "랭킹에서 성장 확인",
+        description:
+          "학습 점수로 순위가 올라가요. 내 순위 카드가 위에 있고, 캐릭터도 그대로 보여요.",
       },
       {
         id: "help",
@@ -110,7 +124,14 @@ export const TUTORIALS: TutorialDefinition[] = [
         target: "student-study-reveal",
         title: "정답 확인",
         description:
-          "확인한 뒤 맞힘·틀림을 고르면 다음 복습 날이 정해져요.",
+          "답을 먼저 적어야 「정답 확인」이 열려요. 정말 모르면 「잘 모르겠어요」로 정답을 봐요.",
+      },
+      {
+        id: "grade",
+        target: "student-study-self-eval",
+        title: "스스로 채점",
+        description:
+          "정답을 본 뒤 맞았어요/틀렸어요를 고르면 다음 복습 날이 정해져요. 잘 모르겠다고 본 문제는 틀림으로 기록돼요.",
       },
     ],
   },
@@ -132,9 +153,23 @@ export const TUTORIALS: TutorialDefinition[] = [
       {
         id: "today",
         target: "staff-today-actions",
-        title: "오늘 할 일",
+        title: "오늘 조치할 학생",
         description:
-          "복습이 밀리거나 오래 접속하지 않은 학생을 먼저 확인하세요.",
+          "복습 밀림·미접속·미로그인 학생을 먼저 보고, 목록으로 바로 이동하세요. 「학원 전체/내 담당」은 보기 범위만 바뀌고 권한은 그대로입니다.",
+      },
+      {
+        id: "kpi",
+        target: "staff-today-kpi",
+        title: "위험 학생 열기",
+        description:
+          "숫자를 누르면 그 조건의 학생 목록으로 바로 갑니다. 색만 보지 말고 문구와 인원 수를 함께 확인하세요.",
+      },
+      {
+        id: "act",
+        target: "staff-quick-actions",
+        title: "상담·알림 시작",
+        description:
+          "상세·상담·알림·보고서로 바로 이어집니다. 투어 중에는 실제 발송·저장을 누르지 않아도 됩니다.",
       },
       {
         id: "students",
@@ -177,9 +212,23 @@ export const TUTORIALS: TutorialDefinition[] = [
       {
         id: "today",
         target: "staff-today-actions",
-        title: "오늘 확인할 학생",
+        title: "오늘 확인할 담당 학생",
         description:
-          "담당 학생 중 복습이 필요하거나 연락이 필요한 사람부터 보세요.",
+          "내가 볼 수 있는 학생만 나와요. 주 담당과 공동 담당이 구분되어 표시됩니다.",
+      },
+      {
+        id: "kpi",
+        target: "staff-today-kpi",
+        title: "복습 밀림 확인",
+        description:
+          "복습 밀림 숫자를 누르면 해당 담당 학생 목록으로 이동합니다.",
+      },
+      {
+        id: "act",
+        target: "staff-quick-actions",
+        title: "상담 메모 또는 알림 초안",
+        description:
+          "학생 옆의 상담·알림으로 바로 이어져요. 투어에서는 초안만 보고 실제 발송은 하지 마세요.",
       },
       {
         id: "students",

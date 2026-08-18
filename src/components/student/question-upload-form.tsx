@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ocrFromImageAction } from "@/lib/actions/ocr";
 import { saveQuestionsBatchAction } from "@/lib/actions/questions";
@@ -69,7 +70,17 @@ export function QuestionUploadForm({
   const router = useRouter();
   const { subjects, getSubjectName, loading: subjectsLoading } = useSubjects();
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? "");
-  const mathTools = isMathAnswerSubject(subjectId, getSubjectName(subjectId));
+  const effectiveSubjectId =
+    subjectId ||
+    (subjects.length > 0
+      ? (defaultSubjectId
+          ? subjects.find((s) => s.id === defaultSubjectId)?.id
+          : undefined) ?? subjects[0]?.id ?? ""
+      : "");
+  const mathTools = isMathAnswerSubject(
+    effectiveSubjectId,
+    getSubjectName(effectiveSubjectId),
+  );
   const [questionPages, setQuestionPages] = useState<ImagePage[]>([]);
   const [questionReady, setQuestionReady] = useState(false);
   const [answerPages, setAnswerPages] = useState<ImagePage[]>([]);
@@ -100,15 +111,6 @@ export function QuestionUploadForm({
   const [pendingAiMode, setPendingAiMode] = useState<
     "standard" | "advanced" | null
   >(null);
-
-  useEffect(() => {
-    if (!subjectId && subjects.length > 0) {
-      const preferred = defaultSubjectId
-        ? subjects.find((s) => s.id === defaultSubjectId)?.id
-        : undefined;
-      setSubjectId(preferred ?? subjects[0].id);
-    }
-  }, [subjects, subjectId, defaultSubjectId]);
 
   // success early-return 보다 위에 둬야 훅 순서가 깨지지 않음 (등록 직후 탭 크래시 원인)
   useEffect(() => {
@@ -153,7 +155,7 @@ export function QuestionUploadForm({
         requestId: crypto.randomUUID(),
         imageDataUrl: preview,
         extraImageDataUrls,
-        subjectId,
+        subjectId: effectiveSubjectId,
         aiMode: mode,
       });
       if (result.used != null) {
@@ -276,7 +278,7 @@ export function QuestionUploadForm({
   }
 
   async function handleSubmit() {
-    if (!subjectId) {
+    if (!effectiveSubjectId) {
       setError("과목을 선택해 주세요.");
       return;
     }
@@ -348,7 +350,7 @@ export function QuestionUploadForm({
       }
 
       const base = {
-        subjectId,
+        subjectId: effectiveSubjectId,
         imageDataUrl,
         extraImageDataUrls,
         answerImageDataUrl,
@@ -494,7 +496,7 @@ export function QuestionUploadForm({
           등록 완료!
         </p>
         <p className="text-sm text-[var(--rm-text-on-success)]">
-          {getSubjectName(subjectId)}에 저장됐어요
+          {getSubjectName(effectiveSubjectId)}에 저장됐어요
           {registeredCount > 1 ? ` · 이번에 ${registeredCount}개` : ""}
         </p>
         <div className="grid grid-cols-2 gap-2 pt-2">
@@ -520,7 +522,7 @@ export function QuestionUploadForm({
   const selectedDrafts = drafts.filter((d) => d.selected);
   const useDrafts = drafts.length > 0;
   const canContinueStep1 =
-    Boolean(subjectId) && questionReady && questionPages.length > 0;
+    Boolean(effectiveSubjectId) && questionReady && questionPages.length > 0;
   const canContinueStep2 =
     entryChoice === "ai"
       ? useDrafts &&
@@ -629,16 +631,16 @@ export function QuestionUploadForm({
                 <p className="text-sm text-[var(--rm-danger)]">
                   과목이 없어요. 먼저 과목을 추가해 주세요.
                 </p>
-                <a
+                <Link
                   href="/subjects"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--rm-border)] px-4 text-sm font-semibold text-[var(--rm-nav-active)]"
                 >
                   과목 설정으로 가기 →
-                </a>
+                </Link>
               </div>
             ) : (
               <select
-                value={subjectId}
+                value={effectiveSubjectId}
                 onChange={(event) => setSubjectId(event.target.value)}
                 className="remind-input mt-1 text-base"
               >
@@ -933,7 +935,7 @@ export function QuestionUploadForm({
           <dl className="space-y-2 rounded-xl bg-[var(--rm-surface-raised)] p-3 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-[var(--rm-text-muted)]">과목</dt>
-              <dd className="font-semibold">{getSubjectName(subjectId)}</dd>
+              <dd className="font-semibold">{getSubjectName(effectiveSubjectId)}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-[var(--rm-text-muted)]">사진</dt>

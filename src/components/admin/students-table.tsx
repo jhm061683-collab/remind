@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
   bulkAssignClassAction,
@@ -8,34 +9,24 @@ import {
 } from "@/lib/actions/admin";
 import { StudentConsultingModal } from "@/components/admin/student-consulting-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FilterEmptyState } from "@/components/ui/status-state";
+import {
+  parseStudentListQuery,
+  studentListHref,
+} from "@/lib/admin/student-list-query";
+import { describeStaffing } from "@/lib/admin/staff-relation";
 import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 
 function formatLastLogin(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  const todayKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  const loginKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
-  if (loginKey === todayKey) {
-    return d.toLocaleTimeString("ko-KR", {
-      timeZone: "Asia/Seoul",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-  return d.toLocaleDateString("ko-KR", {
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",
     month: "numeric",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -45,7 +36,7 @@ type Props = {
   classOptions?: ClassOption[];
 };
 
-type ActivityFilter = "all" | "due_today" | "inactive_7" | "never_login";
+type ActivityFilter = "all" | "due_today" | "backlog" | "inactive_7" | "never_login";
 
 function formatClassDisplay(student: AdminStudentRow): string {
   if (student.classNames.length > 0) return student.classNames.join(", ");
@@ -57,11 +48,16 @@ export function AdminStudentsTable({
   canManage = false,
   classOptions = [],
 }: Props) {
-  const [query, setQuery] = useState("");
-  const [classFilter, setClassFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
-  const [teacherFilter, setTeacherFilter] = useState("all");
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const listQuery = parseStudentListQuery(searchParams);
+  const [query, setQuery] = useState(listQuery.q);
+  const [classFilter, setClassFilter] = useState(listQuery.className);
+  const [gradeFilter, setGradeFilter] = useState(listQuery.grade);
+  const [teacherFilter, setTeacherFilter] = useState(listQuery.teacher);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>(
+    listQuery.activity as ActivityFilter,
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [classRoomId, setClassRoomId] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -71,6 +67,34 @@ export function AdminStudentsTable({
     id: string;
     name: string;
   } | null>(null);
+
+  function commitList(patch: {
+    q?: string;
+    className?: string;
+    grade?: string;
+    teacher?: string;
+    activity?: ActivityFilter;
+  }) {
+    const current = {
+      q: patch.q ?? query,
+      className: patch.className ?? classFilter,
+      grade: patch.grade ?? gradeFilter,
+      teacher: patch.teacher ?? teacherFilter,
+      activity: patch.activity ?? activityFilter,
+      page: 1,
+    };
+    router.replace(
+      studentListHref(
+        {
+          ...current,
+          scope: searchParams.get("scope"),
+          tab: searchParams.get("tab"),
+        },
+        current,
+      ),
+      { scroll: false },
+    );
+  }
 
   const classNameFilters = useMemo(() => {
     const names = new Set<string>();
@@ -111,6 +135,7 @@ export function AdminStudentsTable({
         return false;
       }
       if (activityFilter === "due_today" && s.dueToday <= 0) return false;
+      if (activityFilter === "backlog" && s.dueToday < 5) return false;
       if (activityFilter === "inactive_7" && s.inactiveDays < 7) return false;
       if (activityFilter === "never_login" && s.lastLoginAt !== null) return false;
       if (!q) return true;
@@ -179,15 +204,22 @@ export function AdminStudentsTable({
       <div className="space-y-3" data-tour-id="admin-students-table">
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setQuery(next);
+            commitList({ q: next });
+          }}
           placeholder="이름/아이디/반/담당선생님 검색"
           className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm"
         />
-        <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex flex-wrap gap-2">
           {classNameFilters.length > 0 ? (
             <select
               value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
+              onChange={(e) => {
+                setClassFilter(e.target.value);
+                commitList({ className: e.target.value });
+              }}
               className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 반</option>
@@ -201,7 +233,10 @@ export function AdminStudentsTable({
           {gradeOptions.length > 0 ? (
             <select
               value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
+              onChange={(e) => {
+                setGradeFilter(e.target.value);
+                commitList({ grade: e.target.value });
+              }}
               className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 학년</option>
@@ -215,7 +250,10 @@ export function AdminStudentsTable({
           {teacherOptions.length > 0 ? (
             <select
               value={teacherFilter}
-              onChange={(e) => setTeacherFilter(e.target.value)}
+              onChange={(e) => {
+                setTeacherFilter(e.target.value);
+                commitList({ teacher: e.target.value });
+              }}
               className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
             >
               <option value="all">전체 담당</option>
@@ -228,11 +266,16 @@ export function AdminStudentsTable({
           ) : null}
           <select
             value={activityFilter}
-            onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+            onChange={(e) => {
+              const next = e.target.value as ActivityFilter;
+              setActivityFilter(next);
+              commitList({ activity: next });
+            }}
             className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
           >
             <option value="all">전체 활동</option>
             <option value="due_today">오늘 할 것</option>
+            <option value="backlog">복습 밀림</option>
             <option value="inactive_7">7일+ 미접속</option>
             <option value="never_login">미로그인</option>
           </select>
@@ -241,6 +284,25 @@ export function AdminStudentsTable({
           <p className="text-xs text-[var(--rm-text-muted)]">
             {students.length}명 중 {filtered.length}명 표시
           </p>
+        ) : null}
+        {filtered.length === 0 ? (
+          <FilterEmptyState
+            summary={`검색·필터 조건에 맞는 학생이 없습니다.`}
+            onReset={() => {
+              setQuery("");
+              setClassFilter("all");
+              setGradeFilter("all");
+              setTeacherFilter("all");
+              setActivityFilter("all");
+              commitList({
+                q: "",
+                className: "all",
+                grade: "all",
+                teacher: "all",
+                activity: "all",
+              });
+            }}
+          />
         ) : null}
       </div>
 
@@ -306,7 +368,7 @@ export function AdminStudentsTable({
         <p className="text-xs text-[var(--rm-text-muted)]">{selected.length}명 선택됨</p>
       ) : null}
 
-      <div className="hidden overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm md:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm lg:block">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]">
             <tr>
@@ -379,12 +441,11 @@ export function AdminStudentsTable({
                 <td className="max-w-[8rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
                   {formatClassDisplay(student)}
                 </td>
-                <td className="max-w-[7rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
-                  {student.teacherNames.length > 0 ? (
-                    student.teacherNames.join(", ")
-                  ) : (
-                    <span className="text-[var(--rm-text-faint)]">미배정</span>
-                  )}
+                <td className="max-w-[10rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
+                  {describeStaffing({
+                    teacherNames: student.teacherNames,
+                    subAdminName: student.subAdminName,
+                  }).label}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
                   {formatLastLogin(student.lastLoginAt)}
@@ -426,14 +487,14 @@ export function AdminStudentsTable({
         </table>
       </div>
 
-      <div className="space-y-2 md:hidden">
+      <div className="space-y-2 lg:hidden">
         {filtered.map((student) => (
           <div
             key={student.id}
             className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 shadow-sm"
           >
             <div className="mb-2 flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 <button
                   type="button"
                   onClick={() =>
@@ -442,7 +503,7 @@ export function AdminStudentsTable({
                       name: student.displayName,
                     })
                   }
-                  className="text-left font-semibold text-[var(--rm-text-on-info)]"
+                  className="truncate text-left font-semibold text-[var(--rm-text-on-info)]"
                 >
                   {student.displayName}
                 </button>
@@ -462,6 +523,26 @@ export function AdminStudentsTable({
                 />
               ) : null}
             </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <Link
+                href={`/admin/students/${student.id}`}
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
+              >
+                상세
+              </Link>
+              <button
+                type="button"
+                onClick={() =>
+                  setConsulting({
+                    id: student.id,
+                    name: student.displayName,
+                  })
+                }
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
+              >
+                상담
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--rm-text-muted)]">
               <p className="min-w-0 truncate">
                 학년: {student.gradeLabel ?? "—"}
@@ -470,7 +551,11 @@ export function AdminStudentsTable({
                 반: {formatClassDisplay(student)}
               </p>
               <p className="min-w-0 truncate">
-                담당: {student.teacherNames.join(", ") || "미배정"}
+                담당:{" "}
+                {describeStaffing({
+                  teacherNames: student.teacherNames,
+                  subAdminName: student.subAdminName,
+                }).label}
               </p>
               <p className="min-w-0 truncate">
                 최근: {formatLastLogin(student.lastLoginAt)}

@@ -128,7 +128,10 @@ export function SubjectSettingsForm({ subjectId, userId }: Props) {
   }, [fetchPresets, subjectId, userId]);
 
   useEffect(() => {
-    void loadAll();
+    void (async () => {
+      await Promise.resolve();
+      await loadAll();
+    })();
   }, [loadAll]);
 
   function showMsg(text: string, type: "ok" | "err" | "warn") {
@@ -526,12 +529,7 @@ function NumberField({
 }) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!focused) {
-      setText(String(value));
-    }
-  }, [value, focused]);
+  const displayText = focused ? text : String(value);
 
   function commit(raw: string) {
     const digits = raw.replace(/\D/g, "");
@@ -556,7 +554,7 @@ function NumberField({
         inputMode="numeric"
         pattern="[0-9]*"
         autoComplete="off"
-        value={text}
+        value={displayText}
         onFocus={() => setFocused(true)}
         onBlur={() => {
           setFocused(false);

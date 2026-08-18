@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { submitSuggestionAction } from "@/lib/actions/suggestions";
 import {
   addSuggestionLocal,
   listSuggestionsLocal,
 } from "@/lib/storage/suggestions";
-import type { StoredSuggestion } from "@/lib/types/suggestions";
 import { formatDate } from "@/lib/utils/labels";
 
 type Props = {
@@ -20,12 +19,14 @@ export function SuggestionForm({ userId, userName }: Props) {
     type: "ok" | "err";
     text: string;
   } | null>(null);
-  const [mine, setMine] = useState<StoredSuggestion[]>([]);
+  const [mine, setMine] = useState(() => listSuggestionsLocal(userId));
   const [pending, startTransition] = useTransition();
+  const [prevUserId, setPrevUserId] = useState(userId);
 
-  useEffect(() => {
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
     setMine(listSuggestionsLocal(userId));
-  }, [userId]);
+  }
 
   function handleSubmit(formData: FormData) {
     setMessage(null);

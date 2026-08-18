@@ -11,6 +11,9 @@ import {
 } from "@/lib/actions/admin";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ParentReportGenerator } from "@/components/admin/parent-report-generator";
+import { formatDateTime } from "@/lib/utils/labels";
+import { describeStaffing } from "@/lib/admin/staff-relation";
+import { categorizeWrongReason } from "@/lib/archive/wrong-reason-category";
 import type { StudentDetailData } from "@/lib/types/admin";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -105,7 +108,7 @@ export function StudentDetailPanel({ detail }: Props) {
             </h2>
             <p className="text-sm text-[var(--rm-text-muted)]">
               아이디 {student.username} · 마지막 로그인{" "}
-              {student.lastLoginAt ?? "없음"}
+              {formatDateTime(student.lastLoginAt)}
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -150,7 +153,7 @@ export function StudentDetailPanel({ detail }: Props) {
             label="취약 신호"
             value={
               detail.topWeaknesses[0]
-                ? detail.topWeaknesses[0].reason
+                ? categorizeWrongReason(detail.topWeaknesses[0].reason)
                 : "—"
             }
             hint={
@@ -166,8 +169,13 @@ export function StudentDetailPanel({ detail }: Props) {
             <span className="font-medium">소속 반:</span> {classDisplay}
           </p>
           <p className="mt-1">
-            <span className="font-medium">담당 선생님:</span>{" "}
-            {student.teacherNames.join(", ") || "미배정"}
+            <span className="font-medium">담당:</span>{" "}
+            {
+              describeStaffing({
+                teacherNames: student.teacherNames,
+                subAdminName: student.subAdminName,
+              }).label
+            }
           </p>
           <Link
             href="/admin/classes"

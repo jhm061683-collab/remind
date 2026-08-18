@@ -216,8 +216,6 @@ export async function getWrongNotePacket(input: {
   let academy: { name?: string } | null = null;
   let rows: Record<string, unknown>[] | null = null;
   let error: { message?: string } | null = null;
-  let subjectNameById: Map<string, string>;
-
   const first = await Promise.all([
     supabase.from("academies").select("name").eq("id", academyId).maybeSingle(),
     query,
@@ -226,7 +224,7 @@ export async function getWrongNotePacket(input: {
   academy = first[0].data;
   rows = (first[1].data as Record<string, unknown>[] | null) ?? null;
   error = first[1].error;
-  subjectNameById = first[2];
+  const subjectNameById = first[2];
 
   // shared_passage 컬럼 마이그레이션 전이면 폴백
   if (

@@ -50,12 +50,8 @@ export function PushNotificationSettings() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    void refreshStatus();
-  }, []);
-
-  async function refreshStatus() {
-    setMessage(null);
+  async function refreshStatus(clearMessage = false) {
+    if (clearMessage) setMessage(null);
     if (typeof window === "undefined") return;
 
     if (!isPhoneDevice()) {
@@ -86,6 +82,18 @@ export function PushNotificationSettings() {
       setStatus("unsupported");
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      await refreshStatus();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const enable = () =>
     startTransition(async () => {

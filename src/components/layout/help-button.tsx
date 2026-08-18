@@ -13,7 +13,7 @@ export function HelpButton() {
       aria-label="사용법 보기"
       title="사용법 보기"
       onClick={() => router.push("/help")}
-      className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--rm-text-muted)] transition hover:bg-[var(--rm-surface)] hover:text-[var(--rm-text)]"
+      className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--rm-text-muted)] transition hover:bg-[var(--rm-surface)] hover:text-[var(--rm-text)]"
     >
       <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />

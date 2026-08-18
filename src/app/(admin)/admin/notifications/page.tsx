@@ -3,9 +3,18 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireStaff } from "@/lib/server/admin/auth";
 import { getStaffDashboard } from "@/lib/server/admin/dashboard";
 
-export default async function NotificationsPage() {
+type Props = {
+  searchParams?: Promise<{ scope?: string }>;
+};
+
+export default async function NotificationsPage({ searchParams }: Props) {
   const session = await requireStaff();
-  const data = await getStaffDashboard(session);
+  const params = (await searchParams) ?? {};
+  const data = await getStaffDashboard(
+    session,
+    params.scope ?? null,
+    "/admin/notifications",
+  );
 
   return (
     <>

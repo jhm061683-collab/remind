@@ -156,7 +156,7 @@ function wrapRemainingLatex(plain: string): string {
 }
 
 function convertAlignedRowToLine(row: string): string {
-  let s = row.replace(/^&\s*/, "").trim();
+  const s = row.replace(/^&\s*/, "").trim();
   if (!s) return "";
 
   let label = "";

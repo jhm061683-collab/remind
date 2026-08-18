@@ -6,7 +6,7 @@ import { getStaffDashboard } from "@/lib/server/admin/dashboard";
 
 export default async function SubAdminsPage() {
   const session = await requireAdmin();
-  const data = await getStaffDashboard(session);
+  const data = await getStaffDashboard(session, null, "/admin/sub-admins");
 
   return (
     <>

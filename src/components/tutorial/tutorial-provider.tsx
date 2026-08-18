@@ -109,14 +109,16 @@ export function TutorialProvider({
         shouldAutoShow(tutorial, prefs) &&
         !closedAutoKeys.current.has(tutorial.key),
     );
-    if (next) setRun({ def: next, mode: "auto" });
+    if (next) {
+      void Promise.resolve().then(() => setRun({ def: next, mode: "auto" }));
+    }
   }, [pathname, prefs, role, run]);
 
   useEffect(() => {
     if (!run) return;
     if (!run.def.matchPath(pathname)) {
       if (run.mode === "auto") closedAutoKeys.current.add(run.def.key);
-      setRun(null);
+      void Promise.resolve().then(() => setRun(null));
     }
   }, [pathname, run]);
 

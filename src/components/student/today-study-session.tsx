@@ -27,6 +27,7 @@ import {
   resumeReviewSet,
   writeSavedReviewSet,
 } from "@/lib/study/review-set";
+import { hasStudyAnswer } from "@/lib/study/answer-gate";
 import { useSubjects } from "@/components/student/subject-provider";
 import { formatDate, getPhaseHint, getPhaseLabel } from "@/lib/utils/labels";
 import type { CompletedAction } from "@/types/question";
@@ -42,6 +43,8 @@ export function TodayStudySession({ userId }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [myAnswer, setMyAnswer] = useState("");
   const [revealed, setRevealed] = useState(false);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingCompletion, setPendingCompletion] =
     useState<StoredQuestion | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -52,34 +55,65 @@ export function TodayStudySession({ userId }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteProcessing, setDeleteProcessing] = useState(false);
 
-  const loadQuestions = useCallback(async () => {
+  async function fetchReviewSession() {
     const [today, upcoming] = await Promise.all([
       getTodayReviewQuestions(userId),
       getUpcomingReviewCount(userId),
     ]);
     const saved = readSavedReviewSet(userId);
     const set = resumeReviewSet(today, saved);
-    setQuestions(set);
-    setDueTotal(today.length);
-    setUpcomingCount(upcoming);
-    if (set.length > 0) {
-      writeSavedReviewSet(userId, {
-        ids: set.map((q) => q.id),
-        dueTotal: today.length,
-      });
-    } else {
-      clearSavedReviewSet(userId);
-    }
-    setCurrentIndex(0);
-    setMyAnswer("");
-    setRevealed(false);
-    setPendingCompletion(null);
-    setFeedback(null);
-  }, [userId]);
+    return { set, today, upcoming };
+  }
+
+  const applyReviewSession = useCallback(
+    (
+      set: StoredQuestion[],
+      today: StoredQuestion[],
+      upcoming: number,
+    ) => {
+      setQuestions(set);
+      setDueTotal(today.length);
+      setUpcomingCount(upcoming);
+      if (set.length > 0) {
+        writeSavedReviewSet(userId, {
+          ids: set.map((q) => q.id),
+          dueTotal: today.length,
+        });
+      } else {
+        clearSavedReviewSet(userId);
+      }
+      setCurrentIndex(0);
+      setMyAnswer("");
+      setRevealed(false);
+      setGaveUp(false);
+      setPendingCompletion(null);
+      setFeedback(null);
+    },
+    [userId],
+  );
 
   useEffect(() => {
-    void loadQuestions().then(() => setIsReady(true));
-  }, [loadQuestions]);
+    let cancelled = false;
+    void (async () => {
+      const [today, upcoming] = await Promise.all([
+        getTodayReviewQuestions(userId),
+        getUpcomingReviewCount(userId),
+      ]);
+      if (cancelled) return;
+      const saved = readSavedReviewSet(userId);
+      const set = resumeReviewSet(today, saved);
+      applyReviewSession(set, today, upcoming);
+      setIsReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, applyReviewSession]);
+
+  async function reloadQuestions() {
+    const { set, today, upcoming } = await fetchReviewSession();
+    applyReviewSession(set, today, upcoming);
+  }
 
   const current = questions[currentIndex];
   const total = questions.length;
@@ -94,11 +128,14 @@ export function TodayStudySession({ userId }: Props) {
   );
 
   useEffect(() => {
-    if (!current) {
-      setStreakTarget(0);
-      return;
-    }
-    void getStreakTarget(userId, current).then(setStreakTarget);
+    if (!current) return;
+    let cancelled = false;
+    void getStreakTarget(userId, current).then((target) => {
+      if (!cancelled) setStreakTarget(target);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [current, userId]);
 
   useEffect(() => {
@@ -110,6 +147,8 @@ export function TodayStudySession({ userId }: Props) {
   function goNext(message?: string) {
     setMyAnswer("");
     setRevealed(false);
+    setGaveUp(false);
+    setIsSubmitting(false);
     setPendingCompletion(null);
     if (message) setFeedback(message);
     else setFeedback(null);
@@ -125,37 +164,48 @@ export function TodayStudySession({ userId }: Props) {
   }
 
   async function handleAnswer(result: "correct" | "incorrect") {
-    if (!current || !revealed) return;
+    if (!current || !revealed || isSubmitting) return;
+    if (gaveUp && result === "correct") return;
+    setIsSubmitting(true);
     setFeedback(null);
 
-    if (await willCompleteLongPhase(userId, current, result)) {
-      setPendingCompletion(current);
-      return;
+    try {
+      if (await willCompleteLongPhase(userId, current, result)) {
+        setPendingCompletion(current);
+        return;
+      }
+
+      const updated = await submitAnswer(userId, current, result);
+      const nextDate = updated?.nextReviewDate;
+
+      if (result === "incorrect") {
+        goNext(
+          gaveUp
+            ? "잘 모르겠다고 하고 정답을 봤어요. 내일 다시 풀어요."
+            : "틀렸어요. 내일 다시 풀어요.",
+        );
+        return;
+      }
+
+      if (updated?.phase === "medium" && current.phase === "short") {
+        goNext("단기 완료! 이제 중기(더 뒤에 다시)로 넘어가요.");
+        return;
+      }
+
+      if (updated?.phase === "long" && current.phase === "medium") {
+        goNext("중기 완료! 이제 장기(오래 뒤에 다시)로 넘어가요.");
+        return;
+      }
+
+      goNext(
+        nextDate
+          ? `맞았어요! 다음 다시 풀기: ${formatDate(nextDate)}`
+          : "맞았어요!",
+      );
+    } catch {
+      setFeedback("저장에 실패했습니다. 다시 눌러 주세요.");
+      setIsSubmitting(false);
     }
-
-    const updated = await submitAnswer(userId, current, result);
-    const nextDate = updated?.nextReviewDate;
-
-    if (result === "incorrect") {
-      goNext("틀렸어요. 내일 다시 풀어요.");
-      return;
-    }
-
-    if (updated?.phase === "medium" && current.phase === "short") {
-      goNext("단기 완료! 이제 중기(더 뒤에 다시)로 넘어가요.");
-      return;
-    }
-
-    if (updated?.phase === "long" && current.phase === "medium") {
-      goNext("중기 완료! 이제 장기(오래 뒤에 다시)로 넘어가요.");
-      return;
-    }
-
-    goNext(
-      nextDate
-        ? `맞았어요! 다음 다시 풀기: ${formatDate(nextDate)}`
-        : "맞았어요!",
-    );
   }
 
   async function handleCompletedAction(action: CompletedAction) {
@@ -262,7 +312,7 @@ export function TodayStudySession({ userId }: Props) {
               className="rounded-xl bg-[var(--rm-brand)] px-6 py-3 text-sm font-semibold text-white"
               onClick={() => {
                 clearSavedReviewSet(userId);
-                void loadQuestions();
+                void reloadQuestions();
               }}
             >
               다음 세트 시작
@@ -381,18 +431,36 @@ export function TodayStudySession({ userId }: Props) {
               <button
                 type="button"
                 data-tour-id="student-study-reveal"
+                disabled={!hasStudyAnswer(myAnswer)}
                 onClick={() => {
+                  if (!hasStudyAnswer(myAnswer)) return;
                   setFeedback(null);
+                  setGaveUp(false);
                   setRevealed(true);
                 }}
-                className="min-h-[48px] w-full rounded-xl bg-[var(--rm-brand)] py-3 text-base font-bold text-white touch-manipulation hover:opacity-90"
+                className="min-h-[48px] w-full rounded-xl bg-[var(--rm-brand)] py-3 text-base font-bold text-white touch-manipulation hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 정답 확인
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedback(null);
+                  setGaveUp(true);
+                  setRevealed(true);
+                }}
+                className="min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] py-2.5 text-sm font-semibold text-[var(--rm-text)] touch-manipulation"
+              >
+                잘 모르겠어요 · 답 보기
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              {myAnswer.trim() ? (
+              {gaveUp ? (
+                <p className="text-[11px] text-[var(--rm-text-muted)]">
+                  잘 모르겠다고 하고 정답을 봤어요. 이 문제는 틀림으로 기록됩니다.
+                </p>
+              ) : myAnswer.trim() ? (
                 <div className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-3 py-3">
                   <p className="text-[11px] font-semibold text-[var(--rm-text-muted)]">
                     내가 쓴 답
@@ -455,7 +523,7 @@ export function TodayStudySession({ userId }: Props) {
                 </div>
               ) : null}
 
-              <p className="text-center text-sm font-medium text-[var(--rm-text)]">
+              <p className="text-center text-sm font-medium text-[var(--rm-text)]" data-tour-id="student-study-self-eval">
                 맞았나요?
               </p>
             </div>
@@ -496,22 +564,35 @@ export function TodayStudySession({ userId }: Props) {
           </div>
         </div>
       ) : revealed ? (
+        gaveUp ? (
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleAnswer("incorrect")}
+            className="min-h-[48px] w-full rounded-xl bg-[var(--rm-danger)] py-3 text-base font-semibold text-white touch-manipulation disabled:opacity-50"
+          >
+            {isSubmitting ? "저장 중..." : "다음 문제 · 틀림으로 기록"}
+          </button>
+        ) : (
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => void handleAnswer("incorrect")}
-            className="min-h-[48px] rounded-xl bg-[var(--rm-danger)] py-2.5 text-base font-semibold text-white touch-manipulation hover:opacity-90"
+            className="min-h-[48px] rounded-xl bg-[var(--rm-danger)] py-2.5 text-base font-semibold text-white touch-manipulation hover:opacity-90 disabled:opacity-50"
           >
             틀렸어요
           </button>
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => void handleAnswer("correct")}
             className="min-h-[48px] rounded-xl bg-[var(--rm-brand)] py-2.5 text-base font-semibold text-white touch-manipulation hover:opacity-90"
           >
             맞았어요
           </button>
         </div>
+        )
       ) : null}
     </div>
   );

@@ -14,13 +14,8 @@ export function AdminAccountMenu({
   userName,
   showSuggestions = false,
 }: Props) {
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,4 +125,9 @@ export function AdminAccountMenu({
       ) : null}
     </div>
   );
+}
+
+export function AdminAccountMenuKeyed(props: Props) {
+  const pathname = usePathname();
+  return <AdminAccountMenu key={pathname} {...props} />;
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type Ref } from "react";
+import { type Ref } from "react";
 import { createPortal } from "react-dom";
+import { useClientMounted } from "@/lib/react/client-display";
 import type { PlacedTooltip, Rect } from "@/lib/tutorial/geometry";
 
 type Props = {
@@ -43,10 +44,7 @@ export function TourOverlay({
   onNext,
   onClose,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useClientMounted();
   if (!mounted) return null;
 
   return createPortal(

@@ -37,7 +37,7 @@ function isPasswordChangePath(pathname: string, session: SessionUser): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  let response = await updateSession(request);
+  const response = await updateSession(request);
 
   const session = parseSessionCookie(
     request.cookies.get(SESSION_COOKIE_NAME)?.value,

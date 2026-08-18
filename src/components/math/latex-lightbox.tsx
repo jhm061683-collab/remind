@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { LatexContent } from "@/components/math/latex-content";
+import { useClientMounted } from "@/lib/react/client-display";
 
 type Props = {
   content: string;
@@ -21,11 +22,7 @@ export function LatexLightbox({
   onClose,
   title = "문제 크게 보기",
 }: Props) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useClientMounted();
 
   useEffect(() => {
     if (!open) return;

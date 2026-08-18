@@ -24,7 +24,9 @@ import type {
 } from "@/lib/server/rankings";
 import { computeUserStats } from "@/lib/stats/compute";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
+import { countTodayDue, isOverdue } from "@/lib/study/today-due";
 import { toDateKey } from "@/lib/utils/date-range";
+import { useClientFormattedDate } from "@/lib/react/client-display";
 import { useEffect, useMemo, useState } from "react";
 
 const StudentAvatarPicker = dynamic(
@@ -48,8 +50,7 @@ function isArchived(q: StoredQuestion): boolean {
   return Boolean(q.archived) || q.phase === "completed";
 }
 
-function formatTodayLabel(): string {
-  const now = new Date();
+function formatTodayLabel(now: Date): string {
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
   return `${now.getMonth() + 1}월 ${now.getDate()}일 · ${weekdays[now.getDay()]}요일`;
 }
@@ -69,12 +70,11 @@ export function HomeOverview({
   const [upcomingCount, setUpcomingCount] = useState<number | null>(null);
   const [allQuestions, setAllQuestions] = useState<StoredQuestion[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [avatarValue, setAvatarValue] = useState<string | null>(avatarUrl);
+  const [pickedAvatar, setPickedAvatar] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-
-  useEffect(() => {
-    setAvatarValue(avatarUrl);
-  }, [avatarUrl]);
+  const avatarValue = pickedAvatar ?? avatarUrl;
+  const todayLabel = useClientFormattedDate(formatTodayLabel, "오늘");
 
   useEffect(() => {
     let cancelled = false;
@@ -84,18 +84,13 @@ export function HomeOverview({
       const now = Date.now();
       if (!force && now - lastLoadedAt < 60_000) return;
       lastLoadedAt = now;
-      void Promise.all([getHomeQuestionMeta(userId), getActivityEvents(userId)]).then(
-        ([all, events]) => {
+      void Promise.all([getHomeQuestionMeta(userId), getActivityEvents(userId)])
+        .then(([all, events]) => {
           if (cancelled) return;
-          const todayKey = toDateKey(new Date());
-          const today = all.filter((q) => {
-            if (q.phase === "completed" || q.archived) return false;
-            return toDateKey(new Date(q.nextReviewDate)) <= todayKey;
-          });
-          const overdue = all.filter((q) => {
-            if (q.phase === "completed" || q.archived) return false;
-            return toDateKey(new Date(q.nextReviewDate)) < todayKey;
-          });
+          setLoadError(null);
+          const nowDate = new Date();
+          const todayKey = toDateKey(nowDate);
+          const overdue = all.filter((q) => isOverdue(q, nowDate));
           const upcoming = all.filter((q) => {
             if (q.phase === "completed" || q.archived) return false;
             return toDateKey(new Date(q.nextReviewDate)) > todayKey;
@@ -105,14 +100,17 @@ export function HomeOverview({
               e.type === "reviewed" &&
               toDateKey(new Date(e.createdAt)) === todayKey,
           ).length;
-          setTodayCount(today.length);
+          setTodayCount(countTodayDue(all, nowDate));
           setOverdueCount(overdue.length);
           setDoneToday(reviewedToday);
           setUpcomingCount(upcoming.length);
           setAllQuestions(all);
           setUserStats(computeUserStats(all, events));
-        },
-      );
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setLoadError("학습 데이터를 불러오지 못했습니다.");
+        });
     }
 
     load(true);
@@ -193,7 +191,7 @@ export function HomeOverview({
       }));
   }, [allQuestions, subjects]);
 
-  const loading = todayCount === null;
+  const loading = todayCount === null && !loadError;
   const targetToday = (todayCount ?? 0) + (doneToday ?? 0);
   const rankWithAvatar = rank
     ? { ...rank, avatarUrl: avatarValue ?? rank.avatarUrl }
@@ -205,6 +203,7 @@ export function HomeOverview({
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
+            data-tour-id="student-character"
             onClick={() => setAvatarPickerOpen((v) => !v)}
             className="shrink-0 touch-manipulation rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--rm-brand)]"
             aria-label="내 캐릭터 바꾸기"
@@ -221,7 +220,7 @@ export function HomeOverview({
               {userName}
               <span className="text-[var(--rm-text-muted)]">님</span>
             </h1>
-            <p className="rm-body-muted">{formatTodayLabel()}</p>
+            <p className="rm-body-muted">{todayLabel || "오늘"}</p>
           </div>
         </div>
         <Link
@@ -253,20 +252,26 @@ export function HomeOverview({
             seed={userId}
             gridOnly
             onSaved={(next) => {
-              setAvatarValue(next);
+              setPickedAvatar(next);
               setAvatarPickerOpen(false);
             }}
           />
         </div>
       ) : null}
 
-      <TodayFocusHero
-        todayCount={todayCount ?? 0}
-        overdueCount={overdueCount ?? 0}
-        doneToday={doneToday ?? 0}
-        targetToday={targetToday}
-        loading={loading}
-      />
+      {loadError && todayCount === null ? (
+        <section className="rounded-2xl border border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] p-4 text-sm text-[var(--rm-text-on-error)]">
+          {loadError}
+        </section>
+      ) : (
+        <TodayFocusHero
+          todayCount={todayCount ?? 0}
+          overdueCount={overdueCount ?? 0}
+          doneToday={doneToday ?? 0}
+          targetToday={targetToday}
+          loading={loading}
+        />
+      )}
 
       <div className="rm-stat-strip">
         <QuickStat label="전체" value={loading ? "—" : stats.total} />
@@ -313,11 +318,13 @@ export function HomeOverview({
         </div>
       </div>
 
-      <StudentMotivationPanel
-        rank={rankWithAvatar}
-        monthlyBoard={monthlyBoard}
-        hallOfFame={hallOfFame}
-      />
+      <div data-tour-id="student-ranking">
+        <StudentMotivationPanel
+          rank={rankWithAvatar}
+          monthlyBoard={monthlyBoard}
+          hallOfFame={hallOfFame}
+        />
+      </div>
 
       <ForgettingCurveFeed
         items={todayFeed}

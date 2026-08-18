@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { isSupabaseEnabled } from "@/lib/supabase/config";
 import { isLocalStorageAvailable } from "@/lib/storage/safe-storage";
+import { useClientMounted } from "@/lib/react/client-display";
 
 /** 저장이 막힌 경우에만 경고. 클라우드 모드 안내는 더 이상 표시하지 않음. */
 export function StorageNotice() {
-  const [showError, setShowError] = useState(false);
-
-  useEffect(() => {
-    if (isSupabaseEnabled()) return;
-    if (!isLocalStorageAvailable()) setShowError(true);
-  }, []);
+  const mounted = useClientMounted();
+  const showError =
+    mounted && !isSupabaseEnabled() && !isLocalStorageAvailable();
 
   if (!showError) return null;
 

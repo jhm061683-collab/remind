@@ -33,7 +33,7 @@ export function StudentHeader({ userName, unreadNotifications = 0 }: Props) {
 
   return (
     <header className="student-shell-header rm-header sticky top-0 z-30 border-b backdrop-blur">
-      <div className="mx-auto flex w-full max-w-4xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
+      <div className="mx-auto flex w-full min-w-0 max-w-4xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
         <div className="min-w-0 shrink">
           <RemindLogo href="/dashboard" size="sm" />
         </div>
@@ -62,11 +62,11 @@ export function StudentHeader({ userName, unreadNotifications = 0 }: Props) {
           </ul>
         </nav>
 
-        <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
+        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
             href="/notifications"
             aria-label="알림"
-            className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition ${
+            className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition ${
               pathname.startsWith("/notifications")
                 ? "bg-[var(--rm-accent-soft,rgba(37,99,235,0.12))] text-[var(--rm-accent,#2563eb)]"
                 : "text-[var(--rm-text-muted)] hover:bg-[var(--rm-surface)]"
@@ -79,10 +79,15 @@ export function StudentHeader({ userName, unreadNotifications = 0 }: Props) {
               </span>
             ) : null}
           </Link>
-          <InstallAppPrompt variant="chip" />
-          <HelpButton />
-          <ThemeToggle />
-          <AccountMenu userName={userName} />
+          <div className="hidden items-center gap-1 sm:flex">
+            <InstallAppPrompt variant="chip" />
+            <HelpButton />
+            <ThemeToggle />
+          </div>
+          <div className="sm:hidden">
+            <HelpButton />
+          </div>
+          <AccountMenu key={pathname} userName={userName} />
         </div>
       </div>
     </header>

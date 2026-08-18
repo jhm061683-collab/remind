@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { MathAnswerView } from "@/components/math/math-answer-view";
 import { MathSymbolToggle } from "@/components/math/math-symbol-panel";
 import type { MathSymbolItem } from "@/lib/math/symbol-groups";
@@ -50,11 +50,12 @@ export function AnswerMathInput({
   const [builder, setBuilder] = useState<BuilderKind>(null);
   const [a, setA] = useState("");
   const [b, setB] = useState("");
+  const [prevValue, setPrevValue] = useState(value);
 
-  useEffect(() => {
-    const next = isLatexAnswer(value) ? latexToFriendly(value) : value;
-    setDraft(next);
-  }, [value]);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDraft(isLatexAnswer(value) ? latexToFriendly(value) : value);
+  }
 
   const previewSource = draft.trim()
     ? convertFriendlyAnswer(draft)

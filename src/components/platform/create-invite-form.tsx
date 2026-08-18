@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import {
   createInviteAction,
   type PlatformActionState,
@@ -15,16 +15,15 @@ export function CreateInviteForm() {
     initialState,
   );
   const [copied, setCopied] = useState(false);
-  const [absoluteUrl, setAbsoluteUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!state.inviteUrl || typeof window === "undefined") {
-      setAbsoluteUrl(null);
-      return;
-    }
-    setAbsoluteUrl(new URL(state.inviteUrl, window.location.origin).toString());
-    setCopied(false);
-  }, [state.inviteUrl]);
+  const absoluteUrl =
+    state.inviteUrl && typeof window !== "undefined"
+      ? new URL(state.inviteUrl, window.location.origin).toString()
+      : null;
+  const [prevInviteUrl, setPrevInviteUrl] = useState(state.inviteUrl);
+  if (state.inviteUrl !== prevInviteUrl) {
+    setPrevInviteUrl(state.inviteUrl);
+    if (copied) setCopied(false);
+  }
 
   async function copyLink() {
     if (!absoluteUrl) return;

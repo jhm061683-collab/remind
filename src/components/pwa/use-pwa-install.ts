@@ -57,31 +57,29 @@ function writeDismissedAt(key: string): void {
   }
 }
 
+function readInitialUiState(): InstallUiState {
+  if (typeof window === "undefined") return "neverShown";
+  const current = readBrowserEnvironment();
+  return resolveInstallUiState({
+    isStandalone: current.isStandalone,
+    dismissedAt: readDismissedAt(PWA_DISMISS_KEY),
+    dismissTtlMs: PWA_DISMISS_TTL_MS,
+  });
+}
+
 export function usePwaInstall() {
-  const [env, setEnv] = useState<BrowserEnvironment | null>(null);
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
-    null,
+  const [env] = useState<BrowserEnvironment | null>(() =>
+    typeof window !== "undefined" ? readBrowserEnvironment() : null,
   );
-  const [uiState, setUiState] = useState<InstallUiState>("neverShown");
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
+    () => cachedPrompt,
+  );
+  const [uiState, setUiState] = useState<InstallUiState>(readInitialUiState);
   const [installBusy, setInstallBusy] = useState(false);
   const [iosSheetOpen, setIosSheetOpen] = useState(false);
   const [cameraNudgeOpen, setCameraNudgeOpen] = useState(false);
 
   useEffect(() => {
-    const current = readBrowserEnvironment();
-    setEnv(current);
-
-    const dismissedAt = readDismissedAt(PWA_DISMISS_KEY);
-    setUiState(
-      resolveInstallUiState({
-        isStandalone: current.isStandalone,
-        dismissedAt,
-        dismissTtlMs: PWA_DISMISS_TTL_MS,
-      }),
-    );
-
-    if (cachedPrompt) setDeferred(cachedPrompt);
-
     const syncPrompt = () => {
       if (cachedPrompt) setDeferred(cachedPrompt);
     };

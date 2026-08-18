@@ -139,8 +139,10 @@ export function GuidedTour({ tutorial, onDismiss }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setLocating(true);
     void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setLocating(true);
       const ok = await skipToAvailable(0, 0);
       if (!ok && !cancelled) dismissRef.current({ hide: false });
     })();

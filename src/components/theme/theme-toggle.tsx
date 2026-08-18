@@ -12,7 +12,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={isDark ? "밝은 모드로 전환" : "어두운 모드로 전환"}
       title={isDark ? "밝은 모드" : "어두운 모드"}
-      className="rm-nav-item rounded-xl p-2 text-base leading-none transition hover:bg-[var(--rm-surface)]"
+      className="flex h-11 w-11 items-center justify-center rounded-xl p-2 text-base leading-none transition hover:bg-[var(--rm-surface)]"
     >
       {isDark ? "☀️" : "🌙"}
     </button>

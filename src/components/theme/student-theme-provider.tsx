@@ -41,19 +41,21 @@ export function StudentThemeProvider({
   children,
 }: Props) {
   const [theme, setTheme] = useState<StudentTheme>(initialTheme);
+  const [prevUserId, setPrevUserId] = useState(userId);
+  const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme);
+
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
+    setTheme(initialTheme);
+    setPrevInitialTheme(initialTheme);
+  } else if (initialTheme !== prevInitialTheme) {
+    setPrevInitialTheme(initialTheme);
+    setTheme(initialTheme);
+  }
 
   useEffect(() => {
-    const saved = localStorage.getItem(themeStorageKey(userId));
-    if (saved === "remind-dark" || saved === "remind-light") {
-      if (saved !== initialTheme) {
-        setTheme(saved);
-      }
-      persistTheme(userId, saved);
-      return;
-    }
-    persistTheme(userId, initialTheme);
-    setTheme(initialTheme);
-  }, [userId, initialTheme]);
+    persistTheme(userId, theme);
+  }, [userId, theme]);
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => {

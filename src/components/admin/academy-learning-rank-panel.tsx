@@ -226,7 +226,7 @@ export function AcademyLearningRankPanel({
             : "조건에 맞는 학생이 없습니다."}
         </p>
       ) : (
-        <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border border-[var(--rm-border)]">
+        <div className="mt-3 rounded-xl border border-[var(--rm-border)]">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-[var(--rm-bg-elevated)] text-[var(--rm-text-muted)]">
               <tr>

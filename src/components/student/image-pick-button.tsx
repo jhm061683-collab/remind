@@ -43,13 +43,9 @@ export function ImagePickButton({
   const inputRef = useRef<HTMLInputElement>(null);
   const [camOpen, setCamOpen] = useState(false);
   const [pressing, setPressing] = useState(false);
-  const [strategy, setStrategy] = useState<CameraStrategy>(
-    "custom_get_user_media",
+  const [strategy] = useState<CameraStrategy>(
+    () => readBrowserEnvironment().cameraStrategy,
   );
-
-  useEffect(() => {
-    setStrategy(readBrowserEnvironment().cameraStrategy);
-  }, []);
 
   const variantClass =
     variant === "primary"

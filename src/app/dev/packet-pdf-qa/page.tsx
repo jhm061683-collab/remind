@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildWrongNotePacketPdfBlob } from "@/components/admin/wrong-note-packet-pdf";
 import { MathAnswerView } from "@/components/math/math-answer-view";
 import type { WrongNotePacketData } from "@/lib/server/admin/wrong-note-packet";
@@ -373,12 +373,16 @@ export default function PacketPdfQaPage() {
     }
   }
 
-  if (typeof window !== "undefined" && !IS_PROD) {
+  useEffect(() => {
+    if (IS_PROD || typeof window === "undefined") return;
     window.__packetPdfQa = {
       buildWrongNotePacketPdfBlob,
       runWithData,
     };
-  }
+    return () => {
+      delete window.__packetPdfQa;
+    };
+  });
 
   if (IS_PROD) {
     return (

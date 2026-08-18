@@ -49,6 +49,7 @@ export function BulkParentReportsPanel({
   const [issuedQuery, setIssuedQuery] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [preview, setPreview] = useState<{
     studentName: string;
@@ -91,19 +92,19 @@ export function BulkParentReportsPanel({
     return Array.from(names).sort((a, b) => a.localeCompare(b, "ko"));
   }, [students, classOptions, gradeFilter]);
 
-  useEffect(() => {
-    if (classFilter !== "all" && !classNameOptions.includes(classFilter)) {
-      setClassFilter("all");
-    }
-  }, [classFilter, classNameOptions]);
+  const effectiveClassFilter =
+    classFilter !== "all" && !classNameOptions.includes(classFilter)
+      ? "all"
+      : classFilter;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return students.filter((s) => {
       if (gradeFilter !== "all" && s.gradeLabel !== gradeFilter) return false;
-      if (classFilter !== "all") {
+      if (effectiveClassFilter !== "all") {
         const inClass =
-          s.classNames.includes(classFilter) || s.className === classFilter;
+          s.classNames.includes(effectiveClassFilter) ||
+          s.className === effectiveClassFilter;
         if (!inClass) return false;
       }
       if (!q) return true;
@@ -118,11 +119,12 @@ export function BulkParentReportsPanel({
         .toLowerCase()
         .includes(q);
     });
-  }, [students, query, gradeFilter, classFilter]);
+  }, [students, query, gradeFilter, effectiveClassFilter]);
 
   const selectedInView = selected.filter((id) =>
     filtered.some((s) => s.id === id),
   );
+  const selectedStudents = students.filter((s) => selected.includes(s.id));
 
   async function refreshIssued(search = issuedQuery) {
     const result = await listIssuedParentReportsAction({ query: search });
@@ -134,14 +136,31 @@ export function BulkParentReportsPanel({
   }
 
   useEffect(() => {
-    void refreshIssued("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    void listIssuedParentReportsAction({ query: "" }).then((result) => {
+      if (cancelled) return;
+      if (result.reports) {
+        setIssued(result.reports);
+        setIssuedTotal(result.reports.length);
+      }
+      if (result.error) setMessage(result.error);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (tab !== "issued") return;
-    void refreshIssued(issuedQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    void listIssuedParentReportsAction({ query: issuedQuery }).then((result) => {
+      if (cancelled) return;
+      if (result.reports) setIssued(result.reports);
+      if (result.error) setMessage(result.error);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [tab, issuedQuery]);
 
   function toggleAll(checked: boolean) {
@@ -199,6 +218,7 @@ export function BulkParentReportsPanel({
     setRunning(false);
     setTab("issued");
     setSelected([]);
+    setConfirming(false);
     await refreshIssued("");
   }
 
@@ -343,9 +363,9 @@ export function BulkParentReportsPanel({
               ))}
             </select>
             <select
-              value={classFilter}
+              value={effectiveClassFilter}
               onChange={(event) => setClassFilter(event.target.value)}
-              className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
+              className="min-w-0 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
             >
               <option value="all">
                 {gradeFilter === "all" ? "전체 반" : "해당 학년 반"}
@@ -364,18 +384,39 @@ export function BulkParentReportsPanel({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="이름·아이디 검색"
-              className="min-w-[12rem] flex-1 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
+              className="min-w-0 flex-1 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
             />
-            <button
-              type="button"
-              disabled={running || selected.length === 0}
-              onClick={() => void createBulk()}
-              className="rounded-xl bg-[var(--rm-brand)] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
-            >
-              {running
-                ? `만드는 중 ${progress.done}/${progress.total}`
-                : `선택 ${selected.length}명 보고서 만들기`}
-            </button>
+            {confirming ? (
+              <>
+                <button
+                  type="button"
+                  disabled={running}
+                  onClick={() => setConfirming(false)}
+                  className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm font-semibold text-[var(--rm-text)]"
+                >
+                  뒤로
+                </button>
+                <button
+                  type="button"
+                  disabled={running || selected.length === 0}
+                  onClick={() => void createBulk()}
+                  className="min-h-[44px] rounded-xl bg-[var(--rm-brand)] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {running
+                    ? `만드는 중 ${progress.done}/${progress.total}`
+                    : `확인 후 ${selected.length}명 만들기`}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={running || selected.length === 0}
+                onClick={() => setConfirming(true)}
+                className="min-h-[44px] rounded-xl bg-[var(--rm-brand)] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                대상 확인 후 만들기
+              </button>
+            )}
             {running ? (
               <button
                 type="button"
@@ -387,6 +428,26 @@ export function BulkParentReportsPanel({
                 중지
               </button>
             ) : null}
+          </div>
+
+          {confirming ? (
+            <div className="mt-3 rounded-xl border border-[var(--rm-brand)] bg-[var(--rm-surface-raised)] p-3 text-sm">
+              <p className="font-bold text-[var(--rm-text)]">생성 전 확인</p>
+              <p className="mt-1 text-[var(--rm-text)]">대상 {selectedStudents.length}명</p>
+              <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+                {selectedStudents.slice(0, 12).map((s) => s.displayName).join(", ")}
+                {selectedStudents.length > 12
+                  ? ` 외 ${selectedStudents.length - 12}명`
+                  : ""}
+              </p>
+              <p className="mt-2 text-xs text-[var(--rm-text-muted)]">
+                기간 {periodDays}일 · 학부모 안심 보고서 링크
+              </p>
+            </div>
+          ) : null}
+
+          <div className="sticky top-0 z-10 mt-3 rounded-xl bg-[var(--rm-surface-raised)] px-3 py-2 text-xs font-semibold text-[var(--rm-text)]">
+            선택 {selected.length}명 · 지금 목록 {filtered.length}명
           </div>
 
           <div className="mt-2">
@@ -474,7 +535,7 @@ export function BulkParentReportsPanel({
               value={issuedQuery}
               onChange={(event) => setIssuedQuery(event.target.value)}
               placeholder="발급된 보고서 · 학생 이름 검색"
-              className="min-w-[12rem] flex-1 rounded-xl border border-[var(--rm-bg-elevated)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)] border-[var(--rm-border)]"
+              className="min-w-0 flex-1 rounded-xl border border-[var(--rm-bg-elevated)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)] border-[var(--rm-border)]"
             />
             {issued.length > 0 ? (
               <button

@@ -78,7 +78,11 @@ type Props = {
 export default async function AdminDashboardPage({ searchParams }: Props) {
   const session = await requireStaff();
   const params = (await searchParams) ?? {};
-  const data = await getStaffDashboard(session, params.scope);
+  const data = await getStaffDashboard(
+    session,
+    params.scope,
+    "/admin/dashboard",
+  );
   const isSubAdmin = getEffectiveStaffRole(session, params.scope) === "sub_admin";
   const classData =
     !isSubAdmin ? await getClassManagementData(session.id) : null;
@@ -127,16 +131,24 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
       />
 
       <div className="mb-3">
-        <StaffTodayActions isSubAdmin={isSubAdmin} students={data.students} />
+        <StaffTodayActions
+          isSubAdmin={isSubAdmin}
+          students={data.students}
+          scope={params.scope}
+        />
       </div>
 
-      <div
-        className={`grid grid-cols-2 gap-2 ${
-          isSubAdmin
-            ? "sm:grid-cols-3"
-            : "sm:grid-cols-3 xl:grid-cols-5"
-        }`}
-      >
+      <details className="mt-3 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--rm-text)]">
+          추가 통계 보기
+        </summary>
+        <div
+          className={`mt-3 grid grid-cols-2 gap-2 ${
+            isSubAdmin
+              ? "sm:grid-cols-3"
+              : "sm:grid-cols-3 xl:grid-cols-5"
+          }`}
+        >
         <AdminStatCard
           label={isSubAdmin ? "담당 학생" : "전체 학생"}
           value={`${data.totalStudents}명`}
@@ -169,6 +181,7 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
           />
         ) : null}
       </div>
+      </details>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-2">
         <AcademyLearningRankPanel

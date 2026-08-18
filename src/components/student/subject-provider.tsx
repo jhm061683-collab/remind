@@ -56,7 +56,10 @@ export function SubjectProvider({
   }, [userId]);
 
   useEffect(() => {
-    void refresh();
+    void (async () => {
+      await Promise.resolve();
+      await refresh();
+    })();
     function onUpdated() {
       void refresh();
     }

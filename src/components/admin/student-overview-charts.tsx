@@ -235,7 +235,14 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
   const stroke = 22;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  let offset = 0;
+  const ringSlices = slices.reduce<
+    Array<{ slice: ChartSlice; length: number; offset: number }>
+  >((acc, slice) => {
+    const length = (slice.count / total) * circumference;
+    const offset = acc.length > 0 ? acc[acc.length - 1]!.offset + acc[acc.length - 1]!.length : 0;
+    acc.push({ slice, length, offset });
+    return acc;
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start sm:justify-center sm:gap-5">
@@ -249,26 +256,21 @@ function DonutChart({ slices }: { slices: ChartSlice[] }) {
             stroke="color-mix(in srgb, var(--rm-border) 80%, transparent)"
             strokeWidth={stroke}
           />
-          {slices.map((slice) => {
-            const length = (slice.count / total) * circumference;
-            const el = (
-              <circle
-                key={slice.key}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke={slice.color}
-                strokeWidth={stroke}
-                strokeDasharray={`${length} ${circumference - length}`}
-                strokeDashoffset={-offset}
-                strokeLinecap="butt"
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-            );
-            offset += length;
-            return el;
-          })}
+          {ringSlices.map(({ slice, length, offset }) => (
+            <circle
+              key={slice.key}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth={stroke}
+              strokeDasharray={`${length} ${circumference - length}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="butt"
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          ))}
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <p className="text-xl font-bold tabular-nums text-[var(--rm-text)]">

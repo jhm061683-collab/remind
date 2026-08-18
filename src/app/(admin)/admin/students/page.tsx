@@ -50,14 +50,14 @@ export default async function AdminStudentsPage({ searchParams }: Props) {
     ]);
   } else if (tab === "list") {
     [students, classOptions] = await Promise.all([
-      getStaffStudentList(session, params.scope),
+      getStaffStudentList(session, params.scope, "/admin/students"),
       isAdmin
         ? getCachedAdminClassOptions(session.id)
         : Promise.resolve([] as ClassOption[]),
     ]);
   } else if (tab === "reports") {
     [students, classOptions] = await Promise.all([
-      getStaffStudentList(session, params.scope),
+      getStaffStudentList(session, params.scope, "/admin/students"),
       isAdmin
         ? getCachedAdminClassOptions(session.id)
         : Promise.resolve([] as ClassOption[]),
@@ -95,11 +95,13 @@ export default async function AdminStudentsPage({ searchParams }: Props) {
 
       {tab === "list" ? (
         <>
+          <Suspense fallback={<p className="text-sm text-[var(--rm-text-muted)]">목록을 준비하는 중…</p>}>
           <AdminStudentsTable
             students={students}
             canManage={isAdmin}
             classOptions={classOptions}
           />
+          </Suspense>
           {!isAdmin && students.length === 0 ? (
             <p className="mt-4 text-center text-sm text-[var(--rm-text-muted)]">
               원장님이 반 설정에서 반 담당으로 지정해 주면 학생 목록이

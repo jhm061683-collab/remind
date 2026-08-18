@@ -51,15 +51,12 @@ export function CameraCaptureSheet({
   useEffect(() => {
     if (!open) {
       fallbackFired.current = false;
-      setPhase("opening");
-      setBusy(false);
+      stopStream();
       return;
     }
 
     let cancelled = false;
     fallbackFired.current = false;
-    setPhase("opening");
-    setBusy(false);
 
     async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -76,6 +73,11 @@ export function CameraCaptureSheet({
     }
 
     async function start() {
+      await Promise.resolve();
+      if (cancelled) return;
+      setPhase("opening");
+      setBusy(false);
+
       if (!navigator.mediaDevices?.getUserMedia) {
         goFallback();
         return;

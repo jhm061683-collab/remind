@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
+import { useClientMounted } from "@/lib/react/client-display";
 
 type Props = {
   urls: string[];
@@ -18,17 +19,30 @@ export function ImageLightbox({
   open,
   onClose,
 }: Props) {
-  const [index, setIndex] = useState(initialIndex);
-  const [mounted, setMounted] = useState(false);
+  const clampedInitial = Math.min(
+    Math.max(0, initialIndex),
+    Math.max(0, urls.length - 1),
+  );
+  const [index, setIndex] = useState(clampedInitial);
+  const mounted = useClientMounted();
   const touchStartX = useRef<number | null>(null);
+  const prevOpenRef = useRef(open);
+  const prevInitialRef = useRef(initialIndex);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (open) setIndex(Math.min(Math.max(0, initialIndex), Math.max(0, urls.length - 1)));
-  }, [open, initialIndex, urls.length]);
+  if (
+    open &&
+    (open !== prevOpenRef.current || initialIndex !== prevInitialRef.current)
+  ) {
+    prevOpenRef.current = open;
+    prevInitialRef.current = initialIndex;
+    const nextIndex = Math.min(
+      Math.max(0, initialIndex),
+      Math.max(0, urls.length - 1),
+    );
+    if (index !== nextIndex) setIndex(nextIndex);
+  } else if (!open && prevOpenRef.current) {
+    prevOpenRef.current = open;
+  }
 
   useEffect(() => {
     if (!open) return;

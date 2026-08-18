@@ -53,12 +53,19 @@ export function ImageCropDialog({
   const frameRef = useRef<number | null>(null);
   const pendingPointRef = useRef<Point | null>(null);
   const [crop, setCrop] = useState<CropRect | null>(null);
+  const [cropSource, setCropSource] = useState(source);
+
+  if (open && source !== cropSource) {
+    setCropSource(source);
+    setCrop(null);
+  }
 
   useEffect(() => {
-    if (!open) return;
-    setCrop(null);
     dragRef.current = null;
     pendingPointRef.current = null;
+  }, [cropSource]);
+
+  useEffect(() => {
     return () => {
       if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current);

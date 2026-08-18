@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ImageCropDialog } from "@/components/student/image-crop-dialog";
 
@@ -45,26 +45,33 @@ export function ImageEditSheet({
   onConfirm,
   onRetake,
 }: Props) {
+  if (!open || !source) return null;
+
+  return (
+    <ImageEditSheetBody
+      key={source}
+      source={source}
+      allowRetake={allowRetake}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      onRetake={onRetake}
+    />
+  );
+}
+
+function ImageEditSheetBody({
+  source,
+  allowRetake = true,
+  onCancel,
+  onConfirm,
+  onRetake,
+}: Omit<Props, "open">) {
   const [preview, setPreview] = useState(source);
   const [cropOpen, setCropOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const retakeRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open && source) {
-      setPreview(source);
-      setCropOpen(false);
-      setBusy(false);
-    }
-    if (!open) {
-      setPreview("");
-      setCropOpen(false);
-      setBusy(false);
-    }
-  }, [open, source]);
-
   const displaySrc = preview || source;
-  if (!open || !displaySrc) return null;
 
   const dialog = (
     <div

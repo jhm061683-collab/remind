@@ -21,7 +21,9 @@ type Props = {
 type SubjectFilter = "all" | string;
 type StatusFilter = "all" | "active" | "archived";
 
-import { EmptyState, FilterEmptyState } from "@/components/ui/status-state";
+import { EmptyState, ErrorState, FilterEmptyState, ListSkeleton } from "@/components/ui/status-state";
+import { categorizeWrongReason, SYSTEM_WRONG_REASON_CATEGORIES } from "@/lib/archive/wrong-reason-category";
+import { parseArchivePage } from "@/lib/archive/list-query";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
@@ -90,20 +92,49 @@ export function ArchiveList({ userId }: Props) {
     [],
   );
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
-    parseStatusFilter(searchParams.get("status")),
-  );
+  const statusFilter = parseStatusFilter(searchParams.get("status"));
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "error" | "ready">(
+    "loading",
+  );
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  useEffect(() => {
-    setStatusFilter(parseStatusFilter(searchParams.get("status")));
-  }, [searchParams]);
+
+  const loadQuestions = () => {
+    setLoadState((prev) => (prev === "ready" ? "ready" : "loading"));
+    setLoadError(null);
+    void getAllQuestions(userId)
+      .then((rows) => {
+        setQuestions(rows);
+        setLoadState("ready");
+        setLoadError(null);
+      })
+      .catch(() => {
+        setLoadError("문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
+        setLoadState("error");
+      });
+  };
 
   useEffect(() => {
-    void getAllQuestions(userId).then(setQuestions);
+    let cancelled = false;
+    void getAllQuestions(userId)
+      .then((rows) => {
+        if (cancelled) return;
+        setQuestions(rows);
+        setLoadState("ready");
+        setLoadError(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError("문제를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
+        setLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const counts = useMemo(() => {
@@ -117,7 +148,6 @@ export function ArchiveList({ userId }: Props) {
   }, [questions]);
 
   function changeStatusFilter(next: StatusFilter) {
-    setStatusFilter(next);
     const params = new URLSearchParams(searchParams.toString());
     if (next === "all") params.delete("status");
     else params.set("status", next);
@@ -125,17 +155,18 @@ export function ArchiveList({ userId }: Props) {
     router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
   }
 
-  /** 등록된 문제에 실제로 있는 틀린 이유 목록 */
+  /** 필터에는 학생 원문이 아니라 중립 분류만 올린다. */
   const wrongReasonOptions = useMemo(() => {
     const counts = new Map<string, number>();
+    for (const category of SYSTEM_WRONG_REASON_CATEGORIES) counts.set(category, 0);
     for (const q of questions) {
-      const reason = q.wrongReason?.trim();
-      if (!reason) continue;
-      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+      const category = categorizeWrongReason(q.wrongReason);
+      counts.set(category, (counts.get(category) ?? 0) + 1);
     }
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
-      .map(([label, count]) => ({ label, count }));
+    return SYSTEM_WRONG_REASON_CATEGORIES.map((label) => ({
+      label,
+      count: counts.get(label) ?? 0,
+    }));
   }, [questions]);
 
   /** 선택한 틀린 이유별 오답 키워드 (키워드 없는 이유는 제외) */
@@ -146,7 +177,7 @@ export function ArchiveList({ userId }: Props) {
       .map((reason) => {
         const counts = new Map<string, number>();
         for (const q of questions) {
-          if (q.wrongReason?.trim() !== reason) continue;
+          if (categorizeWrongReason(q.wrongReason) !== reason) continue;
           for (const keyword of getQuestionWrongKeywords(q)) {
             counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
           }
@@ -159,25 +190,17 @@ export function ArchiveList({ userId }: Props) {
       .filter((group) => group.options.length > 0);
   }, [questions, selectedWrongReasons]);
 
-  useEffect(() => {
-    if (selectedWrongReasons.length === 0) {
-      setSelectedWrongKeywords((prev) => (prev.length === 0 ? prev : []));
-      return;
-    }
-    const allowed = new Set(
+  const allowedWrongKeywords = useMemo(() => {
+    if (selectedWrongReasons.length === 0) return new Set<string>();
+    return new Set(
       wrongKeywordGroups.flatMap((group) => group.options.map((o) => o.label)),
     );
-    setSelectedWrongKeywords((prev) => {
-      const next = prev.filter((k) => allowed.has(k));
-      if (
-        next.length === prev.length &&
-        next.every((value, index) => value === prev[index])
-      ) {
-        return prev;
-      }
-      return next;
-    });
   }, [selectedWrongReasons, wrongKeywordGroups]);
+
+  const activeWrongKeywords = useMemo(
+    () => selectedWrongKeywords.filter((keyword) => allowedWrongKeywords.has(keyword)),
+    [selectedWrongKeywords, allowedWrongKeywords],
+  );
 
   const filtered = useMemo(() => {
     return questions.filter((q) => {
@@ -203,13 +226,13 @@ export function ArchiveList({ userId }: Props) {
       }
 
       if (selectedWrongReasons.length > 0) {
-        const reason = q.wrongReason?.trim() ?? "";
-        if (!selectedWrongReasons.includes(reason)) return false;
+        const category = categorizeWrongReason(q.wrongReason);
+        if (!selectedWrongReasons.includes(category)) return false;
       }
 
-      if (selectedWrongKeywords.length > 0) {
+      if (activeWrongKeywords.length > 0) {
         const keywords = getQuestionWrongKeywords(q).map((k) => k.toLowerCase());
-        const hit = selectedWrongKeywords.some((selected) =>
+        const hit = activeWrongKeywords.some((selected) =>
           keywords.includes(selected.toLowerCase()),
         );
         if (!hit) return false;
@@ -221,7 +244,7 @@ export function ArchiveList({ userId }: Props) {
     questions,
     problemQuery,
     selectedWrongReasons,
-    selectedWrongKeywords,
+    activeWrongKeywords,
     subjectFilter,
     statusFilter,
     dateFrom,
@@ -230,10 +253,7 @@ export function ArchiveList({ userId }: Props) {
   ]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const page = Math.min(
-    pageCount,
-    Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1),
-  );
+  const page = parseArchivePage(searchParams.get("page"), pageCount);
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function goPage(next: number) {
@@ -241,7 +261,7 @@ export function ArchiveList({ userId }: Props) {
     if (next <= 1) params.delete("page");
     else params.set("page", String(next));
     const qs = params.toString();
-    router.replace(qs ? `/archive?${qs}` : "/archive", { scroll: false });
+    router.push(qs ? `/archive?${qs}` : "/archive", { scroll: false });
   }
 
   const hasDetailFilters =
@@ -250,7 +270,7 @@ export function ArchiveList({ userId }: Props) {
     Boolean(dateTo) ||
     Boolean(problemQuery.trim()) ||
     selectedWrongReasons.length > 0 ||
-    selectedWrongKeywords.length > 0;
+    activeWrongKeywords.length > 0;
 
   function clearDetailFilters() {
     setProblemQuery("");
@@ -329,7 +349,7 @@ export function ArchiveList({ userId }: Props) {
             >
               {tab.label}
               <span className="mt-0.5 block text-[11px] font-medium text-[var(--rm-text-faint)]">
-                {count}개
+                {loadState === "ready" ? `${count}개` : "…"}
               </span>
             </button>
           );
@@ -388,7 +408,7 @@ export function ArchiveList({ userId }: Props) {
         </label>
 
         <div className="space-y-2">
-          <p className="remind-field-label">틀린 이유 (여러 개 선택 가능)</p>
+          <p className="remind-field-label">틀린 이유 (시스템 분류)</p>
           {wrongReasonOptions.length === 0 ? (
             <p className="text-xs text-[var(--rm-text-faint)]">
               아직 틀린 이유를 적은 문제가 없어요.
@@ -423,48 +443,11 @@ export function ArchiveList({ userId }: Props) {
           )}
         </div>
 
-        {wrongKeywordGroups.length > 0 ? (
-          <div className="space-y-3">
-            {wrongKeywordGroups.map((group) => (
-              <div
-                key={group.reason}
-                className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3"
-              >
-                <p className="remind-field-label">
-                  오답 키워드
-                  <span className="ml-1 font-normal text-[var(--rm-text-muted)]">
-                    · {group.reason}
-                  </span>
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.options.map((option) => {
-                    const active = selectedWrongKeywords.includes(option.label);
-                    return (
-                      <button
-                        key={`${group.reason}-${option.label}`}
-                        type="button"
-                        onClick={() =>
-                          setSelectedWrongKeywords((prev) =>
-                            toggleInList(prev, option.label),
-                          )
-                        }
-                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                          active
-                            ? "border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] text-[var(--rm-text-on-info)]"
-                            : "border-[var(--rm-border)] bg-[var(--rm-surface)] text-[var(--rm-text)]"
-                        }`}
-                      >
-                        #{option.label}
-                        <span className="ml-1 text-[10px] opacity-60">
-                          {option.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+        {selectedWrongReasons.length > 0 ? (
+          <p className="text-xs text-[var(--rm-text-muted)]">
+            학생이 직접 적은 오답 메모는 문제 상세에서만 보여 줍니다. 필터에는
+            올리지 않습니다.
+          </p>
         ) : null}
 
         <label className="block">
@@ -513,11 +496,30 @@ export function ArchiveList({ userId }: Props) {
       ) : null}
 
       <p className="mt-4 text-sm text-[var(--rm-text-muted)]">
-        <span className="font-semibold text-[var(--rm-text)]">{filtered.length}건</span>
-        {hasDetailFilters ? " · 검색/필터 적용" : null}
+        {loadState === "ready" ? (
+          <>
+            <span className="font-semibold text-[var(--rm-text)]">{filtered.length}건</span>
+            {hasDetailFilters ? " · 검색/필터 적용" : null}
+          </>
+        ) : loadState === "loading" ? (
+          "문제를 불러오는 중"
+        ) : (
+          "불러오지 못했습니다"
+        )}
       </p>
 
-      {filtered.length === 0 ? (
+      {loadState === "loading" && questions.length === 0 ? (
+        <div className="mt-3">
+          <ListSkeleton rows={5} />
+        </div>
+      ) : loadState === "error" && questions.length === 0 ? (
+        <div className="mt-3">
+          <ErrorState
+            message={loadError ?? "문제를 불러오지 못했습니다."}
+            onRetry={loadQuestions}
+          />
+        </div>
+      ) : filtered.length === 0 ? (
         hasDetailFilters ? (
           <FilterEmptyState
             summary="지금 켜 둔 검색·필터에 맞는 문제가 없습니다."
@@ -561,7 +563,7 @@ export function ArchiveList({ userId }: Props) {
         </ul>
       )}
       {filtered.length > PAGE_SIZE ? (
-        <div className="mt-4 flex items-center justify-center gap-2">
+        <div className="mt-4 mb-2 flex items-center justify-center gap-2">
           <button
             type="button"
             disabled={page <= 1}

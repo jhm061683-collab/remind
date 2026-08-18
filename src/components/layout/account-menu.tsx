@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/auth/actions";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 
 type Props = {
   userName: string;
 };
 
 export function AccountMenu({ userName }: Props) {
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,14 +47,14 @@ export function AccountMenu({ userName }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`rm-nav-item inline-flex max-w-[9rem] items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-semibold transition hover:bg-[var(--rm-surface)] ${
+        className={`rm-nav-item inline-flex min-h-11 min-w-11 max-w-[9rem] items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm font-semibold transition hover:bg-[var(--rm-surface)] ${
           open ? "rm-nav-item--active" : ""
         }`}
       >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--rm-accent)]/15 text-[11px] font-bold text-[var(--rm-accent)]">
           {initial}
         </span>
-        <span className="truncate">{userName}</span>
+        <span className="hidden truncate sm:inline">{userName}</span>
         <span className="text-[10px] text-[var(--rm-text-muted)]" aria-hidden>
           {open ? "▲" : "▼"}
         </span>
@@ -78,6 +74,15 @@ export function AccountMenu({ userName }: Props) {
           >
             계정 설정
           </Link>
+          <div className="flex items-center justify-between gap-2 px-3.5 py-2 sm:hidden">
+            <span className="text-xs font-semibold text-[var(--rm-text-muted)]">
+              화면 설정
+            </span>
+            <ThemeToggle />
+          </div>
+          <div className="px-3.5 py-1 sm:hidden">
+            <InstallAppPrompt variant="chip" />
+          </div>
           <Link
             href="/subjects"
             role="menuitem"

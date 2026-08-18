@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { StudentAvatarBadge } from "@/components/student/dashboard/student-avatar-badge";
 import type {
   AcademyHallOfFame,
@@ -144,30 +144,35 @@ export function StudentMotivationPanel({
   monthlyBoard,
   hallOfFame,
 }: Props) {
-  const classRanks = rank?.classRanks ?? [];
-  const [selectedClassId, setSelectedClassId] = useState(
-    classRanks[0]?.classId ?? "",
-  );
+  const classRanks = useMemo(() => rank?.classRanks ?? [], [rank?.classRanks]);
+  const [pickedClassId, setPickedClassId] = useState<string | null>(null);
   const [period, setPeriod] = useState<BoardPeriod>("this");
   const [showAll, setShowAll] = useState(false);
+  const [boardTab, setBoardTab] = useState<"person" | "class">("person");
 
-  useEffect(() => {
-    if (classRanks.length === 0) return;
-    if (!classRanks.some((c) => c.classId === selectedClassId)) {
-      setSelectedClassId(classRanks[0]!.classId);
+  const effectiveClassId = useMemo(() => {
+    if (classRanks.length === 0) return "";
+    if (
+      pickedClassId &&
+      classRanks.some((item) => item.classId === pickedClassId)
+    ) {
+      return pickedClassId;
     }
-  }, [classRanks, selectedClassId]);
-
-  useEffect(() => {
-    setShowAll(false);
-  }, [period]);
+    return classRanks[0]!.classId;
+  }, [classRanks, pickedClassId]);
 
   const activeSlice = useMemo(() => {
     if (classRanks.length === 0) return null;
     return (
-      classRanks.find((c) => c.classId === selectedClassId) ?? classRanks[0]!
+      classRanks.find((item) => item.classId === effectiveClassId) ??
+      classRanks[0]!
     );
-  }, [classRanks, selectedClassId]);
+  }, [classRanks, effectiveClassId]);
+
+  function togglePeriod() {
+    setPeriod((current) => (current === "this" ? "prev" : "this"));
+    setShowAll(false);
+  }
 
   if (!rank && !monthlyBoard && !hallOfFame) return null;
 
@@ -235,7 +240,7 @@ export function StudentMotivationPanel({
           <ClassTabs
             slices={classRanks}
             selectedId={activeSlice?.classId ?? ""}
-            onSelect={setSelectedClassId}
+            onSelect={setPickedClassId}
           />
 
           <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
@@ -311,9 +316,7 @@ export function StudentMotivationPanel({
               {hallOfFame ? (
                 <button
                   type="button"
-                  onClick={() =>
-                    setPeriod((p) => (p === "this" ? "prev" : "this"))
-                  }
+                  onClick={togglePeriod}
                   className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-2.5 py-1 text-[11px] font-bold text-[var(--rm-nav-active)] touch-manipulation"
                 >
                   {period === "this" ? "지난달 TOP100" : "이번 달 랭킹"}
@@ -338,8 +341,33 @@ export function StudentMotivationPanel({
                 : "지난달 기록이 아직 없어요"}
             </p>
           ) : (
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="min-w-0">
+            <div className="mt-3">
+              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-[var(--rm-bg-elevated)] p-1 sm:hidden">
+                <button
+                  type="button"
+                  onClick={() => setBoardTab("person")}
+                  className={`min-h-[44px] rounded-lg text-[12px] font-bold ${
+                    boardTab === "person"
+                      ? "bg-[var(--rm-surface)] text-[var(--rm-text)]"
+                      : "text-[var(--rm-text-muted)]"
+                  }`}
+                >
+                  개인 랭킹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBoardTab("class")}
+                  className={`min-h-[44px] rounded-lg text-[12px] font-bold ${
+                    boardTab === "class"
+                      ? "bg-[var(--rm-surface)] text-[var(--rm-text)]"
+                      : "text-[var(--rm-text-muted)]"
+                  }`}
+                >
+                  반 랭킹
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className={`min-w-0 ${boardTab === "class" ? "hidden sm:block" : ""}`}>
                 <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
                   개인
                 </p>
@@ -350,7 +378,7 @@ export function StudentMotivationPanel({
                       : "지난달 기록이 아직 없어요"}
                   </p>
                 ) : (
-                  <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-0.5">
+                  <ul className="space-y-1.5 pr-0.5">
                     {visibleStudents.map((person) => (
                       <MonthlyPersonRow
                         key={`${period}-${person.studentId}`}
@@ -365,7 +393,7 @@ export function StudentMotivationPanel({
                 )}
               </div>
 
-              <div className="min-w-0">
+              <div className={`min-w-0 ${boardTab === "person" ? "hidden sm:block" : ""}`}>
                 <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
                   반
                 </p>
@@ -374,7 +402,7 @@ export function StudentMotivationPanel({
                     반 랭킹을 기다리는 중
                   </p>
                 ) : (
-                  <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-0.5">
+                  <ul className="space-y-1.5 pr-0.5">
                     {boardClasses.map((room) => (
                       <MonthlyClassRow
                         key={`${period}-${room.classId}`}
@@ -384,6 +412,7 @@ export function StudentMotivationPanel({
                   </ul>
                 )}
               </div>
+            </div>
             </div>
           )}
         </div>

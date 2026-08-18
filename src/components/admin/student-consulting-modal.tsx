@@ -65,10 +65,10 @@ export function StudentConsultingModal({
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
-    setMessage(null);
-    setReportPath(null);
     startLoad(async () => {
+      setError(null);
+      setMessage(null);
+      setReportPath(null);
       const result = await getConsultingSnapshotAction({
         studentId,
         period,

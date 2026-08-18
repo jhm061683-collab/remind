@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { loginAction, type LoginState } from "@/lib/auth/actions";
+import {
+  useLocalStorageItem,
+  writeLocalStorageItem,
+} from "@/lib/react/client-display";
 import { DEMO_ACADEMY_CODE } from "@/types/user";
 
 const initialState: LoginState = {};
@@ -19,53 +23,43 @@ export function LoginForm({
     loginAction,
     initialState,
   );
-  const [academyCode, setAcademyCode] = useState(
-    defaultAcademyCode?.trim() || DEMO_ACADEMY_CODE,
-  );
-  const [username, setUsername] = useState(defaultUsername ?? "");
+  const serverAcademyCode = defaultAcademyCode?.trim() || DEMO_ACADEMY_CODE;
+  const storedAcademyCode = useLocalStorageItem(ACADEMY_CODE_LOCK_KEY);
+  const storedUsername = useLocalStorageItem(USERNAME_REMEMBER_KEY);
+  const [academyDraft, setAcademyDraft] = useState<string | null>(null);
+  const [usernameDraft, setUsernameDraft] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
-  const [isAcademyCodeLocked, setIsAcademyCodeLocked] = useState(false);
-  const [rememberUsername, setRememberUsername] = useState(false);
-
-  useEffect(() => {
-    const lockedCode = window.localStorage.getItem(ACADEMY_CODE_LOCK_KEY);
-    if (lockedCode) {
-      setAcademyCode(lockedCode);
-      setIsAcademyCodeLocked(true);
-    }
-    const remembered = window.localStorage.getItem(USERNAME_REMEMBER_KEY);
-    if (remembered && !defaultUsername) {
-      setUsername(remembered);
-      setRememberUsername(true);
-    }
-  }, [defaultUsername]);
+  const isAcademyCodeLocked = Boolean(storedAcademyCode);
+  const rememberUsername = Boolean(storedUsername);
+  const academyCode = academyDraft ?? storedAcademyCode ?? serverAcademyCode;
+  const username = usernameDraft ?? defaultUsername ?? storedUsername ?? "";
 
   function toggleAcademyCodeLock() {
     if (isAcademyCodeLocked) {
-      window.localStorage.removeItem(ACADEMY_CODE_LOCK_KEY);
-      setIsAcademyCodeLocked(false);
+      writeLocalStorageItem(ACADEMY_CODE_LOCK_KEY, null);
+      setAcademyDraft(academyCode);
       return;
     }
 
     const normalizedCode = academyCode.trim().toUpperCase();
     if (!normalizedCode) return;
 
-    setAcademyCode(normalizedCode);
-    window.localStorage.setItem(ACADEMY_CODE_LOCK_KEY, normalizedCode);
-    setIsAcademyCodeLocked(true);
+    setAcademyDraft(normalizedCode);
+    writeLocalStorageItem(ACADEMY_CODE_LOCK_KEY, normalizedCode);
   }
 
   function handleRememberUsernameChange(checked: boolean) {
-    setRememberUsername(checked);
     if (!checked) {
-      window.localStorage.removeItem(USERNAME_REMEMBER_KEY);
+      writeLocalStorageItem(USERNAME_REMEMBER_KEY, null);
+      setUsernameDraft(username);
       return;
     }
     const trimmed = username.trim();
     if (trimmed) {
-      window.localStorage.setItem(USERNAME_REMEMBER_KEY, trimmed);
+      writeLocalStorageItem(USERNAME_REMEMBER_KEY, trimmed);
+      setUsernameDraft(trimmed);
     }
   }
 
@@ -74,9 +68,9 @@ export function LoginForm({
       action={(formData) => {
         const trimmedUsername = String(formData.get("username") ?? "").trim();
         if (rememberUsername && trimmedUsername) {
-          window.localStorage.setItem(USERNAME_REMEMBER_KEY, trimmedUsername);
+          writeLocalStorageItem(USERNAME_REMEMBER_KEY, trimmedUsername);
         } else if (!rememberUsername) {
-          window.localStorage.removeItem(USERNAME_REMEMBER_KEY);
+          writeLocalStorageItem(USERNAME_REMEMBER_KEY, null);
         }
         formAction(formData);
       }}
@@ -106,7 +100,7 @@ export function LoginForm({
             type="text"
             autoComplete="organization"
             value={academyCode}
-            onChange={(event) => setAcademyCode(event.target.value)}
+            onChange={(event) => setAcademyDraft(event.target.value)}
             readOnly={isAcademyCodeLocked}
             disabled={isPending}
             placeholder="학원 코드를 입력하세요"
@@ -145,7 +139,7 @@ export function LoginForm({
           type="text"
           autoComplete="username"
           value={username}
-          onChange={(event) => setUsername(event.target.value)}
+          onChange={(event) => setUsernameDraft(event.target.value)}
           disabled={isPending}
           placeholder="아이디를 입력하세요"
           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"

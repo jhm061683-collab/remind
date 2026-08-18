@@ -51,7 +51,10 @@ export function SubjectList({ userId }: Props) {
   }, [subjects, userId]);
 
   useEffect(() => {
-    void refresh();
+    void (async () => {
+      await Promise.resolve();
+      await refresh();
+    })();
     function onUpdated() {
       void refresh();
     }

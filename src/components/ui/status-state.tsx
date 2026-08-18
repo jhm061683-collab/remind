@@ -51,6 +51,25 @@ export function FilterEmptyState({
   );
 }
 
+export function ListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div
+      className="space-y-2"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span className="sr-only">불러오는 중</span>
+      {Array.from({ length: rows }, (_, index) => (
+        <div
+          key={index}
+          className="h-20 animate-pulse rounded-2xl bg-[var(--rm-surface-raised)]"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ErrorState({
   message,
   onRetry,

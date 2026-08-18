@@ -82,7 +82,9 @@ export function MultiImagePicker({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [menuIndex, setMenuIndex] = useState<number | null>(null);
   const [replaceCamOpen, setReplaceCamOpen] = useState(false);
-  const [preferCustomCam, setPreferCustomCam] = useState(true);
+  const [preferCustomCam] = useState(
+    () => readBrowserEnvironment().cameraStrategy === "custom_get_user_media",
+  );
   const replaceCaptureRef = useRef<HTMLInputElement>(null);
   const replaceAlbumRef = useRef<HTMLInputElement>(null);
   const pendingCaptureAfterNudge = useRef<(() => void) | null>(null);
@@ -98,8 +100,6 @@ export function MultiImagePicker({
   useEffect(() => {
     replaceCaptureRef.current?.setAttribute("capture", "environment");
     nudgeCaptureRef.current?.setAttribute("capture", "environment");
-    const env = readBrowserEnvironment();
-    setPreferCustomCam(env.cameraStrategy === "custom_get_user_media");
   }, []);
 
   const openNativeReplaceCapture = useCallback(() => {

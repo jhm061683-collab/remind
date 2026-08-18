@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useClientMounted } from "@/lib/react/client-display";
 
 type Props = {
   open: boolean;
@@ -26,11 +27,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useClientMounted();
 
   useEffect(() => {
     if (!open) return;
