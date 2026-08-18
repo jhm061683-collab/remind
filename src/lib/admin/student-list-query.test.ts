@@ -25,4 +25,12 @@ describe("학생 목록 URL", () => {
     assert.ok(href.includes("scope=assigned"));
     assert.ok(href.includes("activity=due_today"));
   });
+
+  it("장기 미접속·미로그인 통합 필터를 보존한다", () => {
+    const parsed = parseStudentListQuery(
+      new URLSearchParams("activity=inactive_or_never&page=2"),
+    );
+    assert.equal(parsed.activity, "inactive_or_never");
+    assert.equal(parsed.page, 2);
+  });
 });

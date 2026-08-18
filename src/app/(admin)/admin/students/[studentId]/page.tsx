@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StudentDetailPanel } from "@/components/admin/student-detail-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackBar } from "@/components/ui/back-bar";
@@ -13,12 +13,20 @@ type Props = {
 export default async function AdminStudentDetailPage({ params }: Props) {
   const session = await requireStaff();
   const { studentId } = await params;
+  const staffRole = getEffectiveStaffRole(session);
   const detail = await getStudentDetailForStaff(
     session.id,
-    getEffectiveStaffRole(session),
+    staffRole,
     studentId,
   );
-  if (!detail) notFound();
+  if (!detail) {
+    if (staffRole === "sub_admin") {
+      redirect(
+        "/admin/permission-denied?need=assigned-student&from=/admin/students",
+      );
+    }
+    notFound();
+  }
 
   return (
     <>
@@ -27,7 +35,10 @@ export default async function AdminStudentDetailPage({ params }: Props) {
         title={`${detail.student.displayName} 상세`}
         description="10초 요약 · 오답모음 PDF · 학부모 보고서 · 계정 관리"
       />
-      <StudentDetailPanel detail={detail} />
+      <StudentDetailPanel
+        detail={detail}
+        canManageAccount={staffRole === "admin"}
+      />
     </>
   );
 }

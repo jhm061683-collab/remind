@@ -33,6 +33,23 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
   const groups = useMemo(() => buildStaffGroups(students), [students]);
   const summary = useMemo(() => summarizeStaffToday(students), [students]);
   const attention = useMemo(() => buildAttentionQueue(students), [students]);
+  const actionGroups = useMemo(() => {
+    const due = groups.find((group) => group.key === "due_today")!;
+    const backlog = groups.find((group) => group.key === "backlog")!;
+    const inactive = students.filter(
+      (student) => !student.lastLoginAt || student.inactiveDays >= 7,
+    );
+    return [
+      due,
+      backlog,
+      {
+        key: "inactive_or_never",
+        label: "장기 미접속",
+        hint: "7일 이상 미접속 또는 첫 로그인 전",
+        students: inactive,
+      },
+    ];
+  }, [groups, students]);
 
   const listHref = (activity: string) =>
     studentListHref(
@@ -50,7 +67,7 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
   return (
     <section data-tour-id="staff-today-actions" className="space-y-3">
       <div>
-        <h2 className="text-sm font-bold text-[var(--rm-text)]">
+        <h2 className="text-lg font-bold text-[var(--rm-text)]">
           오늘 조치가 필요한 학생
         </h2>
         <p className="text-xs text-[var(--rm-text-muted)]">
@@ -65,24 +82,24 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
 
       <div
         data-tour-id="staff-today-kpi"
-        className="grid grid-cols-2 gap-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-3"
       >
-        {groups.map((group) => (
+        {actionGroups.map((group) => (
           <Link
             key={group.key}
             href={listHref(group.key)}
-            className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 text-left transition hover:border-[var(--rm-brand)]"
+            className="min-h-[116px] rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 text-left transition hover:border-[var(--rm-brand)]"
           >
-            <p className="text-[10px] font-semibold text-[var(--rm-text-muted)]">
+            <p className="text-[13px] font-semibold text-[var(--rm-text-muted)]">
               {group.label}
             </p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-[var(--rm-text)]">
+            <p className="mt-1 text-[28px] font-extrabold tabular-nums tracking-tight text-[var(--rm-text)]">
               {group.students.length}명
             </p>
-            <p className="mt-0.5 truncate text-[10px] text-[var(--rm-text-faint)]">
+            <p className="mt-0.5 text-[12px] leading-snug text-[var(--rm-text-muted)]">
               {group.hint}
             </p>
-            <span className="mt-2 inline-block text-xs font-bold text-[var(--rm-nav-active)]">
+            <span className="mt-2 inline-block text-[13px] font-bold text-[var(--rm-nav-active)]">
               대상 목록 보기
             </span>
           </Link>
@@ -136,15 +153,9 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
                       </p>
                     </div>
                     <div
-                      className="flex shrink-0 flex-wrap gap-1"
+                      className="flex shrink-0 flex-wrap items-center gap-1.5"
                       data-tour-id={index === 0 ? "staff-quick-actions" : undefined}
                     >
-                      <Link
-                        href={`/admin/students/${item.student.id}`}
-                        className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
-                      >
-                        상세
-                      </Link>
                       <button
                         type="button"
                         onClick={() =>
@@ -153,22 +164,35 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
                             name: item.student.displayName,
                           })
                         }
-                        className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
+                        className="rm-fill-brand inline-flex min-h-[44px] items-center rounded-lg px-3 text-[13px] font-bold text-white"
                       >
-                        상담
+                        상담 보기
                       </button>
-                      <Link
-                        href="/admin/notifications"
-                        className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
-                      >
-                        알림
-                      </Link>
-                      <Link
-                        href="/admin/students?tab=reports"
-                        className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
-                      >
-                        보고서
-                      </Link>
+                      <details className="group/actions">
+                        <summary className="inline-flex min-h-[44px] cursor-pointer list-none items-center rounded-lg border border-[var(--rm-border)] px-3 text-[13px] font-bold text-[var(--rm-text)] marker:content-none">
+                          추가 조치
+                        </summary>
+                        <div className="mt-1 flex flex-wrap justify-end gap-1.5">
+                          <Link
+                            href={`/admin/students/${item.student.id}`}
+                            className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-3 text-[13px] font-bold text-[var(--rm-text)]"
+                          >
+                            상세
+                          </Link>
+                          <Link
+                            href="/admin/notifications"
+                            className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-3 text-[13px] font-bold text-[var(--rm-text)]"
+                          >
+                            알림
+                          </Link>
+                          <Link
+                            href="/admin/students?tab=reports"
+                            className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-3 text-[13px] font-bold text-[var(--rm-text)]"
+                          >
+                            보고서
+                          </Link>
+                        </div>
+                      </details>
                     </div>
                   </li>
                 );

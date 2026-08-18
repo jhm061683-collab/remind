@@ -56,12 +56,33 @@ body {
   min-height: 100dvh;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
+  overflow-x: clip;
 }
 
 html {
   overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--rm-brand);
 }
 
 html.tour-scroll-lock,

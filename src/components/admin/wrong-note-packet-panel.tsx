@@ -88,6 +88,7 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [downloading, setDownloading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [progress, setProgress] = useState<{
     label: string;
     percent: number;
@@ -216,11 +217,24 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
     if (tight.length > 0) {
       console.warn("[packet-preview] math cell tight", tight.length);
     }
-  }, [data, pdfSettings.itemGap]);
+  }, [data, pdfSettings.itemGap, previewOpen]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [previewOpen]);
 
   return (
     <section
-      data-tour-id="admin-packet-pdf"
       className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm"
     >
       <h3 className="font-semibold text-[var(--rm-text)]">오답 모음 PDF</h3>
@@ -405,19 +419,55 @@ export function WrongNotePacketPanel({ studentId, studentName }: Props) {
       ) : null}
 
       {data && data.items.length > 0 ? (
-        <div className="mt-4 overflow-auto rounded-xl border border-[var(--rm-border)] bg-slate-100 p-3">
-          <p className="mb-2 text-[11px] font-semibold text-slate-600">
-            미리보기 (이 내용이 PDF로 저장돼요) ·{" "}
-            {packetPdfSettingsVersion(pdfSettings)}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] p-3">
+          <p className="text-sm text-[var(--rm-text-muted)]">
+            {data.items.length}문항 · {packetPdfSettingsVersion(pdfSettings)}
           </p>
-          <div
-            ref={previewRef}
-            className="max-h-[70vh] overflow-auto"
-            style={{ minWidth: 0 }}
-            data-pdf-settings-version={packetPdfSettingsVersion(pdfSettings)}
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="min-h-[44px] rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-4 text-sm font-bold text-[var(--rm-text)]"
           >
-            <div style={{ width: 794, minWidth: 794 }}>
-              <WrongNotePacketDocument data={data} settings={pdfSettings} />
+            전체 화면 미리보기
+          </button>
+        </div>
+      ) : null}
+
+      {previewOpen && data && data.items.length > 0 ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="packet-preview-title"
+          className="fixed inset-0 z-[100] flex flex-col bg-slate-100"
+        >
+          <div className="flex min-h-[64px] flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-white px-4 py-2">
+            <div>
+              <h4 id="packet-preview-title" className="font-bold text-slate-900">
+                {studentName} 오답 모음 미리보기
+              </h4>
+              <p className="text-xs text-slate-600">
+                {data.items.length}문항 · {packetPdfSettingsVersion(pdfSettings)}
+              </p>
+            </div>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setPreviewOpen(false)}
+              className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-900"
+              aria-label="오답 모음 미리보기 닫기"
+            >
+              닫기
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-3 sm:p-6">
+            <div
+              ref={previewRef}
+              className="mx-auto w-fit shadow-xl"
+              data-pdf-settings-version={packetPdfSettingsVersion(pdfSettings)}
+            >
+              <div style={{ width: 794, minWidth: 794 }}>
+                <WrongNotePacketDocument data={data} settings={pdfSettings} />
+              </div>
             </div>
           </div>
         </div>

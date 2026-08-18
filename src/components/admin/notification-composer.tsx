@@ -8,6 +8,8 @@ type Props = {
   students: AdminStudentRow[];
 };
 
+const SELECTOR_PAGE_SIZE = 10;
+
 export function NotificationComposer({ students }: Props) {
   const [query, setQuery] = useState("");
   const [classFilter, setClassFilter] = useState("all");
@@ -17,6 +19,7 @@ export function NotificationComposer({ students }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
 
   const classNames = useMemo(() => {
     const names = new Set<string>();
@@ -44,6 +47,12 @@ export function NotificationComposer({ students }: Props) {
   }, [students, query, classFilter]);
 
   const selectedStudents = students.filter((s) => selected.includes(s.id));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / SELECTOR_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageStudents = filtered.slice(
+    (safePage - 1) * SELECTOR_PAGE_SIZE,
+    safePage * SELECTOR_PAGE_SIZE,
+  );
 
   function toggleVisible(checked: boolean) {
     const visibleIds = filtered.map((s) => s.id);
@@ -64,7 +73,7 @@ export function NotificationComposer({ students }: Props) {
         <div className="space-y-3">
           <p className="text-sm font-bold text-[var(--rm-text)]">발송 전 확인</p>
           <p className="text-sm text-[var(--rm-text)]">대상 {selectedStudents.length}명</p>
-          <p className="max-h-24 overflow-auto text-xs text-[var(--rm-text-muted)]">
+          <p className="text-xs leading-5 text-[var(--rm-text-muted)]">
             {selectedStudents.slice(0, 12).map((s) => s.displayName).join(", ")}
             {selectedStudents.length > 12
               ? ` 외 ${selectedStudents.length - 12}명`
@@ -101,22 +110,32 @@ export function NotificationComposer({ students }: Props) {
         <>
           <div className="grid gap-2 sm:grid-cols-2">
             <input
+              aria-label="알림 제목"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="알림 제목"
               className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
             />
             <input
+              type="search"
+              aria-label="알림 대상 학생 검색"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="학생·반·담당 검색"
               className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
             />
           </div>
           {classNames.length > 0 ? (
             <select
+              aria-label="알림 대상 반 필터"
               value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
+              onChange={(e) => {
+                setClassFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-xl border border-[var(--rm-border)] px-3 py-2 text-sm"
             >
               <option value="all">전체 반</option>
@@ -128,6 +147,7 @@ export function NotificationComposer({ students }: Props) {
             </select>
           ) : null}
           <textarea
+            aria-label="알림 내용"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="알림 내용"
@@ -145,8 +165,8 @@ export function NotificationComposer({ students }: Props) {
               </button>
             </span>
           </div>
-          <div className="max-h-56 overflow-y-auto rounded-xl border border-[var(--rm-border)] p-2">
-            <label className="mb-2 flex items-center gap-2 text-xs text-[var(--rm-text-muted)]">
+          <div className="rounded-xl border border-[var(--rm-border)] p-2">
+            <label className="mb-2 flex min-h-[44px] items-center gap-2 text-xs text-[var(--rm-text-muted)]">
               <input
                 type="checkbox"
                 checked={visibleSelected}
@@ -155,10 +175,10 @@ export function NotificationComposer({ students }: Props) {
               현재 필터 결과 선택
             </label>
             <div className="space-y-1">
-              {filtered.map((student) => (
+              {pageStudents.map((student) => (
                 <label
                   key={student.id}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--rm-surface-raised)]"
+                  className="flex min-h-[44px] items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--rm-surface-raised)]"
                 >
                   <input
                     type="checkbox"
@@ -181,6 +201,17 @@ export function NotificationComposer({ students }: Props) {
                 </label>
               ))}
             </div>
+            {pageCount > 1 ? (
+              <nav aria-label="알림 대상 페이지" className="mt-2 flex items-center justify-between border-t border-[var(--rm-border)] pt-2">
+                <button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="min-h-[44px] rounded-lg px-3 text-sm font-semibold disabled:opacity-40">
+                  이전
+                </button>
+                <span className="text-xs text-[var(--rm-text-muted)]">{safePage} / {pageCount}</span>
+                <button type="button" disabled={safePage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="min-h-[44px] rounded-lg px-3 text-sm font-semibold disabled:opacity-40">
+                  다음
+                </button>
+              </nav>
+            ) : null}
           </div>
           <button
             type="button"

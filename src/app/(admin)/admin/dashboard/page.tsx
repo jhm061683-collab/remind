@@ -138,12 +138,28 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
         />
       </div>
 
-      <details className="mt-3 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3">
-        <summary className="cursor-pointer text-sm font-semibold text-[var(--rm-text)]">
-          추가 통계 보기
+      <details className="group mt-4 rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-[var(--rm-text)] marker:content-none">
+          <span>
+            운영 분석과 전체 학생
+            <span className="ml-2 text-[13px] font-medium text-[var(--rm-text-muted)]">
+              {data.totalStudents}명
+            </span>
+          </span>
+          <span className="text-[13px] font-semibold text-[var(--rm-nav-active)] group-open:hidden">
+            펼치기
+          </span>
+          <span className="hidden text-[13px] font-semibold text-[var(--rm-nav-active)] group-open:inline">
+            접기
+          </span>
         </summary>
+        <div className="border-t border-[var(--rm-border)] px-3 pb-4 pt-3 sm:px-4">
+        <section aria-labelledby="dashboard-summary-title">
+          <h2 id="dashboard-summary-title" className="text-lg font-bold text-[var(--rm-text)]">
+            운영 요약
+          </h2>
         <div
-          className={`mt-3 grid grid-cols-2 gap-2 ${
+          className={`mt-2 grid grid-cols-2 gap-2 ${
             isSubAdmin
               ? "sm:grid-cols-3"
               : "sm:grid-cols-3 xl:grid-cols-5"
@@ -180,8 +196,8 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
             hint="오늘 마감인 중·장기 문제 기준"
           />
         ) : null}
-      </div>
-      </details>
+        </div>
+        </section>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-2">
         <AcademyLearningRankPanel
@@ -217,7 +233,7 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
       </div>
 
       <section className="mt-3">
-        <h2 className="mb-2 text-sm font-semibold text-[var(--rm-text)]">
+        <h2 className="mb-2 text-lg font-bold text-[var(--rm-text)]">
           {isSubAdmin ? "담당 학생 · 이름 클릭 = 상담 스냅샷" : "학생 요약"}
         </h2>
         {data.students.length === 0 && isSubAdmin ? (
@@ -236,6 +252,8 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
           />
         )}
       </section>
+        </div>
+      </details>
     </>
   );
 }

@@ -36,11 +36,58 @@ type Props = {
   classOptions?: ClassOption[];
 };
 
-type ActivityFilter = "all" | "due_today" | "backlog" | "inactive_7" | "never_login";
+type ActivityFilter =
+  | "all"
+  | "due_today"
+  | "backlog"
+  | "inactive_7"
+  | "never_login"
+  | "inactive_or_never";
+
+const PAGE_SIZE = 18;
 
 function formatClassDisplay(student: AdminStudentRow): string {
   if (student.classNames.length > 0) return student.classNames.join(", ");
   return student.className ?? "—";
+}
+
+function attentionState(student: AdminStudentRow): {
+  label: string;
+  className: string;
+} {
+  if (!student.lastLoginAt) {
+    return {
+      label: "첫 로그인 전",
+      className:
+        "border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] text-[var(--rm-text-on-error)]",
+    };
+  }
+  if (student.inactiveDays >= 7) {
+    return {
+      label: `${student.inactiveDays}일 미접속`,
+      className:
+        "border-[var(--rm-error-border)] bg-[var(--rm-error-bg)] text-[var(--rm-text-on-error)]",
+    };
+  }
+  if (student.dueToday >= 5) {
+    return {
+      label: `복습 ${student.dueToday}개 밀림`,
+      className:
+        "border-[color-mix(in_srgb,var(--rm-warning)_35%,var(--rm-border))] bg-[color-mix(in_srgb,var(--rm-warning)_12%,var(--rm-surface))] text-[var(--rm-text)]",
+    };
+  }
+  if (student.dueToday > 0) {
+    return {
+      label: `오늘 ${student.dueToday}개`,
+      className:
+        "border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] text-[var(--rm-text-on-info)]",
+    };
+  }
+  return {
+    label: "정상",
+    className:
+      "border-[var(--rm-success-border)] bg-[var(--rm-success-bg)] text-[var(--rm-text-on-success)]",
+  };
 }
 
 export function AdminStudentsTable({
@@ -51,13 +98,11 @@ export function AdminStudentsTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const listQuery = parseStudentListQuery(searchParams);
-  const [query, setQuery] = useState(listQuery.q);
-  const [classFilter, setClassFilter] = useState(listQuery.className);
-  const [gradeFilter, setGradeFilter] = useState(listQuery.grade);
-  const [teacherFilter, setTeacherFilter] = useState(listQuery.teacher);
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>(
-    listQuery.activity as ActivityFilter,
-  );
+  const query = listQuery.q;
+  const classFilter = listQuery.className;
+  const gradeFilter = listQuery.grade;
+  const teacherFilter = listQuery.teacher;
+  const activityFilter = listQuery.activity as ActivityFilter;
   const [selected, setSelected] = useState<string[]>([]);
   const [classRoomId, setClassRoomId] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -138,6 +183,13 @@ export function AdminStudentsTable({
       if (activityFilter === "backlog" && s.dueToday < 5) return false;
       if (activityFilter === "inactive_7" && s.inactiveDays < 7) return false;
       if (activityFilter === "never_login" && s.lastLoginAt !== null) return false;
+      if (
+        activityFilter === "inactive_or_never" &&
+        s.lastLoginAt !== null &&
+        s.inactiveDays < 7
+      ) {
+        return false;
+      }
       if (!q) return true;
       return [
         s.displayName,
@@ -159,6 +211,45 @@ export function AdminStudentsTable({
       .map((id) => nameById.get(id))
       .filter((name): name is string => Boolean(name));
   }, [students, selected]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(listQuery.page, pageCount);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasFilters =
+    Boolean(query.trim()) ||
+    classFilter !== "all" ||
+    gradeFilter !== "all" ||
+    teacherFilter !== "all" ||
+    activityFilter !== "all";
+
+  function goPage(nextPage: number) {
+    router.replace(
+      studentListHref(
+        {
+          q: query,
+          className: classFilter,
+          grade: gradeFilter,
+          teacher: teacherFilter,
+          activity: activityFilter,
+          page: nextPage,
+          scope: searchParams.get("scope"),
+          tab: searchParams.get("tab"),
+        },
+        listQuery,
+      ),
+      { scroll: false },
+    );
+  }
+
+  function resetFilters() {
+    commitList({
+      q: "",
+      className: "all",
+      grade: "all",
+      teacher: "all",
+      activity: "all",
+    });
+  }
 
   if (students.length === 0) {
     return (
@@ -202,25 +293,28 @@ export function AdminStudentsTable({
       />
 
       <div className="space-y-3" data-tour-id="admin-students-table">
-        <input
-          value={query}
-          onChange={(e) => {
-            const next = e.target.value;
-            setQuery(next);
-            commitList({ q: next });
-          }}
-          placeholder="이름/아이디/반/담당선생님 검색"
-          className="w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm"
-        />
+        <label className="block">
+          <span className="sr-only">학생 검색</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => {
+              const next = e.target.value;
+              commitList({ q: next });
+            }}
+            placeholder="이름/아이디/반/담당선생님 검색"
+            className="min-h-[44px] w-full rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] px-3 py-2 text-sm"
+          />
+        </label>
         <div className="flex flex-wrap gap-2">
           {classNameFilters.length > 0 ? (
             <select
               value={classFilter}
+              aria-label="반 필터"
               onChange={(e) => {
-                setClassFilter(e.target.value);
                 commitList({ className: e.target.value });
               }}
-              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
+              className="min-h-[44px] shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-[13px] sm:text-sm"
             >
               <option value="all">전체 반</option>
               {classNameFilters.map((name) => (
@@ -233,11 +327,11 @@ export function AdminStudentsTable({
           {gradeOptions.length > 0 ? (
             <select
               value={gradeFilter}
+              aria-label="학년 필터"
               onChange={(e) => {
-                setGradeFilter(e.target.value);
                 commitList({ grade: e.target.value });
               }}
-              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
+              className="min-h-[44px] shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-[13px] sm:text-sm"
             >
               <option value="all">전체 학년</option>
               {gradeOptions.map((label) => (
@@ -250,11 +344,11 @@ export function AdminStudentsTable({
           {teacherOptions.length > 0 ? (
             <select
               value={teacherFilter}
+              aria-label="담당 선생님 필터"
               onChange={(e) => {
-                setTeacherFilter(e.target.value);
                 commitList({ teacher: e.target.value });
               }}
-              className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
+              className="min-h-[44px] shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-[13px] sm:text-sm"
             >
               <option value="all">전체 담당</option>
               {teacherOptions.map((name) => (
@@ -266,42 +360,41 @@ export function AdminStudentsTable({
           ) : null}
           <select
             value={activityFilter}
+            aria-label="활동 상태 필터"
             onChange={(e) => {
               const next = e.target.value as ActivityFilter;
-              setActivityFilter(next);
               commitList({ activity: next });
             }}
-            className="shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-xs sm:text-sm"
+            className="min-h-[44px] shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-[13px] sm:text-sm"
           >
             <option value="all">전체 활동</option>
             <option value="due_today">오늘 할 것</option>
             <option value="backlog">복습 밀림</option>
             <option value="inactive_7">7일+ 미접속</option>
             <option value="never_login">미로그인</option>
+            <option value="inactive_or_never">장기 미접속·미로그인</option>
           </select>
         </div>
-        {filtered.length !== students.length ? (
-          <p className="text-xs text-[var(--rm-text-muted)]">
-            {students.length}명 중 {filtered.length}명 표시
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] text-[var(--rm-text-muted)]" aria-live="polite">
+            전체 {students.length}명 · 조건에 맞는 학생{" "}
+            <strong className="text-[var(--rm-text)]">{filtered.length}명</strong>
+            {filtered.length > PAGE_SIZE ? ` · ${page}/${pageCount}쪽` : ""}
           </p>
-        ) : null}
+          {hasFilters ? (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="min-h-[44px] rounded-lg px-3 text-[13px] font-bold text-[var(--rm-nav-active)]"
+            >
+              필터 초기화
+            </button>
+          ) : null}
+        </div>
         {filtered.length === 0 ? (
           <FilterEmptyState
             summary={`검색·필터 조건에 맞는 학생이 없습니다.`}
-            onReset={() => {
-              setQuery("");
-              setClassFilter("all");
-              setGradeFilter("all");
-              setTeacherFilter("all");
-              setActivityFilter("all");
-              commitList({
-                q: "",
-                className: "all",
-                grade: "all",
-                teacher: "all",
-                activity: "all",
-              });
-            }}
+            onReset={resetFilters}
           />
         ) : null}
       </div>
@@ -368,45 +461,51 @@ export function AdminStudentsTable({
         <p className="text-xs text-[var(--rm-text-muted)]">{selected.length}명 선택됨</p>
       ) : null}
 
-      <div className="hidden overflow-x-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm lg:block">
-        <table className="min-w-full text-left text-sm">
+      <div className="hidden overflow-hidden rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm lg:block">
+        <table className="w-full table-fixed text-left text-[13px]">
           <thead className="border-b border-[var(--rm-border)] bg-[var(--rm-surface-raised)] text-[var(--rm-text-muted)]">
             <tr>
               {canManage ? (
-                <th className="whitespace-nowrap px-3 py-2 font-medium">
+                <th className="w-12 px-3 py-2 font-medium">
                   <input
                     type="checkbox"
+                    aria-label="현재 쪽 학생 전체 선택"
                     checked={
-                      selected.length > 0 && selected.length === filtered.length
+                      paged.length > 0 && paged.every((s) => selected.includes(s.id))
                     }
-                    onChange={(e) =>
-                      setSelected(
-                        e.target.checked ? filtered.map((s) => s.id) : [],
-                      )
-                    }
+                    onChange={(e) => {
+                      const pageIds = new Set(paged.map((s) => s.id));
+                      setSelected((prev) =>
+                        e.target.checked
+                          ? Array.from(new Set([...prev, ...pageIds]))
+                          : prev.filter((id) => !pageIds.has(id)),
+                      );
+                    }}
                   />
                 </th>
               ) : null}
-              <th className="whitespace-nowrap px-3 py-2 font-medium">이름</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">아이디</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">학년</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">반</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">담당</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">최근 로그인</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">등록</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">오늘 할 것</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">오늘 품</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">연속</th>
-              <th className="whitespace-nowrap px-3 py-2 font-medium">미접속</th>
+              <th className="w-[22%] px-3 py-2 font-medium">학생</th>
+              <th className="w-[18%] px-3 py-2 font-medium">위험·활동 상태</th>
+              <th className="w-[14%] px-3 py-2 font-medium">오늘 복습</th>
+              <th className="w-[18%] px-3 py-2 font-medium">최근 접속</th>
+              <th className="w-[20%] px-3 py-2 font-medium">주 담당·공동 담당</th>
+              <th className="w-20 px-3 py-2 text-right font-medium">상세</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--rm-border)]">
-            {filtered.map((student) => (
+            {paged.map((student) => {
+              const attention = attentionState(student);
+              const staffing = describeStaffing({
+                teacherNames: student.teacherNames,
+                subAdminName: student.subAdminName,
+              });
+              return (
               <tr key={student.id} className="text-[var(--rm-text)]">
                 {canManage ? (
                   <td className="px-3 py-2">
                     <input
                       type="checkbox"
+                      aria-label={`${student.displayName} 선택`}
                       checked={selected.includes(student.id)}
                       onChange={(e) =>
                         setSelected((prev) =>
@@ -418,7 +517,7 @@ export function AdminStudentsTable({
                     />
                   </td>
                 ) : null}
-                <td className="whitespace-nowrap px-3 py-2 font-medium">
+                <td className="px-3 py-2">
                   <button
                     type="button"
                     onClick={() =>
@@ -427,106 +526,109 @@ export function AdminStudentsTable({
                         name: student.displayName,
                       })
                     }
-                    className="text-left text-[var(--rm-text-on-info)] hover:underline"
+                    className="block max-w-full truncate text-left font-bold text-[var(--rm-text-on-info)] hover:underline"
                   >
                     {student.displayName}
                   </button>
+                  <p className="truncate text-[12px] text-[var(--rm-text-muted)]">
+                    {[student.gradeLabel, formatClassDisplay(student)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  <p className="truncate text-[12px] text-[var(--rm-text-faint)]">
+                    {student.username}
+                  </p>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
-                  {student.username}
+                <td className="px-3 py-2">
+                  <span className={`inline-flex rounded-full border px-2 py-1 text-[12px] font-bold ${attention.className}`}>
+                    {attention.label}
+                  </span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
-                  {student.gradeLabel ?? "—"}
+                <td className="px-3 py-2">
+                  <p className="font-bold tabular-nums">대기 {student.dueToday}개</p>
+                  <p className="text-[12px] text-[var(--rm-text-muted)]">
+                    오늘 완료 {student.reviewedToday}회
+                  </p>
                 </td>
-                <td className="max-w-[8rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
-                  {formatClassDisplay(student)}
-                </td>
-                <td className="max-w-[10rem] truncate px-3 py-2 text-[var(--rm-text-muted)]">
-                  {describeStaffing({
-                    teacherNames: student.teacherNames,
-                    subAdminName: student.subAdminName,
-                  }).label}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2 text-[var(--rm-text-muted)]">
+                <td className="px-3 py-2 text-[var(--rm-text-muted)]">
                   {formatLastLogin(student.lastLoginAt)}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {student.totalRegistered}개
+                <td className="px-3 py-2">
+                  <p className="truncate font-medium">{staffing.label}</p>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {student.dueToday > 0 ? (
-                    <span className="font-medium text-[var(--rm-warning)]">
-                      {student.dueToday}개
-                    </span>
-                  ) : (
-                    <span className="text-[var(--rm-text-faint)]">없음</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {student.reviewedToday > 0 ? (
-                    <span className="font-medium text-[var(--rm-success)]">
-                      {student.reviewedToday}회
-                    </span>
-                  ) : (
-                    <span className="text-[var(--rm-text-faint)]">0회</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {student.loginStreakDays > 0
-                    ? `${student.loginStreakDays}일`
-                    : "0일"}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {student.inactiveDays >= 999
-                    ? "미로그인"
-                    : `${student.inactiveDays}일`}
+                <td className="px-3 py-2 text-right">
+                  <Link
+                    href={`/admin/students/${student.id}`}
+                    className="inline-flex min-h-[44px] items-center rounded-lg px-2 font-bold text-[var(--rm-nav-active)]"
+                  >
+                    상세
+                  </Link>
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>
 
       <div className="space-y-2 lg:hidden">
-        {filtered.map((student) => (
+        {paged.map((student) => {
+          const attention = attentionState(student);
+          const staffing = describeStaffing({
+            teacherNames: student.teacherNames,
+            subAdminName: student.subAdminName,
+          });
+          return (
           <div
             key={student.id}
-            className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 shadow-sm"
+            className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3 shadow-sm"
           >
-            <div className="mb-2 flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setConsulting({
-                      id: student.id,
-                      name: student.displayName,
-                    })
-                  }
-                  className="truncate text-left font-semibold text-[var(--rm-text-on-info)]"
-                >
+                <p className="truncate font-bold text-[var(--rm-text)]">
                   {student.displayName}
-                </button>
-                <p className="text-xs text-[var(--rm-text-muted)]">{student.username}</p>
+                </p>
+                <p className="truncate text-[12px] text-[var(--rm-text-muted)]">
+                  {[student.gradeLabel, formatClassDisplay(student), staffing.label]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
-              {canManage ? (
-                <input
-                  type="checkbox"
-                  checked={selected.includes(student.id)}
-                  onChange={(e) =>
-                    setSelected((prev) =>
-                      e.target.checked
-                        ? [...prev, student.id]
-                        : prev.filter((id) => id !== student.id),
-                    )
-                  }
-                />
-              ) : null}
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`rounded-full border px-2 py-1 text-[12px] font-bold ${attention.className}`}>
+                  {attention.label}
+                </span>
+                {canManage ? (
+                  <label className="flex min-h-[44px] min-w-[44px] items-center justify-center">
+                    <span className="sr-only">{student.displayName} 선택</span>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(student.id)}
+                      onChange={(e) =>
+                        setSelected((prev) =>
+                          e.target.checked
+                            ? [...prev, student.id]
+                            : prev.filter((id) => id !== student.id),
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
+              </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-[var(--rm-surface-raised)] px-3 py-2 text-[13px]">
+              <p>
+                <span className="text-[var(--rm-text-muted)]">오늘 복습</span>{" "}
+                <strong>{student.dueToday}개</strong>
+              </p>
+              <p>
+                <span className="text-[var(--rm-text-muted)]">최근</span>{" "}
+                <strong>{formatLastLogin(student.lastLoginAt)}</strong>
+              </p>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
               <Link
                 href={`/admin/students/${student.id}`}
-                className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
+                className="rm-fill-brand inline-flex min-h-[44px] items-center rounded-lg px-3 text-[13px] font-bold text-white"
               >
                 상세
               </Link>
@@ -538,42 +640,49 @@ export function AdminStudentsTable({
                     name: student.displayName,
                   })
                 }
-                className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-2.5 text-[11px] font-bold text-[var(--rm-text)]"
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--rm-border)] px-3 text-[13px] font-bold text-[var(--rm-text)]"
               >
-                상담
+                상담 요약
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--rm-text-muted)]">
-              <p className="min-w-0 truncate">
-                학년: {student.gradeLabel ?? "—"}
-              </p>
-              <p className="min-w-0 truncate">
-                반: {formatClassDisplay(student)}
-              </p>
-              <p className="min-w-0 truncate">
-                담당:{" "}
-                {describeStaffing({
-                  teacherNames: student.teacherNames,
-                  subAdminName: student.subAdminName,
-                }).label}
-              </p>
-              <p className="min-w-0 truncate">
-                최근: {formatLastLogin(student.lastLoginAt)}
-              </p>
-              <p>등록: {student.totalRegistered}개</p>
-              <p>오늘 할 것: {student.dueToday}개</p>
-              <p>오늘 품: {student.reviewedToday}회</p>
-              <p>연속: {student.loginStreakDays}일</p>
-              <p>
-                미접속:{" "}
-                {student.inactiveDays >= 999
-                  ? "미로그인"
-                  : `${student.inactiveDays}일`}
-              </p>
-            </div>
+            <details className="mt-1 text-[13px] text-[var(--rm-text-muted)]">
+              <summary className="flex min-h-[44px] cursor-pointer list-none items-center text-[var(--rm-nav-active)] marker:content-none">
+                학습 정보 더보기
+              </summary>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-[var(--rm-border)] pt-2">
+                <p>아이디: {student.username}</p>
+                <p>등록: {student.totalRegistered}개</p>
+                <p>오늘 완료: {student.reviewedToday}회</p>
+                <p>연속 출석: {student.loginStreakDays}일</p>
+              </div>
+            </details>
           </div>
-        ))}
+        );})}
       </div>
+
+      {filtered.length > PAGE_SIZE ? (
+        <nav className="flex items-center justify-center gap-3" aria-label="학생 목록 페이지">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => goPage(page - 1)}
+            className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-4 text-sm font-bold text-[var(--rm-text)] disabled:opacity-40"
+          >
+            이전
+          </button>
+          <span className="text-sm font-semibold text-[var(--rm-text-muted)]">
+            {page} / {pageCount}
+          </span>
+          <button
+            type="button"
+            disabled={page >= pageCount}
+            onClick={() => goPage(page + 1)}
+            className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-4 text-sm font-bold text-[var(--rm-text)] disabled:opacity-40"
+          >
+            다음
+          </button>
+        </nav>
+      ) : null}
 
       {consulting ? (
         <StudentConsultingModal

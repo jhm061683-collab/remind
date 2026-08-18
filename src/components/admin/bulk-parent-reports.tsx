@@ -26,6 +26,7 @@ type ResultItem = {
 
 type PeriodMode = "7" | "30" | "custom";
 type PanelTab = "create" | "issued";
+const SELECTOR_PAGE_SIZE = 10;
 
 function absoluteUrl(path: string): string {
   return new URL(path, window.location.origin).toString();
@@ -56,6 +57,7 @@ export function BulkParentReportsPanel({
     path: string;
   } | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [selectionPage, setSelectionPage] = useState(1);
   const cancelRef = useRef(false);
 
   const periodDays =
@@ -125,6 +127,15 @@ export function BulkParentReportsPanel({
     filtered.some((s) => s.id === id),
   );
   const selectedStudents = students.filter((s) => selected.includes(s.id));
+  const selectionPageCount = Math.max(
+    1,
+    Math.ceil(filtered.length / SELECTOR_PAGE_SIZE),
+  );
+  const safeSelectionPage = Math.min(selectionPage, selectionPageCount);
+  const visibleStudents = filtered.slice(
+    (safeSelectionPage - 1) * SELECTOR_PAGE_SIZE,
+    safeSelectionPage * SELECTOR_PAGE_SIZE,
+  );
 
   async function refreshIssued(search = issuedQuery) {
     const result = await listIssuedParentReportsAction({ query: search });
@@ -348,10 +359,12 @@ export function BulkParentReportsPanel({
 
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <select
+              aria-label="보고서 대상 학년 필터"
               value={gradeFilter}
               onChange={(event) => {
                 setGradeFilter(event.target.value);
                 setClassFilter("all");
+                setSelectionPage(1);
               }}
               className="rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
             >
@@ -363,8 +376,12 @@ export function BulkParentReportsPanel({
               ))}
             </select>
             <select
+              aria-label="보고서 대상 반 필터"
               value={effectiveClassFilter}
-              onChange={(event) => setClassFilter(event.target.value)}
+              onChange={(event) => {
+                setClassFilter(event.target.value);
+                setSelectionPage(1);
+              }}
               className="min-w-0 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
             >
               <option value="all">
@@ -381,8 +398,12 @@ export function BulkParentReportsPanel({
           <div className="mt-3 flex flex-wrap gap-2">
             <input
               type="search"
+              aria-label="보고서 대상 학생 검색"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectionPage(1);
+              }}
               placeholder="이름·아이디 검색"
               className="min-w-0 flex-1 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] px-3 py-2 text-sm text-[var(--rm-text)]"
             />
@@ -463,16 +484,16 @@ export function BulkParentReportsPanel({
               현재 목록 전체 선택 ({filtered.length}명) · 선택 {selected.length}
               명
             </label>
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] p-1.5">
+            <div className="space-y-1 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-bg-elevated)] p-1.5">
               {filtered.length === 0 ? (
                 <p className="px-2 py-4 text-center text-xs text-[var(--rm-text-muted)]">
                   검색 결과가 없습니다.
                 </p>
               ) : (
-                filtered.map((student) => (
+                visibleStudents.map((student) => (
                   <label
                     key={student.id}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-[var(--rm-text)] hover:bg-[var(--rm-surface)]"
+                    className="flex min-h-[44px] items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-[var(--rm-text)] hover:bg-[var(--rm-surface)]"
                   >
                     <input
                       type="checkbox"
@@ -497,6 +518,17 @@ export function BulkParentReportsPanel({
                   </label>
                 ))
               )}
+              {selectionPageCount > 1 ? (
+                <nav aria-label="보고서 대상 페이지" className="mt-2 flex items-center justify-between border-t border-[var(--rm-border)] pt-2">
+                  <button type="button" disabled={safeSelectionPage <= 1} onClick={() => setSelectionPage((value) => Math.max(1, value - 1))} className="min-h-[44px] rounded-lg px-3 text-sm font-semibold disabled:opacity-40">
+                    이전
+                  </button>
+                  <span className="text-xs text-[var(--rm-text-muted)]">{safeSelectionPage} / {selectionPageCount}</span>
+                  <button type="button" disabled={safeSelectionPage >= selectionPageCount} onClick={() => setSelectionPage((value) => Math.min(selectionPageCount, value + 1))} className="min-h-[44px] rounded-lg px-3 text-sm font-semibold disabled:opacity-40">
+                    다음
+                  </button>
+                </nav>
+              ) : null}
             </div>
           </div>
 

@@ -11,6 +11,7 @@ type Props = {
 function needLabel(need: string | undefined): string {
   if (need === "admin") return "원장 권한";
   if (need === "staff") return "학원 관리 권한";
+  if (need === "assigned-student") return "담당 학생 접근 권한";
   return "이 화면 권한";
 }
 
@@ -38,8 +39,9 @@ export default async function PermissionDeniedPage({ searchParams }: Props) {
           </div>
         </dl>
         <p className="mt-3 text-sm leading-relaxed text-[var(--rm-text-muted)]">
-          선생님 계정은 반·결제·선생님 관리 화면을 열 수 없습니다. 원장 계정은
-          「내 담당」으로 보고 있어도 이 화면은 그대로 열 수 있습니다.
+          {params.need === "assigned-student"
+            ? "선생님 계정에서는 직접 배정되었거나 담당 반에 속한 학생만 볼 수 있습니다. 학생 정보는 노출되지 않았습니다."
+            : "선생님 계정은 반·결제·선생님 관리 화면을 열 수 없습니다. 원장 계정은 「내 담당」으로 보고 있어도 이 화면은 그대로 열 수 있습니다."}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link

@@ -258,9 +258,9 @@ export const TUTORIALS: TutorialDefinition[] = [
       {
         id: "packet",
         target: "admin-packet-pdf",
-        title: "오답 모음 PDF",
+        title: "보고서·PDF 탭",
         description:
-          "기간과 과목을 고른 뒤 PDF를 받으면, 수업·숙제용 오답지를 바로 출력할 수 있어요.",
+          "이 탭을 열고 기간과 과목을 고르면 수업·숙제용 오답지를 바로 출력할 수 있어요.",
       },
     ],
   },
@@ -277,9 +277,9 @@ export const TUTORIALS: TutorialDefinition[] = [
       {
         id: "packet",
         target: "admin-packet-pdf",
-        title: "오답 모음 PDF",
+        title: "보고서·PDF 탭",
         description:
-          "담당 학생 상세에서 기간을 고르고 오답 모음 PDF를 받을 수 있어요.",
+          "이 탭을 열면 담당 학생의 오답 모음 PDF를 만들 수 있어요.",
       },
     ],
   },

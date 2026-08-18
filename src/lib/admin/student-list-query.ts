@@ -7,7 +7,14 @@ export type StudentListQuery = {
   page: number;
 };
 
-const ACTIVITY = new Set(["all", "due_today", "backlog", "inactive_7", "never_login"]);
+const ACTIVITY = new Set([
+  "all",
+  "due_today",
+  "backlog",
+  "inactive_7",
+  "never_login",
+  "inactive_or_never",
+]);
 
 export function parseStudentListQuery(
   searchParams: URLSearchParams | { get(name: string): string | null },
