@@ -1,4 +1,5 @@
 export type ArchiveLoadState = "loading" | "error" | "ready";
+export type ArchiveStatKind = "all" | "active" | "mastered" | "upcoming";
 
 export type ArchiveListFilters = {
   q: string;
@@ -38,4 +39,10 @@ export function shouldShowArchiveEmpty(
   questionCount: number,
 ): boolean {
   return loadState === "ready" && questionCount === 0;
+}
+
+export function archiveStatHref(kind: ArchiveStatKind): string {
+  if (kind === "all") return "/archive";
+  if (kind === "mastered") return "/archive?status=archived";
+  return `/archive?status=${kind}`;
 }

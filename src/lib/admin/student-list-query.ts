@@ -4,6 +4,7 @@ export type StudentListQuery = {
   grade: string;
   teacher: string;
   activity: string;
+  assignment: "all" | "unassigned";
   page: number;
 };
 
@@ -27,6 +28,8 @@ export function parseStudentListQuery(
     grade: searchParams.get("grade") ?? "all",
     teacher: searchParams.get("teacher") ?? "all",
     activity: ACTIVITY.has(activityRaw) ? activityRaw : "all",
+    assignment:
+      searchParams.get("assignment") === "unassigned" ? "unassigned" : "all",
     page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
   };
 }
@@ -44,6 +47,7 @@ export function studentListHref(
   if (next.grade !== "all") params.set("grade", next.grade);
   if (next.teacher !== "all") params.set("teacher", next.teacher);
   if (next.activity !== "all") params.set("activity", next.activity);
+  if (next.assignment !== "all") params.set("assignment", next.assignment);
   if (next.page > 1) params.set("page", String(next.page));
   const qs = params.toString();
   return qs ? `/admin/students?${qs}` : "/admin/students";

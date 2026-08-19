@@ -10,6 +10,11 @@ import type {
   HallOfFamePerson,
   StudentRankCard,
 } from "@/lib/server/rankings";
+import {
+  IconChevronRight,
+  IconLayers,
+  IconTrophy,
+} from "@/components/ui/icons";
 
 type Props = {
   rank: StudentRankCard | null;
@@ -326,11 +331,16 @@ export function StudentMotivationPanel({
       ) : null}
 
       {hasBoard ? (
-        <details className="rm-glass rm-glass--compact">
+        <details className="group rm-glass rm-glass--compact">
           <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-2 text-sm font-bold text-[var(--rm-text)]">
-            전체 랭킹과 반 랭킹
-            <span className="text-xs text-[var(--rm-nav-active)]">
-              펼쳐 보기
+            <span className="flex min-w-0 items-center gap-2">
+              <IconTrophy size={16} className="shrink-0 text-[var(--rm-brand-violet)]" />
+              전체 랭킹과 반 랭킹
+            </span>
+            <span className="flex items-center gap-1 text-xs text-[var(--rm-nav-active)]">
+              <span className="group-open:hidden">펼쳐보기</span>
+              <span className="hidden group-open:inline">접기</span>
+              <IconChevronRight size={14} className="transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none" />
             </span>
           </summary>
           <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
@@ -432,8 +442,9 @@ export function StudentMotivationPanel({
                 <div
                   className={`min-w-0 ${boardTab === "person" ? "hidden sm:block" : ""}`}
                 >
-                  <p className="mb-1.5 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
-                    반
+                  <p className="mb-1.5 flex items-center gap-1 text-[10px] font-bold tracking-wide text-[var(--rm-text-muted)]">
+                    <IconLayers size={12} className="text-[var(--rm-brand-violet)]" />
+                    반 랭킹
                   </p>
                   {boardClasses.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-[var(--rm-border)] px-3 py-6 text-center text-[11px] text-[var(--rm-text-faint)]">

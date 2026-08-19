@@ -19,7 +19,7 @@ type Props = {
 };
 
 type SubjectFilter = "all" | string;
-type StatusFilter = "all" | "active" | "archived";
+type StatusFilter = "all" | "active" | "archived" | "upcoming";
 
 import {
   EmptyState,
@@ -41,12 +41,15 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: "all", label: "전체" },
   { id: "active", label: UI_LABELS.archiveTabActive },
   { id: "archived", label: UI_LABELS.archiveTabSaved },
+  { id: "upcoming", label: "예정" },
 ];
 
 const PAGE_SIZE = 20;
 
 function parseStatusFilter(value: string | null): StatusFilter {
-  if (value === "active" || value === "archived") return value;
+  if (value === "active" || value === "archived" || value === "upcoming") {
+    return value;
+  }
   return "all";
 }
 
@@ -171,11 +174,16 @@ export function ArchiveList({ userId }: Props) {
   const counts = useMemo(() => {
     let active = 0;
     let archived = 0;
+    let upcoming = 0;
+    const today = toDateKey(new Date());
     for (const q of questions) {
       if (isArchivedQuestion(q)) archived += 1;
-      else active += 1;
+      else {
+        active += 1;
+        if (toDateKey(q.nextReviewDate) > today) upcoming += 1;
+      }
     }
-    return { all: questions.length, active, archived };
+    return { all: questions.length, active, archived, upcoming };
   }, [questions]);
 
   function changeStatusFilter(next: StatusFilter) {
@@ -238,7 +246,7 @@ export function ArchiveList({ userId }: Props) {
   );
 
   const filtered = useMemo(() => {
-    return questions.filter((q) => {
+    const matched = questions.filter((q) => {
       if (subjectFilter !== "all" && q.subjectId !== subjectFilter) {
         return false;
       }
@@ -246,6 +254,12 @@ export function ArchiveList({ userId }: Props) {
       const archived = isArchivedQuestion(q);
       if (statusFilter === "archived" && !archived) return false;
       if (statusFilter === "active" && archived) return false;
+      if (
+        statusFilter === "upcoming" &&
+        (archived || toDateKey(q.nextReviewDate) <= toDateKey(new Date()))
+      ) {
+        return false;
+      }
 
       const createdKey = toDateKey(q.createdAt);
       if (dateFrom && createdKey < dateFrom) return false;
@@ -277,6 +291,13 @@ export function ArchiveList({ userId }: Props) {
 
       return true;
     });
+    return statusFilter === "upcoming"
+      ? matched.sort(
+          (a, b) =>
+            new Date(a.nextReviewDate).getTime() -
+            new Date(b.nextReviewDate).getTime(),
+        )
+      : matched;
   }, [
     questions,
     problemQuery,
@@ -377,7 +398,7 @@ export function ArchiveList({ userId }: Props) {
         onConfirm={() => void handleBulkDeleteConfirm()}
         onCancel={() => setShowBulkDeleteConfirm(false)}
       />
-      <div className="mb-3 grid grid-cols-3 gap-2 rounded-2xl bg-[var(--rm-accent-muted)] p-1">
+      <div className="mb-3 grid grid-cols-4 gap-1.5 rounded-2xl bg-[var(--rm-accent-muted)] p-1">
         {STATUS_TABS.map((tab) => {
           const active = statusFilter === tab.id;
           const count = counts[tab.id];
@@ -409,6 +430,10 @@ export function ArchiveList({ userId }: Props) {
         <p className="mb-4 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-4 py-3 text-sm text-[var(--rm-text-muted)]">
           아직 다시 푸는 중인 문제예요. 오늘 할 일은 「다시 풀기」 탭에서도 볼
           수 있어요.
+        </p>
+      ) : statusFilter === "upcoming" ? (
+        <p className="mb-4 rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] px-4 py-3 text-sm text-[var(--rm-text-on-info)]">
+          오늘 이후 다시 풀 예정인 문제를 가까운 날짜순으로 보여 줍니다.
         </p>
       ) : null}
 
@@ -583,26 +608,39 @@ export function ArchiveList({ userId }: Props) {
             title={
               statusFilter === "archived"
                 ? "아직 보관한 문제가 없어요"
+                : statusFilter === "upcoming"
+                  ? "예정된 문제가 없어요"
                 : "등록된 문제가 없습니다"
             }
             description={
               statusFilter === "archived"
                 ? "다시 풀기를 끝낸 뒤 「보관 완료」를 누르면 여기에 쌓여요."
+                : statusFilter === "upcoming"
+                  ? "오늘 이후 일정이 잡힌 문제는 여기에 표시됩니다."
                 : "「등록」 탭에서 오답을 올려 주세요."
             }
-            actionHref={statusFilter === "archived" ? undefined : "/upload"}
-            actionLabel={statusFilter === "archived" ? undefined : "오답 등록"}
+            actionHref={
+              statusFilter === "archived" || statusFilter === "upcoming"
+                ? undefined
+                : "/upload"
+            }
+            actionLabel={
+              statusFilter === "archived" || statusFilter === "upcoming"
+                ? undefined
+                : "오답 등록"
+            }
           />
         )
       ) : (
         <ul className="mt-3 space-y-2.5">
-          {paged.map((question) => (
+          {paged.map((question, index) => (
             <QuestionArchiveCard
               key={question.id}
               question={question}
               userId={userId}
               subjectName={getSubjectName(question.subjectId)}
               archived={isArchivedQuestion(question)}
+              position={(page - 1) * PAGE_SIZE + index + 1}
               onDelete={(id) =>
                 setQuestions((prev) => prev.filter((q) => q.id !== id))
               }

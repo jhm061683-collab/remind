@@ -31,10 +31,6 @@ export const metadata: Metadata = {
     title: "Re:mind",
     statusBarStyle: "default",
   },
-  other: {
-    "apple-mobile-web-app-orientations": "portrait",
-    "screen-orientation": "portrait",
-  },
   formatDetection: {
     telephone: false,
   },

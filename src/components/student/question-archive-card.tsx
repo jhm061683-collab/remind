@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
 import {
   deleteQuestionAction,
   updateProblemLatexAction,
@@ -40,15 +41,25 @@ type Props = {
   userId: string;
   subjectName: string;
   archived: boolean;
+  position?: number;
   onDelete: (id: string) => void;
   onUpdate: (question: StoredQuestion) => void;
 };
+
+function storedWrongKeywords(question: StoredQuestion): string[] {
+  if (question.wrongKeywords?.length) return question.wrongKeywords;
+  return (question.wrongReasonDetail ?? "")
+    .split(/[,，#\s]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
 
 export function QuestionArchiveCard({
   question,
   userId,
   subjectName,
   archived,
+  position,
   onDelete,
   onUpdate,
 }: Props) {
@@ -58,14 +69,7 @@ export function QuestionArchiveCard({
   const [keywords, setKeywords] = useState<string[]>(question.keywords ?? []);
   const [wrongReason, setWrongReason] = useState(question.wrongReason ?? "");
   const [wrongKeywords, setWrongKeywords] = useState<string[]>(
-    question.wrongKeywords?.length
-      ? question.wrongKeywords
-      : question.wrongReasonDetail
-        ? question.wrongReasonDetail
-            .split(/[,，#\s]+/)
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
+    storedWrongKeywords(question),
   );
   const [reflectionMemo, setReflectionMemo] = useState(
     question.reflectionMemo ?? "",
@@ -81,6 +85,8 @@ export function QuestionArchiveCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [latexZoomOpen, setLatexZoomOpen] = useState(false);
+  const [aiCandidate, setAiCandidate] = useState<string | null>(null);
+  const [aiCandidateKeywords, setAiCandidateKeywords] = useState<string[]>([]);
   const [aiPending, startAi] = useTransition();
 
   const answerImageUrls = getAnswerImageUrls(question);
@@ -93,6 +99,40 @@ export function QuestionArchiveCard({
     question.source,
   );
   const displayLatex = question.problemLatex ?? "";
+  const hasUnsavedChanges =
+    source !== (question.source ?? "") ||
+    problemLatexDraft !== (question.problemLatex ?? "") ||
+    wrongReason !== (question.wrongReason ?? "") ||
+    reflectionMemo !== (question.reflectionMemo ?? "") ||
+    JSON.stringify(keywords) !== JSON.stringify(question.keywords ?? []) ||
+    JSON.stringify(wrongKeywords) !==
+      JSON.stringify(storedWrongKeywords(question));
+
+  useEffect(() => {
+    if (!(editing || editingLatex) || !hasUnsavedChanges) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [editing, editingLatex, hasUnsavedChanges]);
+
+  function resetDrafts() {
+    setSource(question.source ?? "");
+    setKeywords(question.keywords ?? []);
+    setWrongReason(question.wrongReason ?? "");
+    setWrongKeywords(storedWrongKeywords(question));
+    setReflectionMemo(question.reflectionMemo ?? "");
+    setProblemLatexDraft(question.problemLatex ?? "");
+    setEditing(false);
+    setEditingLatex(false);
+  }
+
+  function beginDirectEdit() {
+    setExpanded(true);
+    setShowProblemSection(true);
+    setEditing(true);
+    setEditingLatex(true);
+    setMessage("AI 호출 없이 저장된 내용을 직접 수정합니다.");
+  }
 
   async function handleSaveReflection() {
     setSaving(true);
@@ -212,40 +252,24 @@ export function QuestionArchiveCard({
       }
       const latex = embedProblemFigures(rawLatex, figureUrls);
 
-      setProblemLatexDraft(latex);
-      setEditingLatex(true);
-
-      if (isSupabaseEnabled()) {
-        const saved = await updateProblemLatexAction({
-          questionId: question.id,
-          problemLatex: latex,
-        });
-        if (saved.error) {
-          setMessage(saved.error);
-          return;
-        }
-        if (saved.question) onUpdate(saved.question);
-      } else {
-        const updated = await updateQuestion(userId, question.id, {
-          problemLatex: latex,
-        });
-        if (updated) onUpdate(updated);
-      }
-
-      if (result.result?.keywords?.length) {
-        setKeywords((prev) => {
-          const merged = [...prev];
-          for (const k of result.result!.keywords) {
-            if (!merged.includes(k)) merged.push(k);
-          }
-          return merged.slice(0, 12);
-        });
-      }
-
-      setMessage(
-        "깔끔한 문제로 바꿨어요. 틀린 부분은 수정 버튼으로 고쳐 주세요.",
-      );
+      setAiCandidate(latex);
+      setAiCandidateKeywords(result.result?.keywords ?? []);
+      setEditingLatex(false);
+      setMessage("AI 결과를 기존 값과 비교해 주세요. 아직 저장하지 않았습니다.");
     });
+  }
+
+  function applyAiCandidateToDraft() {
+    if (!aiCandidate) return;
+    setProblemLatexDraft(aiCandidate);
+    setKeywords((previous) =>
+      Array.from(new Set([...previous, ...aiCandidateKeywords])).slice(0, 12),
+    );
+    setAiCandidate(null);
+    setAiCandidateKeywords([]);
+    setEditing(true);
+    setEditingLatex(true);
+    setMessage("AI 결과를 수정 폼에 불러왔습니다. 확인 후 저장해 주세요.");
   }
 
   async function handleDeleteConfirm() {
@@ -280,7 +304,7 @@ export function QuestionArchiveCard({
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-      <li className="remind-card overflow-hidden">
+      <li className="remind-card overflow-hidden border-[color-mix(in_srgb,var(--rm-border)_88%,var(--rm-text)_12%)] shadow-[0_8px_24px_color-mix(in_srgb,var(--rm-text)_7%,transparent)] transition-shadow hover:shadow-[0_12px_30px_color-mix(in_srgb,var(--rm-text)_10%,transparent)] focus-within:ring-2 focus-within:ring-[var(--rm-brand)]/35">
         {displayLatex ? (
           <button
             type="button"
@@ -320,20 +344,28 @@ export function QuestionArchiveCard({
         )}
 
         <div className="p-3.5 text-base">
-          <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 truncate font-semibold text-[var(--rm-text)]">
-              {subjectName}
-              {question.source ? (
-                <span className="font-normal text-[var(--rm-text-muted)]">
-                  {" "}
-                  · {question.source}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {position ? (
+                  <span className="rounded-md bg-[var(--rm-accent-muted)] px-2 py-0.5 text-[11px] font-bold text-[var(--rm-text-muted)]">
+                    문제 {position}
+                  </span>
+                ) : null}
+                <span className="rounded-md border border-[var(--rm-border)] bg-[var(--rm-surface-raised)] px-2 py-0.5 text-[11px] font-bold text-[var(--rm-text)]">
+                  {subjectName}
                 </span>
-              ) : null}
-              <span className="font-normal text-[var(--rm-text-faint)]">
-                {" "}
-                · {formatDate(question.createdAt)}
-              </span>
-            </p>
+              </div>
+              <p className="mt-1 min-w-0 truncate font-semibold text-[var(--rm-text)]">
+              {question.source ? (
+                  question.source
+                ) : "출처 미입력"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[var(--rm-text-faint)]">
+                등록 {formatDate(question.createdAt)}
+                {!archived ? ` · 다음 복습 ${formatDate(question.nextReviewDate)}` : " · 복습 완료"}
+              </p>
+            </div>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 archived
@@ -365,6 +397,73 @@ export function QuestionArchiveCard({
               <p className="rounded-lg bg-[var(--rm-success-bg)] px-3 py-2 text-xs text-[var(--rm-text-on-success)]">
                 {message}
               </p>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={beginDirectEdit}
+                className="min-h-[44px] rounded-xl bg-[var(--rm-brand)] px-3 text-sm font-bold text-white"
+              >
+                직접 수정
+              </button>
+              <button
+                type="button"
+                disabled={aiPending}
+                onClick={handleRebuildWithAi}
+                className="min-h-[44px] rounded-xl border border-[var(--rm-border)] px-3 text-sm font-bold text-[var(--rm-text)] disabled:opacity-50"
+              >
+                {aiPending ? "AI 분석 중…" : "AI로 다시 분석"}
+              </button>
+              <Link
+                href={`/study/today?mode=subject&subject=${encodeURIComponent(question.subjectId)}`}
+                className="flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--rm-border)] px-3 text-sm font-bold text-[var(--rm-nav-active)]"
+              >
+                다시 풀기
+              </Link>
+            </div>
+
+            {aiCandidate ? (
+              <section className="space-y-3 rounded-xl border border-[var(--rm-info-border)] bg-[var(--rm-info-bg)] p-3" aria-label="AI 재분석 결과 비교">
+                <div>
+                  <p className="text-sm font-bold text-[var(--rm-text-on-info)]">
+                    AI 결과 미리보기 · 아직 저장 안 됨
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--rm-text-muted)]">
+                    적용하면 수정 폼에만 들어가며, 저장 버튼을 눌러야 기존 값이 바뀝니다.
+                  </p>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] p-3">
+                    <p className="mb-2 text-xs font-bold text-[var(--rm-text-muted)]">현재 저장값</p>
+                    {displayLatex ? <LatexContent content={displayLatex} className="text-sm" /> : <p className="text-xs text-[var(--rm-text-faint)]">저장된 문구 없음</p>}
+                  </div>
+                  <div className="rounded-lg border border-[var(--rm-brand)]/35 bg-[var(--rm-surface)] p-3">
+                    <p className="mb-2 text-xs font-bold text-[var(--rm-nav-active)]">새 AI 결과</p>
+                    <LatexContent content={aiCandidate} className="text-sm" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiCandidate(null);
+                      setAiCandidateKeywords([]);
+                      setMessage("기존 값을 유지합니다.");
+                    }}
+                    className="min-h-[44px] flex-1 rounded-xl border border-[var(--rm-border)] bg-[var(--rm-surface)] text-sm font-semibold"
+                  >
+                    기존 값 유지
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyAiCandidateToDraft}
+                    className="min-h-[44px] flex-1 rounded-xl bg-[var(--rm-brand)] text-sm font-bold text-white"
+                  >
+                    수정 폼에 적용
+                  </button>
+                </div>
+              </section>
             ) : null}
 
             {/* 1) 정답·해설 — 가장 먼저 */}
@@ -462,7 +561,7 @@ export function QuestionArchiveCard({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setEditing(false)}
+                      onClick={resetDrafts}
                       className="flex-1 rounded-xl border border-[var(--rm-border)] py-2 text-sm text-[var(--rm-text-muted)]"
                     >
                       취소
@@ -542,6 +641,9 @@ export function QuestionArchiveCard({
                             setProblemLatexDraft(
                               displayLatex || problemLatexDraft,
                             );
+                          }
+                          if (editingLatex && hasUnsavedChanges) {
+                            setMessage("미리보기 중입니다. 저장 전까지 기존 값은 유지됩니다.");
                           }
                           setEditingLatex((v) => !v);
                         }}

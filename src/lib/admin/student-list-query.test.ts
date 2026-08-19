@@ -18,12 +18,27 @@ describe("학생 목록 URL", () => {
         grade: "all",
         teacher: "all",
         activity: "all",
+        assignment: "all",
         page: 1,
       },
     );
     assert.equal(href.includes("q=%EA%B9%80") || href.includes("q=김"), true);
     assert.ok(href.includes("scope=assigned"));
     assert.ok(href.includes("activity=due_today"));
+  });
+
+  it("반 미배정 필터를 URL에 보존하고 잘못된 값은 무시한다", () => {
+    const parsed = parseStudentListQuery(
+      new URLSearchParams("assignment=unassigned"),
+    );
+    assert.equal(parsed.assignment, "unassigned");
+    assert.ok(
+      studentListHref({ page: 1 }, parsed).includes("assignment=unassigned"),
+    );
+    assert.equal(
+      parseStudentListQuery(new URLSearchParams("assignment=other")).assignment,
+      "all",
+    );
   });
 
   it("장기 미접속·미로그인 통합 필터를 보존한다", () => {

@@ -103,6 +103,7 @@ export function AdminStudentsTable({
   const gradeFilter = listQuery.grade;
   const teacherFilter = listQuery.teacher;
   const activityFilter = listQuery.activity as ActivityFilter;
+  const assignmentFilter = listQuery.assignment;
   const [selected, setSelected] = useState<string[]>([]);
   const [classRoomId, setClassRoomId] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export function AdminStudentsTable({
     grade?: string;
     teacher?: string;
     activity?: ActivityFilter;
+    assignment?: "all" | "unassigned";
   }) {
     const current = {
       q: patch.q ?? query,
@@ -126,6 +128,7 @@ export function AdminStudentsTable({
       grade: patch.grade ?? gradeFilter,
       teacher: patch.teacher ?? teacherFilter,
       activity: patch.activity ?? activityFilter,
+      assignment: patch.assignment ?? assignmentFilter,
       page: 1,
     };
     router.replace(
@@ -190,6 +193,12 @@ export function AdminStudentsTable({
       ) {
         return false;
       }
+      if (
+        assignmentFilter === "unassigned" &&
+        (s.classNames.length > 0 || Boolean(s.className))
+      ) {
+        return false;
+      }
       if (!q) return true;
       return [
         s.displayName,
@@ -203,7 +212,15 @@ export function AdminStudentsTable({
         .toLowerCase()
         .includes(q);
     });
-  }, [students, query, classFilter, gradeFilter, teacherFilter, activityFilter]);
+  }, [
+    students,
+    query,
+    classFilter,
+    gradeFilter,
+    teacherFilter,
+    activityFilter,
+    assignmentFilter,
+  ]);
 
   const selectedNames = useMemo(() => {
     const nameById = new Map(students.map((s) => [s.id, s.displayName]));
@@ -221,6 +238,7 @@ export function AdminStudentsTable({
     gradeFilter !== "all" ||
     teacherFilter !== "all" ||
     activityFilter !== "all";
+  const hasAssignmentFilter = assignmentFilter !== "all";
 
   function goPage(nextPage: number) {
     router.replace(
@@ -231,6 +249,7 @@ export function AdminStudentsTable({
           grade: gradeFilter,
           teacher: teacherFilter,
           activity: activityFilter,
+          assignment: assignmentFilter,
           page: nextPage,
           scope: searchParams.get("scope"),
           tab: searchParams.get("tab"),
@@ -248,6 +267,7 @@ export function AdminStudentsTable({
       grade: "all",
       teacher: "all",
       activity: "all",
+      assignment: "all",
     });
   }
 
@@ -374,6 +394,21 @@ export function AdminStudentsTable({
             <option value="never_login">미로그인</option>
             <option value="inactive_or_never">장기 미접속·미로그인</option>
           </select>
+          {canManage ? (
+            <select
+              value={assignmentFilter}
+              aria-label="반 배정 필터"
+              onChange={(event) =>
+                commitList({
+                  assignment: event.target.value as "all" | "unassigned",
+                })
+              }
+              className="min-h-[44px] shrink-0 rounded-lg border border-[var(--rm-border)] bg-[var(--rm-surface)] px-2.5 py-1.5 text-[13px] sm:text-sm"
+            >
+              <option value="all">전체 배정 상태</option>
+              <option value="unassigned">반 미배정</option>
+            </select>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px] text-[var(--rm-text-muted)]" aria-live="polite">
@@ -381,7 +416,7 @@ export function AdminStudentsTable({
             <strong className="text-[var(--rm-text)]">{filtered.length}명</strong>
             {filtered.length > PAGE_SIZE ? ` · ${page}/${pageCount}쪽` : ""}
           </p>
-          {hasFilters ? (
+          {hasFilters || hasAssignmentFilter ? (
             <button
               type="button"
               onClick={resetFilters}

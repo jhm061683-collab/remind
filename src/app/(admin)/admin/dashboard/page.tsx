@@ -16,6 +16,7 @@ import { getAcademyLearningLeaderboard } from "@/lib/server/rankings";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { AdminStudentRow, ClassOption } from "@/lib/types/admin";
 import type { LearningLeaderboardRow } from "@/lib/server/rankings";
+import Link from "next/link";
 
 function pct(value: number | null): string {
   if (value === null) return "—";
@@ -119,6 +120,9 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
 
   const fulfillment =
     data.shortFulfillmentPct ?? data.mediumLongFulfillmentPct;
+  const unassignedCount = data.students.filter(
+    (student) => student.classNames.length === 0 && !student.className,
+  ).length;
   return (
     <>
       <PageHeader
@@ -137,6 +141,26 @@ export default async function AdminDashboardPage({ searchParams }: Props) {
           scope={params.scope}
         />
       </div>
+
+      {!isSubAdmin ? (
+        <Link
+          href="/admin/students?assignment=unassigned"
+          className="mb-3 flex min-h-[52px] items-center justify-between rounded-2xl border border-[var(--rm-warning)]/35 bg-[color-mix(in_srgb,var(--rm-warning)_10%,var(--rm-surface))] px-4 py-3 text-sm transition hover:border-[var(--rm-warning)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--rm-brand)]"
+          aria-label={`반 미배정 학생 ${unassignedCount}명 보기`}
+        >
+          <span>
+            <strong className="text-[var(--rm-text)]">반 미배정</strong>
+            <span className="ml-2 text-[var(--rm-text-muted)]">
+              {unassignedCount === 0
+                ? "모든 학생이 반에 배정됐어요"
+                : "배정이 필요한 학생"}
+            </span>
+          </span>
+          <span className="font-extrabold tabular-nums text-[var(--rm-text)]">
+            {unassignedCount}명
+          </span>
+        </Link>
+      ) : null}
 
       <details className="group mt-4 rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] shadow-sm">
         <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-[var(--rm-text)] marker:content-none">

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  archiveStatHref,
   parseArchiveFilters,
   parseArchivePage,
   shouldShowArchiveEmpty,
@@ -33,5 +34,12 @@ describe("보관함 목록 상태", () => {
     assert.deepEqual(filters.wrongKeywords, ["부호"]);
     assert.equal(filters.from, "2026-08-01");
     assert.equal(filters.to, "2026-08-19");
+  });
+
+  it("홈 통계 네 항목을 의미가 일치하는 보관함 URL로 연결한다", () => {
+    assert.equal(archiveStatHref("all"), "/archive");
+    assert.equal(archiveStatHref("active"), "/archive?status=active");
+    assert.equal(archiveStatHref("mastered"), "/archive?status=archived");
+    assert.equal(archiveStatHref("upcoming"), "/archive?status=upcoming");
   });
 });

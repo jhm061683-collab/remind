@@ -9,7 +9,7 @@ import { UI_LABELS } from "@/lib/constants/ui-labels";
 import { isMathAnswerSubject } from "@/lib/utils/normalize-answer";
 import { getAnswerImageUrls } from "@/lib/utils/question-images";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   getStreakTarget,
@@ -22,14 +22,21 @@ import {
   type StoredQuestion,
 } from "@/lib/data/questions";
 import {
+  countDueBySubject,
+  createReviewSeed,
   clearSavedReviewSet,
+  estimateSetMinutes,
   readSavedReviewSet,
   resumeReviewSet,
+  selectReviewSetByMode,
   writeSavedReviewSet,
+  type ReviewMode,
+  type ReviewSelection,
 } from "@/lib/study/review-set";
 import { hasStudyAnswer } from "@/lib/study/answer-gate";
 import { useSubjects } from "@/components/student/subject-provider";
 import { formatDate, getPhaseHint, getPhaseLabel } from "@/lib/utils/labels";
+import { toDateKey } from "@/lib/utils/date-range";
 import type { CompletedAction } from "@/types/question";
 
 type Props = {
@@ -38,8 +45,14 @@ type Props = {
 
 export function TodayStudySession({ userId }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { getSubjectName } = useSubjects();
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
+  const [allDue, setAllDue] = useState<StoredQuestion[]>([]);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [reviewMode, setReviewMode] = useState<ReviewMode>("all");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [reviewSeed, setReviewSeed] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [myAnswer, setMyAnswer] = useState("");
   const [revealed, setRevealed] = useState(false);
@@ -55,14 +68,46 @@ export function TodayStudySession({ userId }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteProcessing, setDeleteProcessing] = useState(false);
 
+  function selectionFromUrl(): ReviewSelection | null {
+    const raw = searchParams.get("mode");
+    if (raw !== "all" && raw !== "subject" && raw !== "random") return null;
+    const subjectId = searchParams.get("subject") || undefined;
+    if (raw === "subject" && !subjectId) return null;
+    const seedRaw = Number.parseInt(searchParams.get("seed") ?? "", 10);
+    return {
+      mode: raw,
+      subjectId,
+      seed:
+        raw === "random" && Number.isFinite(seedRaw) ? seedRaw : undefined,
+    };
+  }
+
+  function scopedDue(today: StoredQuestion[], selection: ReviewSelection) {
+    return selection.subjectId &&
+      (selection.mode === "subject" || selection.mode === "random")
+      ? today.filter((question) => question.subjectId === selection.subjectId)
+      : today;
+  }
+
   async function fetchReviewSession() {
     const [today, upcoming] = await Promise.all([
       getTodayReviewQuestions(userId),
       getUpcomingReviewCount(userId),
     ]);
+    const selection: ReviewSelection = {
+      mode: reviewMode,
+      subjectId:
+        reviewMode === "subject" || reviewMode === "random"
+          ? selectedSubjectId || undefined
+          : undefined,
+      seed: reviewMode === "random" ? reviewSeed : undefined,
+    };
+    const eligible = scopedDue(today, selection);
     const saved = readSavedReviewSet(userId);
-    const set = resumeReviewSet(today, saved);
-    return { set, today, upcoming };
+    const set = saved
+      ? resumeReviewSet(eligible, saved)
+      : selectReviewSetByMode(eligible, selection);
+    return { set, today: eligible, upcoming, selection };
   }
 
   const applyReviewSession = useCallback(
@@ -70,6 +115,7 @@ export function TodayStudySession({ userId }: Props) {
       set: StoredQuestion[],
       today: StoredQuestion[],
       upcoming: number,
+      selection: ReviewSelection,
     ) => {
       setQuestions(set);
       setDueTotal(today.length);
@@ -78,6 +124,7 @@ export function TodayStudySession({ userId }: Props) {
         writeSavedReviewSet(userId, {
           ids: set.map((q) => q.id),
           dueTotal: today.length,
+          selection,
         });
       } else {
         clearSavedReviewSet(userId);
@@ -100,19 +147,73 @@ export function TodayStudySession({ userId }: Props) {
         getUpcomingReviewCount(userId),
       ]);
       if (cancelled) return;
+      setAllDue(today);
       const saved = readSavedReviewSet(userId);
-      const set = resumeReviewSet(today, saved);
-      applyReviewSession(set, today, upcoming);
+      const selection = selectionFromUrl() ?? saved?.selection ?? null;
+      if (selection) {
+        const eligible = scopedDue(today, selection);
+        const set = saved
+          ? resumeReviewSet(eligible, saved)
+          : selectReviewSetByMode(eligible, selection);
+        setReviewMode(selection.mode);
+        setSelectedSubjectId(selection.subjectId ?? "");
+        setReviewSeed(selection.seed ?? 1);
+        setSessionStarted(true);
+        applyReviewSession(set, eligible, upcoming, selection);
+      } else {
+        setQuestions([]);
+        setDueTotal(today.length);
+        setUpcomingCount(upcoming);
+        setSessionStarted(false);
+      }
       setIsReady(true);
     })();
     return () => {
       cancelled = true;
     };
+    // URL 선택은 최초 진입 시 세션을 복원하는 용도다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, applyReviewSession]);
 
   async function reloadQuestions() {
-    const { set, today, upcoming } = await fetchReviewSession();
-    applyReviewSession(set, today, upcoming);
+    const { set, today, upcoming, selection } = await fetchReviewSession();
+    applyReviewSession(set, today, upcoming, selection);
+  }
+
+  function startReview() {
+    const seed =
+      reviewMode === "random"
+        ? createReviewSeed(userId, toDateKey(new Date()))
+        : undefined;
+    const selection: ReviewSelection = {
+      mode: reviewMode,
+      subjectId:
+        reviewMode === "subject" || reviewMode === "random"
+          ? selectedSubjectId || undefined
+          : undefined,
+      seed,
+    };
+    const eligible = scopedDue(allDue, selection);
+    if (eligible.length === 0) return;
+    const set = selectReviewSetByMode(eligible, selection);
+    setReviewSeed(seed ?? 1);
+    setSessionStarted(true);
+    applyReviewSession(set, eligible, upcomingCount, selection);
+    const params = new URLSearchParams();
+    params.set("mode", reviewMode);
+    if (selection.subjectId) params.set("subject", selection.subjectId);
+    if (seed !== undefined) params.set("seed", String(seed));
+    router.replace(`/study/today?${params.toString()}`, { scroll: false });
+  }
+
+  function chooseAgain() {
+    clearSavedReviewSet(userId);
+    setSessionStarted(false);
+    setQuestions([]);
+    setCurrentIndex(0);
+    setMyAnswer("");
+    setRevealed(false);
+    router.replace("/study/today", { scroll: false });
   }
 
   const current = questions[currentIndex];
@@ -246,6 +347,115 @@ export function TodayStudySession({ userId }: Props) {
     );
   }
 
+  const subjectCounts = countDueBySubject(allDue).map((item) => ({
+    ...item,
+    name: getSubjectName(item.subjectId),
+  }));
+
+  if (!sessionStarted && allDue.length > 0) {
+    const selectedCount =
+      reviewMode === "subject"
+        ? (subjectCounts.find((item) => item.subjectId === selectedSubjectId)
+            ?.count ?? 0)
+        : reviewMode === "random" && selectedSubjectId
+          ? (subjectCounts.find((item) => item.subjectId === selectedSubjectId)
+              ?.count ?? 0)
+        : allDue.length;
+    return (
+      <section className="rounded-2xl border border-[var(--rm-border)] bg-[var(--rm-surface)] p-4 shadow-sm">
+        <p className="text-lg font-extrabold text-[var(--rm-text)]">
+          오늘 어떻게 풀까요?
+        </p>
+        <p className="mt-1 text-sm text-[var(--rm-text-muted)]">
+          오늘 대상 {allDue.length}문제 · 한 번에 최대 10문제
+        </p>
+        <fieldset className="mt-4 space-y-2">
+          <legend className="sr-only">복습 시작 방식</legend>
+          {([
+            ["all", "전체", "오래 기다린 문제부터"],
+            ["subject", "과목별", "원하는 과목만 골라서"],
+            ["random", "랜덤", "오늘 대상 안에서 순서만 섞어서"],
+          ] as const).map(([mode, label, hint]) => (
+            <label
+              key={mode}
+              className={`flex min-h-[56px] cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                reviewMode === mode
+                  ? "border-[var(--rm-brand)] bg-[var(--rm-info-bg)]"
+                  : "border-[var(--rm-border)] bg-[var(--rm-surface-raised)]"
+              }`}
+            >
+              <input
+                type="radio"
+                name="review-mode"
+                value={mode}
+                checked={reviewMode === mode}
+                onChange={() => setReviewMode(mode)}
+              />
+              <span>
+                <span className="block text-sm font-bold text-[var(--rm-text)]">
+                  {label}
+                </span>
+                <span className="block text-xs text-[var(--rm-text-muted)]">
+                  {hint}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        {reviewMode === "subject" || reviewMode === "random" ? (
+          <fieldset className="mt-4">
+            <legend className="text-sm font-bold text-[var(--rm-text)]">
+              {reviewMode === "random" ? "랜덤 범위" : "과목 선택"}
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {reviewMode === "random" ? (
+                <label className="flex min-h-[48px] cursor-pointer items-center gap-2 rounded-xl border border-[var(--rm-border)] px-3 text-sm">
+                  <input
+                    type="radio"
+                    name="review-subject"
+                    value=""
+                    checked={!selectedSubjectId}
+                    onChange={() => setSelectedSubjectId("")}
+                  />
+                  <span>전체 과목</span>
+                  <strong className="ml-auto tabular-nums">{allDue.length}</strong>
+                </label>
+              ) : null}
+              {subjectCounts.map((item) => (
+                <label
+                  key={item.subjectId}
+                  className="flex min-h-[48px] cursor-pointer items-center gap-2 rounded-xl border border-[var(--rm-border)] px-3 text-sm"
+                >
+                  <input
+                    type="radio"
+                    name="review-subject"
+                    value={item.subjectId}
+                    checked={selectedSubjectId === item.subjectId}
+                    onChange={() => setSelectedSubjectId(item.subjectId)}
+                  />
+                  <span className="min-w-0 truncate">{item.name}</span>
+                  <strong className="ml-auto tabular-nums">{item.count}</strong>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={selectedCount === 0}
+          onClick={startReview}
+          className="mt-4 min-h-[48px] w-full rounded-xl bg-[var(--rm-brand)] px-4 text-base font-bold text-white disabled:opacity-40"
+        >
+          {selectedCount > 0
+            ? `${Math.min(10, selectedCount)}문제 시작 · 약 ${estimateSetMinutes(Math.min(10, selectedCount))}분`
+            : "과목을 선택해 주세요"}
+        </button>
+      </section>
+    );
+  }
+
   if (isEmpty) {
     return (
       <div
@@ -363,6 +573,13 @@ export function TodayStudySession({ userId }: Props) {
             ? ` ${current.streakCount}/${streakTarget}`
             : ""}
         </span>
+        <button
+          type="button"
+          onClick={chooseAgain}
+          className="min-h-[44px] rounded-lg px-2 text-xs font-bold text-[var(--rm-nav-active)]"
+        >
+          방식 다시 선택
+        </button>
       </div>
       <p className="text-[11px] text-[var(--rm-text-muted)]">
         {getPhaseHint(current.phase)}

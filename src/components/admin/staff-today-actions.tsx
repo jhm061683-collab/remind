@@ -60,6 +60,7 @@ export function StaffTodayActions({ isSubAdmin, students, scope }: Props) {
         grade: "all",
         teacher: "all",
         activity: "all",
+        assignment: "all",
         page: 1,
       },
     );

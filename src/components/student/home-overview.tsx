@@ -12,7 +12,12 @@ import { TodayFocusHero } from "@/components/student/dashboard/today-focus-hero"
 import { useSubjects } from "@/components/student/subject-provider";
 import type { UserStats } from "@/lib/data/user-stats";
 import { getActivityEvents } from "@/lib/data/activity";
-import { IconArchive, IconChevronRight } from "@/components/ui/icons";
+import {
+  IconArchive,
+  IconChart,
+  IconChevronRight,
+  IconList,
+} from "@/components/ui/icons";
 import { getHomeQuestionMeta, type StoredQuestion } from "@/lib/data/questions";
 import type {
   AcademyHallOfFame,
@@ -22,6 +27,10 @@ import type {
 import { computeUserStats } from "@/lib/stats/compute";
 import { UI_LABELS } from "@/lib/constants/ui-labels";
 import { countTodayDue, isOverdue } from "@/lib/study/today-due";
+import {
+  archiveStatHref,
+  type ArchiveStatKind,
+} from "@/lib/archive/list-query";
 import { toDateKey } from "@/lib/utils/date-range";
 import { useClientFormattedDate } from "@/lib/react/client-display";
 import { useEffect, useMemo, useState } from "react";
@@ -305,26 +314,44 @@ export function HomeOverview({
         />
       </div>
 
-      <details className="rm-glass rm-glass--compact">
+      <details className="group rm-glass rm-glass--compact">
         <summary className="flex min-h-[44px] cursor-pointer items-center justify-between text-sm font-bold text-[var(--rm-text)]">
-          이번 주 성장과 학습 계획
-          <span className="text-xs text-[var(--rm-nav-active)]">펼쳐 보기</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <IconChart size={16} className="shrink-0 text-[var(--rm-brand-violet)]" />
+            이번 주 성장과 학습 계획
+          </span>
+          <span className="flex items-center gap-1 text-xs text-[var(--rm-nav-active)]">
+            <span className="group-open:hidden">펼쳐보기</span>
+            <span className="hidden group-open:inline">접기</span>
+            <IconChevronRight size={14} className="transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none" />
+          </span>
         </summary>
         <div className="mt-3 space-y-[var(--rm-stack)]">
           <div className="rm-stat-strip">
-            <QuickStat label="전체" value={loading ? "—" : stats.total} />
+            <QuickStat
+              label="전체"
+              value={loading ? "—" : stats.total}
+              kind="all"
+              hint="보관함 전체 문제 보기"
+            />
             <QuickStat
               label={UI_LABELS.activeStatLabel}
               value={loading ? "—" : stats.active}
+              kind="active"
+              hint="아직 다시 푸는 문제 보기"
             />
             <QuickStat
               label="정복률"
               value={loading ? "—" : `${masteryPct}%`}
               accent
+              kind="mastered"
+              hint={`보관 완료 ${stats.archived}개 보기`}
             />
             <QuickStat
               label="예정"
               value={loading ? "—" : (upcomingCount ?? 0)}
+              kind="upcoming"
+              hint="오늘 이후 예정 문제 보기"
             />
           </div>
 
@@ -369,13 +396,16 @@ export function HomeOverview({
       />
 
       {!loading && recentQuestions.length > 0 ? (
-        <details className="rm-glass rm-glass--compact">
+        <details className="group rm-glass rm-glass--compact">
           <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-2">
-            <span className="rm-label">
+            <span className="rm-label flex items-center gap-1.5">
+              <IconList size={14} className="text-[var(--rm-brand-violet)]" />
               최근 등록한 문제 {recentQuestions.length}개
             </span>
-            <span className="text-xs font-semibold text-[var(--rm-nav-active)]">
-              펼쳐 보기
+            <span className="flex items-center gap-1 text-xs font-semibold text-[var(--rm-nav-active)]">
+              <span className="group-open:hidden">펼쳐보기</span>
+              <span className="hidden group-open:inline">접기</span>
+              <IconChevronRight size={14} className="transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none" />
             </span>
           </summary>
           <div className="flex justify-end">
@@ -452,13 +482,21 @@ function QuickStat({
   label,
   value,
   accent,
+  kind,
+  hint,
 }: {
   label: string;
   value: string | number;
   accent?: boolean;
+  kind: ArchiveStatKind;
+  hint: string;
 }) {
   return (
-    <div className="rm-stat-strip__item">
+    <Link
+      href={archiveStatHref(kind)}
+      className="rm-stat-strip__item min-h-[56px] rounded-lg transition hover:bg-[var(--rm-bg-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--rm-brand)]"
+      aria-label={`${label} ${value}. ${hint}`}
+    >
       <p className="rm-stat-label">{label}</p>
       <p
         className={`rm-stat-value tabular-nums ${
@@ -467,7 +505,8 @@ function QuickStat({
       >
         {value}
       </p>
-    </div>
+      <span className="sr-only">{hint}</span>
+    </Link>
   );
 }
 

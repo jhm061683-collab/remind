@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { useClientMounted } from "@/lib/react/client-display";
+import { useTemporaryLandscape } from "@/hooks/use-temporary-landscape";
 
 type Props = {
   urls: string[];
@@ -26,8 +27,14 @@ export function ImageLightbox({
   const [index, setIndex] = useState(clampedInitial);
   const mounted = useClientMounted();
   const touchStartX = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const landscape = useTemporaryLandscape();
   const prevOpenRef = useRef(open);
   const prevInitialRef = useRef(initialIndex);
+
+  function closeViewer() {
+    void landscape.exit().finally(onClose);
+  }
 
   if (
     open &&
@@ -50,7 +57,7 @@ export function ImageLightbox({
     document.body.style.overflow = "hidden";
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeViewer();
       if (e.key === "ArrowLeft") go(-1);
       if (e.key === "ArrowRight") go(1);
     }
@@ -91,24 +98,44 @@ export function ImageLightbox({
 
   return createPortal(
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex flex-col bg-black/92"
       role="dialog"
       aria-modal="true"
       aria-label="사진 확대 보기"
-      onClick={onClose}
+      onClick={closeViewer}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-3 text-white">
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-3 text-white"
+        onClick={(event) => event.stopPropagation()}
+      >
         <p className="text-sm font-medium">
           {urls.length > 1 ? `${index + 1} / ${urls.length}` : "사진 보기"}
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold backdrop-blur-sm"
-        >
-          닫기 ✕
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={landscape.requested}
+            onClick={() => void landscape.toggle(dialogRef.current)}
+            className="min-h-[44px] rounded-full bg-white/15 px-3 text-sm font-semibold backdrop-blur-sm"
+          >
+            {landscape.requested ? "세로로 돌아가기" : "가로로 보기"}
+          </button>
+          <button
+            type="button"
+            onClick={closeViewer}
+            className="min-h-[44px] rounded-full bg-white/15 px-3 text-sm font-semibold backdrop-blur-sm"
+          >
+            닫기 ✕
+          </button>
+        </div>
       </div>
+
+      {landscape.notice ? (
+        <p className="mx-3 mb-2 rounded-lg bg-white/15 px-3 py-2 text-center text-xs text-white" role="status" onClick={(event) => event.stopPropagation()}>
+          {landscape.notice}
+        </p>
+      ) : null}
 
       <div
         className="relative flex min-h-0 flex-1 items-center justify-center px-2"
@@ -152,7 +179,7 @@ export function ImageLightbox({
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeViewer}
           className="min-h-[48px] w-full rounded-2xl bg-white text-base font-bold text-black touch-manipulation"
         >
           작게 보기 (닫기)

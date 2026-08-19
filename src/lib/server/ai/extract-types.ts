@@ -163,6 +163,9 @@ export const EXTRACT_SYSTEM_PROMPT = `당신은 한국 중·고등 학원용 오
 7. 정답 정책(절대): answer는 항상 빈 문자열("")로 두세요. 사진을 보고 옮기거나 풀거나 추정하지 마세요. 정답 입력은 100% 학생의 몫입니다.
 8. 본문(problemLatex)은 읽을 수 있는 만큼만 정확히 정리하세요.
 9. JSON 외 다른 텍스트는 출력하지 마세요.
+10. JSON 문자열 안의 LaTeX 백슬래시는 반드시 두 번 이스케이프하세요. 예를 들어 앱에 $x \\neq 3$을 전달하려면 JSON 원문에는 $x \\\\neq 3$으로 출력합니다.
+11. \\neq, \\ne, \\nabla, \\not, \\nu, \\newline, \\newcommand처럼 \\n으로 시작하는 LaTeX 명령을 JSON 줄바꿈 escape(\\n)와 혼동하지 마세요.
+12. 실제 문단 줄바꿈은 JSON의 \\n으로, LaTeX 명령은 이스케이프된 백슬래시로 구분합니다.
 
 그래프·그림·도형·표 처리 (매우 중요):
 - 원본에 그래프, 좌표평면, 기하 도형, 지도, 회로, 삽화, 표가 있으면 글로 풀어서 설명하거나 생략하지 마세요.
@@ -206,11 +209,11 @@ export function normalizeExtractJson(raw: unknown): {
 } {
   const obj =
     typeof raw === "string"
-      ? (JSON.parse(stripCodeFence(raw)) as Record<string, unknown>)
+      ? parseExtractJsonText(stripCodeFence(raw))
       : (raw as Record<string, unknown>);
 
-  const sharedPassage = String(
-    obj.sharedPassage ?? obj.shared_passage ?? "",
+  const sharedPassage = normalizeAiLatexField(
+    String(obj.sharedPassage ?? obj.shared_passage ?? ""),
   ).trim();
 
   const problemsRaw = obj.problems;
@@ -237,7 +240,9 @@ function normalizeProblemItem(raw: unknown): ExtractedProblemItem {
   const obj = (raw ?? {}) as Record<string, unknown>;
   return {
     number: String(obj.number ?? obj.no ?? "").trim().slice(0, 20),
-    problemLatex: String(obj.problemLatex ?? obj.problem_latex ?? "").trim(),
+    problemLatex: normalizeAiLatexField(
+      String(obj.problemLatex ?? obj.problem_latex ?? ""),
+    ).trim(),
     answerGuess: "", // 정답은 학생이 100% 직접 입력 (AI 채움 금지)
     keywords: Array.isArray(obj.keywords)
       ? obj.keywords
@@ -252,6 +257,46 @@ function normalizeProblemItem(raw: unknown): ExtractedProblemItem {
           .slice(0, 4)
       : [],
   };
+}
+
+const LATEX_N_COMMAND_SUFFIX =
+  /^(?:abla|atural|eg|e(?:q)?|i|ot(?:in)?|u|ewline|ewcommand|olimits)\b/;
+const LATEX_N_COMMAND =
+  /^(?:nabla|natural|neg|ne(?:q)?|ni|not(?:in)?|nu|newline|newcommand|nolimits)\b/;
+
+/** 일부 AI가 JSON 안의 LaTeX 명령을 한 번만 escape한 경우만 보정한다. */
+export function repairLatexBackslashesInJson(raw: string): string {
+  return raw.replace(/(\\+)n/g, (match, slashes: string, offset: number) => {
+    if (slashes.length !== 1) return match;
+    const suffix = raw.slice(offset + match.length);
+    return LATEX_N_COMMAND_SUFFIX.test(suffix) ? `\\\\n` : match;
+  });
+}
+
+/** AI 수식 필드에서만 명령 앞 U+20A9를 백슬래시로 보정한다. 통화는 유지한다. */
+export function normalizeAiLatexField(value: string): string {
+  return value.replace(/₩(?=[A-Za-z]+)/g, (symbol, offset: number) => {
+    const suffix = value.slice(offset + symbol.length);
+    return LATEX_N_COMMAND.test(suffix) ? "\\" : symbol;
+  });
+}
+
+function parseExtractJsonText(text: string): Record<string, unknown> {
+  const repaired = repairLatexBackslashesInJson(text);
+  try {
+    return JSON.parse(repaired) as Record<string, unknown>;
+  } catch {
+    return {
+      problems: [
+        {
+          problemLatex: text,
+          answer: "",
+          keywords: [],
+          figures: [],
+        },
+      ],
+    };
+  }
 }
 
 function normalizeFigureRegion(raw: unknown): ExtractedFigureRegion | null {
